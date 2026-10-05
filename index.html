@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#101b2b" />
+    <title>Mon petit jeu</title>
+    <link rel="stylesheet" href="style.css?v=35" />
+    <script src="script.js?v=37" defer></script>
+  </head>
+  <body>
+    <main class="arena" aria-label="Terrain de jeu">
+      <header class="game-hud" aria-label="Informations de la vague">
+        <span class="wave-display" id="wave-display">Vague 1 · Arme 1</span>
+        <span class="player-name-display" id="player-name-display" aria-label="Pseudo du joueur">Survivant</span>
+        <span class="hud-coins" id="hud-coins" aria-label="Pièces">0 ◉</span>
+        <button class="sound-toggle auto-shoot-toggle" id="auto-shoot-toggle" type="button" aria-label="Activer ou désactiver le tir automatique" aria-pressed="true" title="Activer ou désactiver le tir automatique">Tir auto : ON</button>
+      </header>
+      <div class="hud-timer" aria-label="Temps de la partie">
+        <span class="timer-label">TEMPS</span>
+        <span class="timer" id="timer" role="timer" aria-live="off">01:30</span>
+        <span class="run-time" id="run-time">Partie 00:00</span>
+        <span class="boss-eta" id="boss-eta" hidden></span>
+      </div>
+      <div class="hud-xp" id="hud-xp" role="progressbar" aria-label="Expérience du joueur" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <span class="hud-xp-fill" id="hud-xp-fill"></span>
+        <span class="hud-xp-level" id="hud-xp-level">Nv 1</span>
+      </div>
+      <div class="hud-hearts" id="player-health" role="progressbar" aria-label="Vie du personnage" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
+        <span class="hud-hearts-row" id="player-hearts">
+          <span class="hud-heart"><span class="hud-heart-fill"></span></span>
+          <span class="hud-heart"><span class="hud-heart-fill"></span></span>
+          <span class="hud-heart"><span class="hud-heart-fill"></span></span>
+          <span class="hud-heart"><span class="hud-heart-fill"></span></span>
+          <span class="hud-heart"><span class="hud-heart-fill"></span></span>
+        </span>
+        <span class="hud-hearts-value" id="player-health-value">100 / 100 PV</span>
+      </div>
+      <div class="hud-sound">
+        <button class="sound-toggle settings-open-button" id="hud-settings-button" type="button" aria-haspopup="dialog" aria-controls="settings-panel" title="Paramètres (Échap)">⚙️ Paramètres</button>
+      </div>
+      <p class="controls-hint" id="controls-hint">ZQSD / flèches · Maj pour esquiver · Tir auto activé</p>
+      <section class="combat-loadout" aria-label="Arme, pouvoir et boost équipés">
+        <button class="combat-slot combat-weapon-slot is-active" id="combat-ranged-slot" type="button" data-weapon-slot="ranged" aria-keyshortcuts="1" aria-pressed="true">
+          <span class="combat-slot-icon" id="combat-weapon-icon" aria-hidden="true">🪨</span>
+          <img class="combat-slot-art" id="combat-weapon-art" src="./assets/real/armes/fronde.png" alt="" draggable="false" />
+          <span class="combat-slot-key" aria-hidden="true">1</span>
+          <span class="combat-slot-badge" id="combat-weapon-badge">Nv 1</span>
+          <span class="combat-slot-tip">
+            <span class="combat-slot-kicker">ARME À DISTANCE · TOUCHE 1</span>
+            <span class="combat-slot-name" id="combat-weapon-name">Fronde</span>
+            <span class="combat-slot-detail" id="combat-weapon-detail">1 projectile · dégâts 1</span>
+          </span>
+        </button>
+        <button class="combat-slot combat-weapon-slot combat-melee-slot" id="combat-melee-slot" type="button" data-weapon-slot="melee" aria-keyshortcuts="2" aria-pressed="false">
+          <img class="combat-slot-art" id="combat-melee-art" src="./assets/real/armes/epee-rouillee.png" alt="" draggable="false" />
+          <span class="combat-slot-key" aria-hidden="true">2</span>
+          <span class="combat-slot-badge" id="combat-melee-badge">Nv 1</span>
+          <span class="combat-slot-tip">
+            <span class="combat-slot-kicker">ÉPÉE · TOUCHE 2 (A pour alterner)</span>
+            <span class="combat-slot-name" id="combat-melee-name">Épée rouillée</span>
+            <span class="combat-slot-detail" id="combat-melee-detail">Mêlée · dégâts 3</span>
+          </span>
+        </button>
+        <button class="combat-slot combat-power-slot" id="use-power-button" type="button" aria-keyshortcuts="O">
+          <span class="combat-slot-icon" id="combat-power-icon" aria-hidden="true">❄️</span>
+          <span class="combat-slot-key" aria-hidden="true">O</span>
+          <span class="combat-slot-timer" id="combat-power-timer" aria-hidden="true"></span>
+          <span class="combat-slot-tip">
+            <span class="combat-slot-kicker">POUVOIR · TOUCHE O</span>
+            <span class="combat-slot-name" id="combat-power-name">Souffle de givre</span>
+            <span class="combat-slot-detail" id="combat-power-detail">Disponible</span>
+          </span>
+        </button>
+        <button class="combat-slot combat-boost-slot" id="use-boost-button" type="button" disabled aria-keyshortcuts="P">
+          <span class="combat-slot-icon" id="combat-boost-icon" aria-hidden="true">＋</span>
+          <span class="combat-slot-key" aria-hidden="true">P</span>
+          <span class="combat-slot-badge" id="combat-boost-badge"></span>
+          <span class="combat-slot-timer" id="combat-boost-timer" aria-hidden="true"></span>
+          <span class="combat-slot-tip">
+            <span class="combat-slot-kicker">BOOST · TOUCHE P</span>
+            <span class="combat-slot-name" id="combat-boost-name">Aucun boost</span>
+            <span class="combat-slot-detail" id="combat-boost-detail">Équipe un boost au menu</span>
+          </span>
+        </button>
+      </section>
+      <div class="round-message" id="round-message" aria-live="assertive" hidden></div>
+      <div class="wave-countdown" id="wave-countdown" role="status" aria-live="assertive" aria-atomic="true" hidden>
+        <span class="wave-countdown-number" id="wave-countdown-number"></span>
+        <span class="wave-countdown-label" id="wave-countdown-label"></span>
+      </div>
+      <div class="throne-room" aria-hidden="true">
+        <span class="throne-room-name">TRÔNE DE LA NUIT D'HALLOWEEN</span>
+        <span class="throne-pillar throne-pillar-left"></span>
+        <span class="throne-pillar throne-pillar-right"></span>
+        <span class="throne-flame throne-flame-left">🔥</span>
+        <span class="throne-flame throne-flame-right">🔥</span>
+        <span class="throne-dais"></span>
+        <span class="throne-seat"><span></span></span>
+      </div>
+      <div class="fog" id="fog" aria-hidden="true"></div>
+      <div class="atmosphere" aria-hidden="true">
+        <div class="atmosphere-light"></div>
+        <div class="atmosphere-mist"></div>
+        <div class="atmosphere-mist atmosphere-mist-front"></div>
+        <div class="atmosphere-particles" id="atmosphere-particles"></div>
+        <div class="atmosphere-vignette"></div>
+        <div class="atmosphere-grain"></div>
+        <div class="damage-vignette" id="damage-vignette"></div>
+      </div>
+      <div class="game-over" id="game-over" hidden>
+        <p class="game-over-title" id="game-over-title"></p>
+        <p class="game-over-xp" id="game-over-xp"></p>
+        <div class="game-over-actions">
+          <button class="restart-button" id="retry-button" type="button">Rejouer</button>
+          <button class="restart-button restart-button-secondary" id="shop-button" type="button">Retour au menu</button>
+        </div>
+      </div>
+      <section class="front-menu" id="front-menu" aria-label="Préparation de partie">
+        <div class="menu-panel">
+          <div class="menu-decorations" aria-hidden="true">
+            <span class="menu-bat menu-bat-left">🦇</span>
+            <span class="menu-bat menu-bat-right">🦇</span>
+            <span class="menu-pumpkin menu-pumpkin-left">🎃</span>
+            <span class="menu-pumpkin menu-pumpkin-right">🎃</span>
+            <span class="menu-spider">🕸️</span>
+          </div>
+          <div class="menu-heading">
+            <p class="menu-kicker">NUIT D'HALLOWEEN · ZONE MAUDITE</p>
+            <h1 id="menu-title">Prépare ta survie</h1>
+            <p class="menu-coins">TON BUTIN <strong id="menu-coins">0</strong> ◉</p>
+          </div>
+          <div class="menu-screen sio-home" id="loadout-screen">
+            <div class="sio-profile">
+              <div class="sio-avatar" aria-hidden="true">🎃</div>
+              <div class="sio-level-badge" aria-label="Niveau du joueur"><span>NV</span><strong id="menu-level">1</strong></div>
+              <div class="sio-profile-main">
+                <label class="player-name-field">Pseudo
+                  <input id="player-name-input" type="text" maxlength="16" autocomplete="nickname" placeholder="Ton pseudo" />
+                </label>
+                <div class="sio-xp-bar" aria-hidden="true">
+                  <span class="sio-xp-fill" id="menu-xp-fill"></span>
+                  <span class="sio-xp-text" id="menu-xp-text">0 / 20 XP</span>
+                </div>
+              </div>
+              <div class="sio-wallet">
+                <div class="sio-currency" aria-label="Pièces"><span class="sio-coin-icon" aria-hidden="true">◉</span><strong id="menu-coins-home">0</strong></div>
+                <button class="sio-settings-button settings-open-button" id="menu-settings-button" type="button" aria-haspopup="dialog" aria-controls="settings-panel">⚙️ Paramètres</button>
+              </div>
+            </div>
+            <p class="player-name-feedback" id="player-name-feedback" role="status" aria-live="polite" hidden></p>
+            <div class="sio-chapter">
+              <span class="sio-scene" aria-hidden="true">
+                <span class="sio-moon"></span>
+                <span class="sio-bat sio-bat-1">🦇</span>
+                <span class="sio-bat sio-bat-2">🦇</span>
+                <span class="sio-bat sio-bat-3">🦇</span>
+                <span class="sio-hill sio-hill-back"></span>
+                <span class="sio-hill sio-hill-front"></span>
+                <span class="sio-tree"></span>
+                <span class="sio-grave sio-grave-1"></span>
+                <span class="sio-grave sio-grave-2"></span>
+                <span class="sio-grave sio-grave-3"></span>
+                <span class="sio-pumpkin sio-pumpkin-left">🎃</span>
+                <span class="sio-pumpkin sio-pumpkin-right">🎃</span>
+                <span class="sio-fog"></span>
+                <span class="sio-web sio-web-left">🕸️</span>
+                <span class="sio-web sio-web-right">🕸️</span>
+                <span class="sio-spider">🕷️</span>
+              </span>
+              <div class="sio-chapter-head">
+                <span class="sio-chapter-kicker">CHAPITRE 1</span>
+                <h2 class="sio-chapter-title">Nuit d'Halloween</h2>
+                <p class="sio-chapter-sub">5 vagues · 4 boss · Salle du trône</p>
+              </div>
+              <button class="loadout-preview sio-hero" id="open-locker-button" type="button" aria-label="Ouvrir le casier et personnaliser le personnage">
+                <span id="loadout-preview-content"></span>
+                <span class="locker-hint">Casier</span>
+              </button>
+            </div>
+            <button class="sio-next-reward" id="menu-next-reward" type="button" data-nav="rewards"></button>
+            <button class="menu-primary sio-play" id="start-button" type="button"><span>JOUER</span></button>
+          </div>
+          <div class="menu-screen rewards-screen" id="rewards-screen" hidden>
+            <p class="rewards-summary" id="rewards-summary"></p>
+            <ol class="rewards-track" id="rewards-track" aria-label="Récompenses des niveaux 1 à 200"></ol>
+            <button class="menu-secondary" id="back-from-rewards-button" type="button">Retour à la préparation</button>
+          </div>
+          <div class="menu-screen" id="shop-screen" hidden>
+            <div class="screen-ornament shop-ornament" aria-hidden="true">
+              <span>🕸️</span><span>🦇</span><span>🎃</span><span>🦇</span><span>🕸️</span>
+            </div>
+            <p class="menu-description" id="shop-summary">Récompenses de ta partie : récupère les pièces lâchées et prépare la prochaine expédition.</p>
+            <div class="store-header">
+              <span class="store-countdown" id="shop-rotation-countdown" role="timer">Promos dans --:--</span>
+            </div>
+            <section class="store-featured" aria-labelledby="store-featured-title">
+              <h2 class="store-title" id="store-featured-title">🔥 À la une · promos du moment</h2>
+              <p class="shop-rotation-note" id="shop-rotation-note"></p>
+              <div class="store-grid store-grid-featured" id="shop-items"></div>
+            </section>
+            <nav class="store-tabs" id="shop-tabs" role="tablist" aria-label="Rayons de la boutique">
+              <button class="store-tab" type="button" role="tab" data-tab="skins" aria-selected="true">🎭 Skins</button>
+              <button class="store-tab" type="button" role="tab" data-tab="weapons" aria-selected="false">⚔️ Armes</button>
+              <button class="store-tab" type="button" role="tab" data-tab="activePowers" aria-selected="false">✨ Pouvoirs</button>
+              <button class="store-tab" type="button" role="tab" data-tab="characters" aria-selected="false">🧍 Personnages</button>
+              <button class="store-tab" type="button" role="tab" data-tab="equipment" aria-selected="false">🎒 Équipement</button>
+              <button class="store-tab" type="button" role="tab" data-tab="boosts" aria-selected="false">🧪 Boosts</button>
+              <button class="store-tab" type="button" role="tab" data-tab="improvements" aria-selected="false">📈 Améliorations</button>
+            </nav>
+            <div class="store-toolbar">
+              <p class="shop-category-note" id="shop-tab-note"></p>
+              <label class="store-filter"><input type="checkbox" id="shop-hide-owned" /> Masquer ce que je possède</label>
+              <label class="store-filter">Trier
+                <select id="shop-sort">
+                  <option value="price-asc">Prix croissant</option>
+                  <option value="price-desc">Prix décroissant</option>
+                  <option value="name">Nom</option>
+                </select>
+              </label>
+            </div>
+            <div class="store-grid" id="shop-catalog-items" role="tabpanel"></div>
+            <button class="menu-secondary" id="back-to-menu-button" type="button">Retour à la préparation</button>
+          </div>
+          <div class="menu-screen locker-screen" id="locker-screen" hidden>
+            <header class="locker-top">
+              <h2 class="locker-title">Casier</h2>
+              <nav class="locker-tabs" role="tablist" aria-label="Rubriques du casier">
+                <button class="locker-tab" type="button" role="tab" data-locker-tab="loadout" aria-selected="true">Équipement</button>
+                <button class="locker-tab" type="button" role="tab" data-locker-tab="upgrades" aria-selected="false">Améliorations</button>
+                <button class="locker-tab" type="button" role="tab" data-locker-tab="workshop" aria-selected="false">Atelier &amp; reliques</button>
+              </nav>
+            </header>
+            <div class="locker-panel locker-loadout" data-locker-panel="loadout" role="tabpanel">
+              <div class="locker-slots" id="locker-slots" aria-label="Emplacements équipés"></div>
+              <section class="locker-picker" aria-labelledby="locker-picker-title">
+                <div class="locker-picker-head">
+                  <h3 id="locker-picker-title">Tenue</h3>
+                  <span id="locker-picker-count"></span>
+                </div>
+                <div class="locker-picker-grid" id="locker-picker-grid"></div>
+                <div class="locker-details" id="locker-details" aria-live="polite"></div>
+              </section>
+              <aside class="locker-stage" aria-label="Aperçu du personnage">
+                <span class="locker-stage-light" aria-hidden="true"></span>
+                <span class="locker-stage-pedestal" aria-hidden="true"></span>
+                <div class="locker-stage-hero" id="locker-stage-hero"></div>
+                <ul class="locker-stage-info" id="locker-stage-info"></ul>
+              </aside>
+            </div>
+            <div class="locker-panel locker-upgrades" data-locker-panel="upgrades" role="tabpanel" hidden>
+              <section class="upgrade-list" aria-label="Armes et pouvoirs à améliorer">
+                <h3 class="upgrade-list-title">Armes</h3>
+                <div class="upgrade-grid" id="upgrade-weapons"></div>
+                <h3 class="upgrade-list-title">Pouvoirs</h3>
+                <div class="upgrade-grid" id="upgrade-powers"></div>
+              </section>
+              <section class="upgrade-bench" id="upgrade-bench" aria-live="polite"></section>
+            </div>
+            <div class="locker-panel locker-workshop" data-locker-panel="workshop" role="tabpanel" hidden>
+              <h2 class="shop-category-title">Atelier occulte · fusionner les reliques de boss</h2>
+              <p class="shop-category-note">Fusionne plusieurs reliques identiques avec des pièces pour obtenir armes ou potions. Les armes restent dans ton casier ; les potions ajoutent une utilisation au stock et se lancent avec P.</p>
+              <div class="shop-items weapon-offers locker-crafting-items" id="locker-crafting-items"></div>
+              <h2 class="shop-category-title">Reliques de boss</h2>
+              <div class="locker-items" id="locker-items"></div>
+            </div>
+            <button class="menu-secondary" id="back-from-locker-button" type="button">Retour à la préparation</button>
+          </div>
+          <p class="progression-feedback" id="progression-feedback" role="status" aria-live="polite"></p>
+          <nav class="menu-nav" aria-label="Navigation du menu">
+            <button class="menu-nav-button" id="open-shop-button" type="button" data-nav="shop"><span class="menu-nav-icon" aria-hidden="true">🛒</span>Boutique</button>
+            <button class="menu-nav-button" type="button" data-nav="locker"><span class="menu-nav-icon" aria-hidden="true">🎒</span>Casier</button>
+            <button class="menu-nav-button menu-nav-main" type="button" data-nav="home"><span class="menu-nav-icon" aria-hidden="true">⚔️</span>Combat</button>
+            <button class="menu-nav-button" id="open-upgrades-button" type="button" data-nav="upgrades"><span class="menu-nav-icon" aria-hidden="true">⬆️</span>Améliorer</button>
+            <button class="menu-nav-button" id="open-rewards-button" type="button" data-nav="rewards"><span class="menu-nav-icon" aria-hidden="true">🎁</span>Récompenses</button>
+          </nav>
+        </div>
+      </section>
+      <section class="settings-panel" id="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
+        <div class="settings-card">
+          <header class="settings-header">
+            <h2 id="settings-title">⚙️ Paramètres</h2>
+            <button class="settings-close" id="settings-close" type="button" aria-label="Fermer les paramètres">✕</button>
+          </header>
+          <div class="settings-tabs" role="tablist" aria-label="Rubriques des paramètres">
+            <button class="settings-tab is-active" type="button" role="tab" aria-selected="true" data-settings-tab="sound">🔊 Son</button>
+            <button class="settings-tab" type="button" role="tab" aria-selected="false" data-settings-tab="keys">⌨️ Touches</button>
+          </div>
+          <div class="settings-section" data-settings-section="sound" role="tabpanel">
+            <div class="settings-row">
+              <button class="sound-toggle settings-mute" id="master-toggle" type="button" aria-pressed="true">🔊 Son : ON</button>
+              <input class="settings-slider" id="volume-master" type="range" min="0" max="100" step="1" value="100" aria-label="Volume général" />
+              <output class="settings-value" for="volume-master" id="volume-master-value">100 %</output>
+            </div>
+            <div class="settings-row">
+              <button class="sound-toggle settings-mute" id="music-toggle" type="button" aria-pressed="true">♪ Musique : ON</button>
+              <input class="settings-slider" id="volume-music" type="range" min="0" max="100" step="1" value="100" aria-label="Volume de la musique" />
+              <output class="settings-value" for="volume-music" id="volume-music-value">100 %</output>
+            </div>
+            <div class="settings-row">
+              <button class="sound-toggle settings-mute" id="sound-toggle" type="button" aria-pressed="true">♫ Effets : ON</button>
+              <input class="settings-slider" id="volume-effects" type="range" min="0" max="100" step="1" value="100" aria-label="Volume des effets sonores" />
+              <output class="settings-value" for="volume-effects" id="volume-effects-value">100 %</output>
+            </div>
+            <p class="settings-note">Les effets regroupent les tirs, les épées, les pouvoirs et les cris des monstres.</p>
+          </div>
+          <div class="settings-section" data-settings-section="keys" role="tabpanel" hidden>
+            <p class="settings-note">Clique sur une touche puis appuie sur la nouvelle. Échap annule. Les flèches déplacent toujours le personnage.</p>
+            <div class="settings-keys" id="settings-keys"></div>
+          </div>
+          <footer class="settings-footer">
+            <button class="settings-reset" id="settings-reset" type="button">Réinitialiser</button>
+            <button class="settings-done" id="settings-done" type="button">Fermer</button>
+          </footer>
+        </div>
+      </section>
+      <div class="player" id="player" role="img" aria-label="Survivant vu de dessus, avec sac à dos et lance-pierre. Tire automatiquement sur l’ennemi le plus proche. Vie pleine.">
+        <span class="player-art">
+          <span class="player-name-tag" id="player-name-tag">Survivant</span>
+          <span
+            class="health-bar"
+            role="progressbar"
+            aria-label="Barre de vie"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="100"
+          ><span class="health-fill"></span></span>
+          <span class="hero-real" aria-hidden="true">
+            <span class="hero-real-body"><span class="rig"></span></span>
+            <img class="hero-real-weapon" src="./assets/real/armes/fronde.png" alt="" draggable="false" />
+            <span class="hero-weapon-flash"></span>
+          </span>
+          <svg class="hero-pixel-art" viewBox="0 0 40 48" role="presentation" aria-hidden="true" shape-rendering="crispEdges">
+            <g class="pixel-legs">
+              <path fill="#282c2b" d="M12 31h7v9h-7zM21 31h7v9h-7z"/>
+              <path fill="#56605a" d="M13 31h5v7h-5zM22 31h5v7h-5z"/>
+              <path fill="#87603d" d="M11 38h8v4h-8zM21 38h8v4h-8z"/>
+              <path fill="#c18a4c" d="M11 40h8v2h-8zM21 40h8v2h-8z"/>
+            </g>
+            <g class="pixel-backpack">
+              <path fill="#292d27" d="M7 17h7v15H7zM26 18h6v13h-6z"/>
+              <path fill="#65714d" d="M8 18h6v12H8zM27 19h4v10h-4z"/>
+              <path fill="#899060" d="M9 19h4v2H9zM28 20h2v2h-2z"/>
+              <path fill="#c28b45" d="M9 25h4v3H9zM28 24h2v3h-2z"/>
+            </g>
+            <g class="pixel-arms">
+              <path fill="#292d2b" d="M8 19h7v10H8zM25 18h7v10h-7z"/>
+              <path fill="#69745d" d="M9 20h5v7H9zM26 19h5v7h-5z"/>
+              <path fill="#d0a06a" d="M9 27h5v3H9zM26 26h5v3h-5z"/>
+            </g>
+            <g class="pixel-body">
+              <path fill="#292c29" d="M13 15h14v19H13z"/>
+              <path fill="#59664e" d="M14 16h12v16H14z"/>
+              <path fill="#77805c" d="M15 17h4v11h-4zM21 17h4v11h-4z"/>
+              <path fill="#3d493c" d="M19 17h2v13h-2z"/>
+              <path fill="#c08a43" d="M18 20h4v4h-4zM14 29h5v2h-5zM22 29h4v2h-4z"/>
+              <path fill="#4b4c3a" d="M12 31h6v2h-6zM23 31h6v2h-6z"/>
+              <path fill="#b9743d" d="M14 32h3v2h-3zM25 32h3v2h-3z"/>
+            </g>
+            <g class="pixel-equipment pixel-equipment-veste">
+              <path fill="#684a36" d="M14 18h4v12h-4zM22 18h4v12h-4z"/>
+              <path fill="#bd7044" d="M15 20h2v7h-2zM23 20h2v7h-2z"/>
+              <path fill="#ead18b" d="M18 20h4v2h-4zM18 26h4v2h-4z"/>
+            </g>
+            <g class="pixel-equipment pixel-equipment-bottes">
+              <path fill="#c9a45d" d="M11 36h8v3h-8zM21 36h8v3h-8z"/>
+              <path fill="#e8cd87" d="M12 37h5v1h-5zM22 37h5v1h-5z"/>
+            </g>
+            <g class="pixel-equipment pixel-equipment-sac-renforce">
+              <path fill="#332c2a" d="M5 21h5v10H5z"/>
+              <path fill="#b95142" d="M6 22h3v8H6z"/>
+              <path fill="#fff0c4" d="M7 23h1v6H7zM6 25h3v2H6z"/>
+            </g>
+            <g class="pixel-head">
+              <path fill="#242a28" d="M12 5h16v11H12z"/>
+              <path fill="#626e58" d="M13 5h14v7H13z"/>
+              <path fill="#8b8c68" d="M15 4h10v3H15zM13 7h14v2H13z"/>
+              <path fill="#c28a46" d="M17 5h6v2h-6z"/>
+              <path fill="#d2a070" d="M15 10h10v5H15z"/>
+              <path fill="#342e2b" d="M16 11h2v2h-2zM22 11h2v2h-2z"/>
+              <path fill="#594237" d="M17 14h6v2h-6z"/>
+            </g>
+            <g class="pixel-skin pixel-skin-aventuriere">
+              <path fill="#3a2522" d="M11 7h4v13h-3zM25 7h4v13h-3z"/>
+              <path fill="#7e3e32" d="M12 8h2v9h-2zM26 8h2v9h-2z"/>
+              <path fill="#d68a63" d="M15 10h2v1h-2zM23 10h2v1h-2z"/>
+              <path fill="#873f39" d="M15 16h10v2H15z"/>
+              <path fill="#383638" d="M13 17h3v3h-3zM24 17h3v3h-3z"/>
+              <path fill="#6e4850" d="M14 18h3v12h-3zM23 18h3v12h-3z"/>
+              <path fill="#d7b27a" d="M18 19h4v2h-4zM18 25h4v2h-4z"/>
+            </g>
+            <g class="pixel-skin pixel-skin-renard">
+              <path fill="#342522" d="M13 6 10 0h7l3 7zM24 7l3-7h7l-4 8z"/>
+              <path fill="#e98739" d="M13 6 12 2h4l2 5zM25 7l2-5h4l-2 5z"/>
+              <path fill="#512f24" d="M10 8h4v10h-2v4h-2zM26 8h4v14h-2v-4h-2z"/>
+              <path fill="#e98739" d="M12 8h3v8h-3zM25 8h3v8h-3z"/>
+              <path fill="#fff0cf" d="M16 12h8v4h-8zM18 16h4v2h-4z"/>
+              <path fill="#382924" d="M19 14h2v2h-2z"/>
+              <path fill="#bd5f2f" d="M13 18h3v12h-3zM24 18h3v12h-3z"/>
+              <path fill="#e98739" d="M14 19h2v9h-2zM24 19h2v9h-2z"/>
+              <path fill="#fff0cf" d="M18 19h4v8h-4z"/>
+            </g>
+            <g class="pixel-skin pixel-skin-loup">
+              <path fill="#373a43" d="M13 6 11 0h7l2 7zM24 7l2-7h7l-4 8z"/>
+              <path fill="#b9bec8" d="M14 5 13 2h3l2 4zM26 6l2-4h3l-2 4z"/>
+              <path fill="#41434a" d="M10 8h5v11h-3v4h-2zM25 8h5v15h-3v-4h-2z"/>
+              <path fill="#737986" d="M12 8h3v8h-3zM25 8h3v8h-3z"/>
+              <path fill="#e4e1d8" d="M16 12h8v4h-8zM18 16h4v2h-4z"/>
+              <path fill="#36333a" d="M19 14h2v2h-2z"/>
+              <path fill="#454956" d="M13 18h4v12h-4zM23 18h4v12h-4z"/>
+              <path fill="#bbc0c7" d="M18 19h4v9h-4z"/>
+            </g>
+            <g class="pixel-skin pixel-skin-chevalier">
+              <path fill="#34373a" d="M12 4h16v12H12z"/>
+              <path fill="#a9adb0" d="M13 5h14v8H13z"/>
+              <path fill="#d8b65e" d="M17 4h6v2h-6zM11 8h3v3h-3zM26 8h3v3h-3z"/>
+              <path fill="#34373a" d="M14 11h12v4H14z"/>
+              <path fill="#eadb9b" d="M17 11h2v2h-2zM21 11h2v2h-2zM19 14h2v1h-2z"/>
+              <path fill="#777e83" d="M13 17h14v13H13z"/>
+              <path fill="#c3c7c8" d="M15 18h10v8H15z"/>
+              <path fill="#dfbd63" d="M18 19h4v4h-4zM14 27h4v2h-4zM22 27h4v2h-4z"/>
+              <path fill="#4b5156" d="M19 18h2v10h-2z"/>
+            </g>
+            <g class="pixel-skin pixel-skin-feuillage">
+              <path fill="#263b2d" d="M10 16h4v14h-4zM26 16h4v14h-4z"/>
+              <path fill="#506c3e" d="M11 18h3v10h-3zM26 18h3v10h-3z"/>
+              <path fill="#263b2d" d="M10 5h20v3H10z"/>
+              <path fill="#7b8a4a" d="M13 4h14v3H13zM15 3h3v2h-3zM22 2h3v3h-3z"/>
+              <path fill="#94a15d" d="M18 18h4v2h-4zM18 25h4v2h-4z"/>
+              <path fill="#d4b65f" d="M17 8h6v2h-6z"/>
+            </g>
+            <g class="pixel-skin pixel-skin-cendre">
+              <path fill="#35383a" d="M10 5h20v4h-3V7H13v2h-3z"/>
+              <path fill="#777b78" d="M12 5h16v3H12zM11 8h3v8h-3zM26 8h3v8h-3z"/>
+              <path fill="#c5bba6" d="M15 10h10v4H15z"/>
+              <path fill="#3b4143" d="M16 11h3v2h-3zM21 11h3v2h-3z"/>
+              <path fill="#d0c9b8" d="M18 17h4v4h-4z"/>
+              <path fill="#5c6060" d="M14 20h3v9h-3zM23 20h3v9h-3z"/>
+              <path fill="#aaa18f" d="M17 21h6v2h-6zM17 27h6v2h-6z"/>
+            </g>
+            <g class="pixel-skin pixel-skin-nomade">
+              <path fill="#392a24" d="M10 6h20v5h-3V9H13v2h-3z"/>
+              <path fill="#79523b" d="M12 5h16v4H12zM11 8h3v10h-3zM26 8h3v10h-3z"/>
+              <path fill="#c48753" d="M14 7h12v2H14zM12 11h2v5h-2zM26 11h2v5h-2z"/>
+              <path fill="#b56842" d="M15 15h10v3H15z"/>
+              <path fill="#e3bd78" d="M16 16h8v2h-8z"/>
+              <path fill="#514138" d="M13 19h4v10h-4zM23 19h4v10h-4z"/>
+              <path fill="#946845" d="M17 19h6v3h-6zM17 26h6v3h-6z"/>
+            </g>
+            <g class="pixel-skin pixel-skin-mecanicien">
+              <path fill="#34312b" d="M10 5h20v5H10z"/>
+              <path fill="#d4a83e" d="M12 3h16v5H12zM14 2h12v2H14z"/>
+              <path fill="#f0cb61" d="M15 4h10v2H15z"/>
+              <path fill="#292b2a" d="M14 10h12v3H14z"/>
+              <path fill="#8ab7b5" d="M15 10h4v2h-4zM21 10h4v2h-4z"/>
+              <path fill="#4d5e50" d="M13 17h14v13H13z"/>
+              <path fill="#82905c" d="M15 18h10v9H15zM14 28h5v2h-5zM22 28h4v2h-4z"/>
+              <path fill="#d1a44b" d="M17 20h6v2h-6zM15 24h3v3h-3zM22 24h3v3h-3z"/>
+              <path fill="#d5bc76" d="M12 19h2v5h-2zM26 19h2v5h-2z"/>
+            </g>
+            <g class="pixel-skin pixel-skin-garde-forestier">
+              <path fill="#3c3025" d="M7 7h26v3H7zM12 4h16v3H12z"/>
+              <path fill="#8d6a3c" d="M11 5h18v2H11zM14 7h12v2H14z"/>
+              <path fill="#536849" d="M11 9h4v9h-4zM25 9h4v9h-4z"/>
+              <path fill="#d2a06b" d="M15 10h10v5H15z"/>
+              <path fill="#302c28" d="M16 11h2v2h-2zM22 11h2v2h-2z"/>
+              <path fill="#514239" d="M16 14h8v3h-8z"/>
+              <path fill="#4d6644" d="M13 18h4v11h-4zM23 18h4v11h-4z"/>
+              <path fill="#718151" d="M17 18h6v10h-6z"/>
+              <path fill="#bd9a52" d="M17 20h6v2h-6zM17 26h6v2h-6z"/>
+            </g>
+            <g class="pixel-skin pixel-skin-sorciere">
+              <path fill="#211d31" d="M7 9 15 0h5l-2 6h13l6 6H19l-2-4z"/>
+              <path fill="#615080" d="M12 8h17v3H12zM12 10h4v8h-4zM26 10h4v8h-4z"/>
+              <path fill="#e5c893" d="M16 10h10v5H16z"/>
+              <path fill="#28252c" d="M17 11h2v2h-2zM23 11h2v2h-2z"/>
+              <path fill="#563c72" d="M14 17h14v12H14z"/>
+              <path fill="#aa83d0" d="M17 18h8v9h-8zM18 20h6v2h-6z"/>
+              <path fill="#d8b2e6" d="M18 24h6v2h-6z"/>
+            </g>
+            <g class="pixel-skin pixel-skin-citrouille">
+              <path fill="#693b1f" d="M19 3h6v5h-6z"/>
+              <path fill="#e68124" d="M12 7h18v10H12zM10 10h4v5h-4zM28 10h4v5h-4z"/>
+              <path fill="#ffae36" d="M16 8h10v7H16z"/>
+              <path fill="#39251d" d="M16 10h3v3h-3zM23 10h3v3h-3zM18 15h6v2h-6z"/>
+              <path fill="#6e3c21" d="M13 18h14v11H13z"/>
+              <path fill="#ee8428" d="M16 18h8v10h-8z"/>
+              <path fill="#ffb33d" d="M18 20h4v2h-4zM18 25h4v2h-4z"/>
+            </g>
+            <g class="pixel-skin pixel-skin-vampire">
+              <path fill="#201b29" d="M9 8h6v11h-4zM27 8h6l-2 12h-5z"/>
+              <path fill="#7c1f37" d="M11 18h20l-4 12H15z"/>
+              <path fill="#d4b4a4" d="M15 8h12v8H15z"/>
+              <path fill="#32232a" d="M16 10h3v2h-3zM23 10h3v2h-3z"/>
+              <path fill="#a62d47" d="M19 14h5v2h-5zM17 18h10v11H17z"/>
+              <path fill="#e1c6a3" d="M19 17h6v2h-6z"/>
+              <path fill="#dcbf88" d="M19 21h2v2h-2zM23 21h2v2h-2z"/>
+            </g>
+            <g class="pixel-skin pixel-skin-momie">
+              <path fill="#4c4038" d="M12 5h16v12H12z"/>
+              <path fill="#d8c9a5" d="M13 6h14v9H13zM14 17h12v12H14z"/>
+              <path fill="#9a8665" d="M13 8h14v2H13zM14 12h12v2H14zM15 18h10v2H15zM14 23h12v2H14zM15 27h10v2H15z"/>
+              <path fill="#211d22" d="M15 10h4v3h-4zM22 10h4v3h-4z"/>
+              <path fill="#a9f4d0" d="M16 11h2v1h-2zM23 11h2v1h-2z"/>
+              <path fill="#674f37" d="M18 19h4v4h-4z"/>
+              <path fill="#e7bd55" d="M19 20h2v2h-2z"/>
+            </g>
+            <g class="pixel-skin pixel-skin-epouvantail">
+              <path fill="#483024" d="M8 7h24v3H8zM13 3h14v4H13z"/>
+              <path fill="#b97738" d="M11 7h18v2H11zM12 10h4v7h-4zM24 10h4v7h-4z"/>
+              <path fill="#c8924b" d="M16 10h8v5h-8z"/>
+              <path fill="#1d2020" d="M16 11h3v3h-3zM22 11h3v3h-3z"/>
+              <path fill="#dfbd62" d="M17 12h1v1h-1zM23 12h1v1h-1z"/>
+              <path fill="#62452d" d="M13 18h14v12H13z"/>
+              <path fill="#925b32" d="M15 19h10v10H15zM10 20h4v7h-4zM26 20h4v7h-4z"/>
+              <path fill="#d9b65e" d="M18 19h4v2h-4zM18 25h4v2h-4z"/>
+              <path fill="#e3c57c" d="M11 17h2v3h-2zM28 17h2v3h-2z"/>
+            </g>
+            <g class="pixel-skin pixel-skin-fantome">
+              <path fill="#536a83" d="M12 6h16v12H12zM10 16h20v13H10z"/>
+              <path fill="#bfe8e4" d="M14 7h12v9H14zM13 17h14v11H13z"/>
+              <path fill="#f4ffff" d="M15 8h3v2h-3zM22 8h3v2h-3z"/>
+              <path fill="#263643" d="M15 11h3v3h-3zM22 11h3v3h-3z"/>
+              <path fill="#a1d9da" d="M11 20h3v7h-3zM26 20h3v7h-3zM16 18h8v2h-8z"/>
+              <path fill="#d9f6ed" d="M16 22h8v2h-8zM18 26h4v2h-4z"/>
+            </g>
+            <g class="pixel-skin pixel-skin-demon">
+              <path fill="#4a1724" d="M14 7 10 1h7l3 7zM24 8l3-7h7l-5 8z"/>
+              <path fill="#d54a37" d="M14 6 12 3h4l2 4zM25 7l2-4h4l-3 5z"/>
+              <path fill="#541d2a" d="M12 8h16v9H12z"/>
+              <path fill="#dcae78" d="M15 9h10v5H15z"/>
+              <path fill="#281823" d="M16 10h3v3h-3zM22 10h3v3h-3z"/>
+              <path fill="#ffce58" d="M17 11h1v1h-1zM23 11h1v1h-1z"/>
+              <path fill="#6a2030" d="M12 17h16v12H12zM9 19h5v9H9zM26 19h5v9h-5z"/>
+              <path fill="#d84a36" d="M16 19h8v9h-8z"/>
+              <path fill="#ffb64d" d="M18 20h4v2h-4zM18 25h4v2h-4z"/>
+            </g>
+            <g class="pixel-skin pixel-skin-squelette">
+              <path fill="#29252d" d="M11 5h18v13H11z"/>
+              <path fill="#ded6c2" d="M14 7h12v10H14z"/>
+              <path fill="#302b32" d="M15 9h3v3h-3zM22 9h3v3h-3zM18 14h4v2h-4z"/>
+              <path fill="#f0e9d8" d="M16 10h1v1h-1zM23 10h1v1h-1z"/>
+              <path fill="#302a31" d="M10 18h20v11H10z"/>
+              <path fill="#d6ceb9" d="M13 19h14v9H13z"/>
+              <path fill="#4d4850" d="M16 19h2v9h-2zM22 19h2v9h-2zM18 19h4v2h-4zM18 23h4v2h-4zM18 27h4v2h-4z"/>
+              <path fill="#7d3140" d="M10 16h3v13h-3zM27 16h3v13h-3z"/>
+            </g>
+            <g class="pixel-weapon weapon-fronde">
+              <path fill="#292723" d="M29 17h3v12h-3z"/>
+              <path fill="#a96b39" d="M30 20h2v9h-2z"/>
+              <path fill="#382b23" d="M27 15h2v7h-2zM32 15h2v7h-2z"/>
+              <path fill="#c98a48" d="M27 14h2v3h-2zM32 14h2v3h-2z"/>
+              <path fill="#dbad67" d="M28 16h1v3h-1zM32 16h1v3h-1z"/>
+              <path fill="#6fc4b5" d="M28 19h1v4h-1zM32 19h1v4h-1z"/>
+              <path fill="#e7c982" d="M29 22h3v2h-3z"/>
+            </g>
+            <g class="pixel-weapon weapon-arbalete">
+              <path fill="#302923" d="M30 17h4v14h-4z"/>
+              <path fill="#8b5b35" d="M31 19h2v11h-2z"/>
+              <path fill="#d0b16c" d="M27 17h3v3h-3zM34 17h4v3h-4zM26 16h2v2h-2zM38 16h2v2h-2z"/>
+              <path fill="#554538" d="M27 20h12v3H27z"/>
+              <path fill="#e7d39a" d="M28 21h9v1h-9z"/>
+            </g>
+            <g class="pixel-weapon weapon-double-fronde">
+              <path fill="#292723" d="M28 16h3v15h-3zM34 16h3v15h-3z"/>
+              <path fill="#a96b39" d="M29 20h2v11h-2zM35 20h2v11h-2z"/>
+              <path fill="#c98a48" d="M27 14h2v4h-2zM31 14h2v4h-2zM33 14h2v4h-2zM37 14h2v4h-2z"/>
+              <path fill="#6fc4b5" d="M28 18h1v5h-1zM32 18h1v5h-1zM34 18h1v5h-1zM38 18h1v5h-1z"/>
+              <path fill="#e7c982" d="M29 23h3v2h-3zM35 23h3v2h-3z"/>
+            </g>
+            <g class="pixel-weapon weapon-fusil-pompe">
+              <path fill="#302923" d="M28 17h10v5H28zM31 22h4v11h-4zM28 22h4v6h-4z"/>
+              <path fill="#8a5732" d="M29 18h7v2h-7zM32 23h2v8h-2z"/>
+              <path fill="#d0b16c" d="M37 17h3v5h-3zM27 16h2v3h-2z"/>
+              <path fill="#59665f" d="M29 23h2v4h-2z"/>
+            </g>
+            <g class="pixel-weapon weapon-lance-clous">
+              <path fill="#292b2a" d="M29 18h8v6h-8zM31 24h4v8h-4z"/>
+              <path fill="#7e9182" d="M30 19h5v3h-5zM32 25h2v6h-2z"/>
+              <path fill="#b7783f" d="M29 24h3v4h-3z"/>
+              <path fill="#d7d5c8" d="M36 18h4v1h-4zM37 20h3v1h-3zM36 22h4v1h-4z"/>
+            </g>
+            <g class="pixel-weapon weapon-arc-long">
+              <path fill="#362a22" d="M30 14h3v4h-3zM30 18h2v12h-2zM30 30h4v3h-4z"/>
+              <path fill="#b87941" d="M32 18h2v11h-2z"/>
+              <path fill="#e2c078" d="M34 17h2v4h-2zM34 26h2v4h-2z"/>
+              <path fill="#ded9c4" d="M35 17h1v13h-1z"/>
+              <path fill="#756044" d="M28 20h2v2h-2zM28 25h2v2h-2z"/>
+            </g>
+            <g class="pixel-weapon weapon-faux-spectrale">
+              <path fill="#34263e" d="M31 9h3v5h-3zM30 14h3v14h-3zM28 28h5v3h-5z"/>
+              <path fill="#d7b66a" d="M32 14h2v14h-2zM29 27h5v2h-5z"/>
+              <path fill="#f1e6ff" d="M31 4h3v2h-3zM34 5h3v2h-3zM36 7h3v2h-3zM34 9h4v2h-4zM32 11h4v2h-4z"/>
+              <path fill="#b66bd1" d="M35 6h2v4h-2zM32 9h4v2h-4z"/>
+            </g>
+            <g class="pixel-weapon weapon-lance-bonbons">
+              <path fill="#4c2739" d="M29 17h8v7h-8zM31 24h4v8h-4z"/>
+              <path fill="#db4b79" d="M30 18h5v4h-5z"/>
+              <path fill="#f9cf67" d="M28 15h5v3h-5zM35 19h5v3h-5zM31 25h3v5h-3z"/>
+            </g>
+            <g class="pixel-weapon weapon-tir-chauve-souris">
+              <path fill="#38253f" d="M29 19h4v8h-4zM33 19h4v8h-4z"/>
+              <path fill="#8056a1" d="M27 16h4v5h-4zM35 16h4v5h-4zM31 17h4v11h-4z"/>
+              <path fill="#c6a1de" d="M29 18h2v2h-2zM35 18h2v2h-2z"/>
+              <path fill="#e7c9ed" d="M31 27h2v4h-2zM34 27h2v4h-2z"/>
+            </g>
+            <g class="pixel-weapon weapon-lanterne-ames">
+              <path fill="#332235" d="M29 13h9v15h-9zM31 10h5v3h-5zM31 28h5v4h-5z"/>
+              <path fill="#d49a45" d="M30 15h7v11h-7zM31 11h5v1h-5z"/>
+              <path fill="#ffdc78" d="M32 16h3v8h-3z"/>
+              <path fill="#fff2b0" d="M33 17h1v5h-1z"/>
+            </g>
+            <g class="pixel-weapon weapon-grimoire-maudit">
+              <path fill="#211825" d="M28 16h6v14h-6zM34 15h6v15h-6z"/>
+              <path fill="#632c4c" d="M29 17h5v11h-5zM35 16h4v12h-4z"/>
+              <path fill="#d9b260" d="M33 16h2v14h-2zM31 19h2v2h-2zM36 19h2v2h-2zM31 24h2v2h-2zM36 24h2v2h-2z"/>
+              <path fill="#bd7ae5" d="M32 21h5v2h-5z"/>
+            </g>
+            <g class="pixel-weapon weapon-fouet-ronces">
+              <path fill="#3b2822" d="M30 24h4v9h-4z"/>
+              <path fill="#98633a" d="M31 25h2v7h-2z"/>
+              <path fill="#53643a" d="M32 24 35 20l-1-5 4-3-1-5 3-4 1 7-3 4 2 5-4 4-1 5z"/>
+              <path fill="#a3ad54" d="M34 21l3-2 1-4 2-2-1 5-3 3-1 4z"/>
+              <path fill="#d6453a" d="M36 15h3v2h-3zM39 7h2v3h-2z"/>
+            </g>
+          </svg>
+        </span>
+      </div>
+    </main>
+  </body>
+</html>
