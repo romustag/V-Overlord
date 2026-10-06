@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <title>Comptes des joueurs</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #18151a;
+        --panel: #241c28;
+        --ink: #f4efe6;
+        --muted: #c8b8a4;
+        --line: #4a3b34;
+        --gold: #f0b429;
+        --button: #c4512a;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--ink);
+        font: 16px/1.45 "Segoe UI", sans-serif;
+      }
+      main {
+        width: min(920px, calc(100% - 32px));
+        margin: 32px auto 64px;
+      }
+      h1 { margin: 0 0 8px; font-size: 1.8rem; }
+      p { color: var(--muted); }
+      form, .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 18px;
+        margin-top: 18px;
+      }
+      label { display: grid; gap: 6px; margin-bottom: 12px; }
+      input, select, button {
+        font: inherit;
+        color: var(--ink);
+        background: #120f14;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px 12px;
+      }
+      button {
+        background: var(--button);
+        border-color: transparent;
+        cursor: pointer;
+      }
+      button:hover { filter: brightness(1.08); }
+      .row { display: grid; grid-template-columns: 1.4fr 0.8fr 1fr 0.6fr; gap: 12px; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); }
+      .status { min-height: 1.4em; color: var(--gold); }
+      @media (max-width: 720px) {
+        .row { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Comptes des joueurs</h1>
+      <p>Les comptes qui se connectent au jeu sont enregistrés dans <strong>data/players.db</strong> sur ce PC. La clé est dans <strong>data/admin.key</strong>.</p>
+      <form id="key-form">
+        <label>Clé de ce PC
+          <input id="admin-key" type="password" autocomplete="off" required placeholder="Colle la clé du terminal" />
+        </label>
+        <button type="submit">Voir les joueurs</button>
+        <p class="status" id="key-status" role="status"></p>
+      </form>
+      <section class="panel" id="players-panel" hidden>
+        <h2>Joueurs enregistrés</h2>
+        <table>
+          <thead>
+            <tr><th>Identifiant</th><th>Niveau</th><th>Pièces</th><th>Dernière sauvegarde</th></tr>
+          </thead>
+          <tbody id="player-rows"></tbody>
+        </table>
+        <p id="empty-players" hidden>Aucun joueur pour l'instant. Le compte apparaît ici après une connexion au jeu.</p>
+      </section>
+      <form id="gift-form" hidden>
+        <h2>Donner des objets</h2>
+        <div class="row">
+          <label>Joueur
+            <select id="gift-player" required></select>
+          </label>
+          <label>Pièces à ajouter
+            <input id="gift-coins" type="number" min="0" max="1000000" value="0" />
+          </label>
+          <label>Objet
+            <select id="gift-kind">
+              <option value="">Aucun objet</option>
+              <option value="boosts">Potion</option>
+              <option value="relics">Relique</option>
+              <option value="weapons">Arme</option>
+              <option value="activePowers">Pouvoir</option>
+              <option value="characters">Personnage</option>
+              <option value="skins">Tenue</option>
+              <option value="equipment">Équipement</option>
+              <option value="coatings">Revêtement</option>
+            </select>
+          </label>
+          <label>Quantité
+            <input id="gift-count" type="number" min="1" max="99" value="1" />
+          </label>
+        </div>
+        <label>Lequel
+          <select id="gift-item"></select>
+        </label>
+        <button type="submit">Donner</button>
+        <p class="status" id="gift-status" role="status"></p>
+      </form>
+    </main>
+    <script>
+      const keyForm = document.querySelector("#key-form");
+      const adminKeyInput = document.querySelector("#admin-key");
+      const keyStatus = document.querySelector("#key-status");
+      const playersPanel = document.querySelector("#players-panel");
+      const playerRows = document.querySelector("#player-rows");
+      const emptyPlayers = document.querySelector("#empty-players");
+      const giftForm = document.querySelector("#gift-form");
+      const giftPlayer = document.querySelector("#gift-player");
+      const giftKind = document.querySelector("#gift-kind");
+      const giftItem = document.querySelector("#gift-item");
+      const giftCount = document.querySelector("#gift-count");
+      const giftCoins = document.querySelector("#gift-coins");
+      const giftStatus = document.querySelector("#gift-status");
+      const countable = new Set(["boosts", "relics"]);
+      let catalog = {};
+      let adminKey = sessionStorage.getItem("v-overlord-admin-key") || "";
+
+      function headers() {
+        return { "Content-Type": "application/json", "X-Admin-Key": adminKey };
+      }
+
+      async function readJson(response) {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "Le serveur a refusé la demande.");
+        return data;
+      }
+
+      function fillItems() {
+        const items = catalog[giftKind.value] || [];
+        giftItem.replaceChildren();
+        for (const item of items) {
+          const option = document.createElement("option");
+          option.value = item.id;
+          option.textContent = `${item.icon} ${item.label}`;
+          giftItem.append(option);
+        }
+        const locked = !giftKind.value;
+        giftItem.disabled = locked;
+        giftCount.disabled = locked || !countable.has(giftKind.value);
+        if (giftCount.disabled) giftCount.value = "1";
+      }
+
+      function renderPlayers(players) {
+        playerRows.replaceChildren();
+        giftPlayer.replaceChildren();
+        emptyPlayers.hidden = players.length > 0;
+        for (const player of players) {
+          const row = document.createElement("tr");
+          for (const value of [player.username, player.level, player.coins, player.updatedAt.replace("T", " ").replace("+00:00", " UTC")]) {
+            const cell = document.createElement("td");
+            cell.textContent = String(value);
+            row.append(cell);
+          }
+          playerRows.append(row);
+          const option = document.createElement("option");
+          option.value = player.username;
+          option.textContent = player.username;
+          giftPlayer.append(option);
+        }
+        playersPanel.hidden = false;
+        giftForm.hidden = players.length === 0;
+      }
+
+      async function loadPlayers() {
+        const response = await fetch("/api/admin/players", { headers: headers(), cache: "no-store" });
+        const data = await readJson(response);
+        renderPlayers(data.players);
+        keyStatus.textContent = `${data.players.length} joueur${data.players.length > 1 ? "s" : ""} enregistré${data.players.length > 1 ? "s" : ""}.`;
+      }
+
+      keyForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        adminKey = adminKeyInput.value.trim();
+        keyStatus.textContent = "Vérification…";
+        try {
+          sessionStorage.setItem("v-overlord-admin-key", adminKey);
+          if (!Object.keys(catalog).length) {
+            const response = await fetch("/api/catalog", { cache: "no-store" });
+            catalog = await readJson(response);
+            fillItems();
+          }
+          await loadPlayers();
+        } catch (error) {
+          keyStatus.textContent = error.message;
+          playersPanel.hidden = true;
+          giftForm.hidden = true;
+        }
+      });
+
+      giftKind.addEventListener("change", fillItems);
+
+      giftForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        giftStatus.textContent = "Enregistrement…";
+        try {
+          const response = await fetch("/api/admin/give", {
+            method: "POST",
+            headers: headers(),
+            body: JSON.stringify({
+              username: giftPlayer.value,
+              coins: Number(giftCoins.value) || 0,
+              kind: giftKind.value,
+              itemId: giftKind.value ? giftItem.value : "",
+              count: Number(giftCount.value) || 1,
+            }),
+          });
+          const data = await readJson(response);
+          giftStatus.textContent = `Don enregistré pour ${data.username}. Le sac a maintenant ${data.coins} pièces.`;
+          giftCoins.value = "0";
+          await loadPlayers();
+        } catch (error) {
+          giftStatus.textContent = error.message;
+        }
+      });
+
+      if (adminKey) {
+        adminKeyInput.value = adminKey;
+        keyForm.requestSubmit();
+      }
+    </script>
+  </body>
+</html>

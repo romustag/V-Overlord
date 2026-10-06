@@ -6,8 +6,8 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta name="theme-color" content="#101b2b" />
     <title>Mon petit jeu</title>
-    <link rel="stylesheet" href="style.css?v=57" />
-    <script src="script.js?v=55" defer></script>
+    <link rel="stylesheet" href="style.css?v=59" />
+    <script src="script.js?v=58" defer></script>
   </head>
   <body>
     <main class="arena" aria-label="Terrain de jeu">
@@ -344,6 +344,7 @@
             <button class="settings-tab is-active" type="button" role="tab" aria-selected="true" data-settings-tab="sound">🔊 Son</button>
             <button class="settings-tab" type="button" role="tab" aria-selected="false" data-settings-tab="keys">⌨️ Touches</button>
             <button class="settings-tab" type="button" role="tab" aria-selected="false" data-settings-tab="account">Compte</button>
+            <button class="settings-tab" id="settings-give-tab" type="button" role="tab" aria-selected="false" data-settings-tab="give" hidden>Donner</button>
           </div>
           <div class="settings-section" data-settings-section="sound" role="tabpanel">
             <div class="settings-row">
@@ -371,6 +372,38 @@
           <div class="settings-section" data-settings-section="account" role="tabpanel" hidden>
             <p class="settings-note" id="settings-account-name">Aucun compte connecté.</p>
             <button class="settings-logout" id="settings-logout" type="button">Déconnexion</button>
+          </div>
+          <div class="settings-section" data-settings-section="give" role="tabpanel" hidden>
+            <form class="settings-gift" id="settings-gift-form">
+              <p class="settings-note">Écris le pseudo du joueur, puis ce que tu lui donnes.</p>
+              <label>Pseudo
+                <input id="settings-gift-pseudo" type="text" maxlength="16" autocomplete="off" required placeholder="Pseudo du joueur" />
+              </label>
+              <label>Pièces à ajouter
+                <input id="settings-gift-coins" type="number" min="0" max="1000000" value="0" />
+              </label>
+              <label>Objet
+                <select id="settings-gift-kind">
+                  <option value="">Aucun objet</option>
+                  <option value="boosts">Potion</option>
+                  <option value="relics">Relique</option>
+                  <option value="weapons">Arme</option>
+                  <option value="activePowers">Pouvoir</option>
+                  <option value="characters">Personnage</option>
+                  <option value="skins">Tenue</option>
+                  <option value="equipment">Équipement</option>
+                  <option value="coatings">Revêtement</option>
+                </select>
+              </label>
+              <label>Lequel
+                <select id="settings-gift-item"></select>
+              </label>
+              <label>Quantité
+                <input id="settings-gift-count" type="number" min="1" max="99" value="1" />
+              </label>
+              <button id="settings-gift-submit" type="submit">Donner</button>
+              <p class="settings-note" id="settings-gift-status" role="status"></p>
+            </form>
           </div>
           <footer class="settings-footer">
             <button class="settings-reset" id="settings-reset" type="button">Réinitialiser</button>

@@ -1,5 +1,9 @@
 :root {
-  background: #fff;
+  --bg: #18151a;
+  --ink: #f4efe6;
+  --press-ms: 90ms;
+  background: var(--bg);
+  color: var(--ink);
 }
 
 * {
@@ -12,7 +16,8 @@ body {
   min-height: 100dvh;
   display: grid;
   place-items: center;
-  background: #18151a;
+  background: var(--bg);
+  color: var(--ink);
 }
 
 .arena {
@@ -363,6 +368,15 @@ body {
   font-size: 0.72rem;
   font-weight: 900;
   white-space: nowrap;
+}
+
+.hud-coins.is-bump {
+  animation: coin-bump 0.28s ease;
+}
+
+@keyframes coin-bump {
+  40% { scale: 1.14; }
+  100% { scale: 1; }
 }
 
 .timer-label {
@@ -9306,6 +9320,11 @@ body {
   color: #fff;
 }
 
+.menu-nav-button:active:not(.is-active) {
+  translate: 0 2px;
+  transition: translate var(--press-ms) ease;
+}
+
 .menu-nav-button.is-active {
   border-color: #0d1030;
   background: linear-gradient(#ffe25a, #f5a417);
@@ -11990,7 +12009,7 @@ body {
 
 .settings-tabs {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
   gap: 6px;
 }
 
@@ -12145,6 +12164,40 @@ body {
 .settings-logout {
   background: #6a1a14;
   color: #fff;
+}
+
+.settings-gift {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-gift label {
+  display: grid;
+  gap: 4px;
+  color: #ffe7b0;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.settings-gift input,
+.settings-gift select {
+  min-height: 38px;
+  padding: 6px 8px;
+  border: 2px solid #12060f;
+  border-radius: 10px;
+  background: #12060f;
+  color: #fff8ea;
+  font: inherit;
+}
+
+.settings-gift button {
+  min-height: 42px;
+  border: 2px solid #12060f;
+  border-radius: 12px;
+  background: linear-gradient(#ffb347, #ff7a1a);
+  color: #2a0d00;
+  cursor: pointer;
+  font-weight: 800;
 }
 
 /* Nouveaux pouvoirs : nuée toxique, tempête de foudre, onde sismique, vortex d'ombre et pacte vampirique. */

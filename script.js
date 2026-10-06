@@ -89,6 +89,16 @@ const settingsDoneButton = document.querySelector("#settings-done");
 const settingsResetButton = document.querySelector("#settings-reset");
 const settingsTabs = [...document.querySelectorAll(".settings-tab")];
 const settingsSections = [...document.querySelectorAll(".settings-section")];
+const settingsGiveTab = document.querySelector("#settings-give-tab");
+const settingsGiftForm = document.querySelector("#settings-gift-form");
+const settingsGiftPseudo = document.querySelector("#settings-gift-pseudo");
+const settingsGiftCoins = document.querySelector("#settings-gift-coins");
+const settingsGiftKind = document.querySelector("#settings-gift-kind");
+const settingsGiftItem = document.querySelector("#settings-gift-item");
+const settingsGiftCount = document.querySelector("#settings-gift-count");
+const settingsGiftStatus = document.querySelector("#settings-gift-status");
+const giftCountableKinds = new Set(["boosts", "relics"]);
+let hostGiftCatalog = null;
 const settingsKeysList = document.querySelector("#settings-keys");
 const volumeSliders = {
   master: document.querySelector("#volume-master"),
@@ -1197,7 +1207,9 @@ function loadProgression() {
     return loaded;
   } catch {
     shouldSaveProgression = false;
-    progressionFeedback.textContent = "La sauvegarde n'a pas pu être lue. La progression repart à zéro.";
+    if (progressionFeedback) {
+      progressionFeedback.textContent = "La sauvegarde n'a pas pu être lue. La progression repart à zéro.";
+    }
     return structuredClone(defaultProgression);
   }
 }
@@ -1206,6 +1218,7 @@ function saveProgression(message = "") {
   try {
     window.localStorage.setItem(progressionStorageKey, JSON.stringify(progression));
     if (activeAccount) storeActiveAccountProgression();
+    queueServerAccountSave();
     progressionFeedback.textContent = message;
     return true;
   } catch {
@@ -1215,9 +1228,14 @@ function saveProgression(message = "") {
 }
 
 function updateMenuBalance() {
-  menuCoins.textContent = String(progression.coins);
-  menuCoinsHome.textContent = String(progression.coins);
-  hudCoins.textContent = `${progression.coins} ◉`;
+  const label = String(progression.coins);
+  if (menuCoins.textContent === label) return;
+  menuCoins.textContent = label;
+  menuCoinsHome.textContent = label;
+  hudCoins.textContent = `${label} ◉`;
+  hudCoins.classList.remove("is-bump");
+  void hudCoins.offsetWidth;
+  hudCoins.classList.add("is-bump");
 }
 
 function updatePlayerNameDisplay() {
@@ -2342,6 +2360,183 @@ function saveAccountRecords(accounts) {
   window.localStorage.setItem(accountsStorageKey, JSON.stringify(accounts));
 }
 
+const serverSessionKey = "blackwood-survivor-server-token";
+let serverOnline = false;
+let serverToken = window.localStorage.getItem(serverSessionKey) || "";
+let serverGiftCursor = 0;
+let serverSaveTimer = 0;
+let serverSaveInFlight = false;
+let serverSaveQueued = false;
+let applyingServerState = false;
+
+async function serverRequest(path, body) {
+  const headers = { "Content-Type": "application/json" };
+  if (serverToken) headers.Authorization = `Bearer ${serverToken}`;
+  let response;
+  try {
+    response = await fetch(path, {
+      method: body === undefined ? "GET" : "POST",
+      headers,
+      cache: "no-store",
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch {
+    const error = new Error("Le PC qui héberge les comptes ne répond pas.");
+    error.status = 0;
+    throw error;
+  }
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(data.error || "Le serveur a refusé la demande.");
+    error.status = response.status;
+    throw error;
+  }
+  return data;
+}
+
+async function detectGameServer() {
+  try {
+    const response = await fetch("/api/health", { cache: "no-store" });
+    serverOnline = response.ok;
+  } catch {
+    serverOnline = false;
+  }
+  const lead = document.querySelector("#account-form .account-lead");
+  if (lead) {
+    lead.textContent = serverOnline
+      ? "Les comptes sont enregistrés sur ce PC. Le même identifiant marche sur les autres appareils qui ouvrent cette adresse."
+      : "Connecte-toi ou crée un compte pour ouvrir le menu.";
+  }
+  return serverOnline;
+}
+
+function queueServerAccountSave() {
+  if (!serverOnline || !serverToken || !activeAccount || applyingServerState) return;
+  window.clearTimeout(serverSaveTimer);
+  serverSaveTimer = window.setTimeout(() => {
+    serverSaveTimer = 0;
+    flushServerAccountSave();
+  }, 600);
+}
+
+function showServerProgression(saved) {
+  applyingServerState = true;
+  try {
+    adoptAccountProgression(saved);
+    refreshLoadoutMenu();
+    updateXpDisplays();
+    if (frontMenu.dataset.screen === "shop") renderShop();
+    if (frontMenu.dataset.screen === "locker") renderLocker();
+    window.localStorage.setItem(progressionStorageKey, JSON.stringify(progression));
+    if (activeAccount) storeActiveAccountProgression();
+  } finally {
+    applyingServerState = false;
+  }
+}
+
+async function flushServerAccountSave() {
+  if (!serverToken || !activeAccount) return;
+  if (serverSaveInFlight) {
+    serverSaveQueued = true;
+    return;
+  }
+  serverSaveInFlight = true;
+  const snapshotCursor = serverGiftCursor;
+  try {
+    const data = await serverRequest("/api/save", {
+      progression,
+      device: chosenDevice,
+      touchLayout,
+      giftCursor: snapshotCursor,
+    });
+    serverGiftCursor = Number(data.giftCursor) || snapshotCursor;
+    if ((Number(data.giftCursor) || 0) > snapshotCursor && data.progression) showServerProgression(data.progression);
+  } catch {
+    // La copie locale reste en place si le PC hôte est injoignable.
+  } finally {
+    serverSaveInFlight = false;
+    if (serverSaveQueued) {
+      serverSaveQueued = false;
+      queueServerAccountSave();
+    }
+  }
+}
+
+async function pullServerAccount() {
+  if (!serverToken || !activeAccount || gameActive || serverSaveInFlight || serverSaveTimer) return;
+  try {
+    const data = await serverRequest("/api/me");
+    const cursor = Number(data.giftCursor) || 0;
+    if (cursor <= serverGiftCursor || !data.progression) return;
+    serverGiftCursor = cursor;
+    showServerProgression(data.progression);
+  } catch {
+    // La prochaine sauvegarde réessaiera.
+  }
+}
+
+function rememberServerSession(data) {
+  serverToken = data.token || serverToken;
+  if (data.token) window.localStorage.setItem(serverSessionKey, data.token);
+  serverGiftCursor = Number(data.giftCursor) || 0;
+  if (data.touchLayout) touchLayout = readTouchLayout(data.touchLayout);
+}
+
+let serverSyncStarted = false;
+
+function startServerSync() {
+  if (serverSyncStarted) return;
+  serverSyncStarted = true;
+  window.setInterval(pullServerAccount, 4000);
+}
+
+async function importActiveLocalAccount() {
+  const account = loadAccountRecords().find((item) => item.username.toLowerCase() === activeAccount.toLowerCase());
+  if (!account) return;
+  try {
+    const data = await serverRequest("/api/import", {
+      username: account.username,
+      salt: account.salt,
+      hash: account.hash,
+      progression,
+      device: chosenDevice,
+      touchLayout,
+    });
+    rememberServerSession(data);
+  } catch (error) {
+    if (error.status !== 409) return;
+  }
+}
+
+async function attachServerWhenReady() {
+  if (!await detectGameServer()) return;
+  if (await restoreServerSession()) {
+    startServerSync();
+    return;
+  }
+  if (activeAccount) await importActiveLocalAccount();
+  startServerSync();
+}
+
+async function restoreServerSession() {
+  serverToken = window.localStorage.getItem(serverSessionKey) || "";
+  if (!serverToken) return false;
+  try {
+    const data = await serverRequest("/api/me");
+    rememberServerSession(data);
+    const localSession = JSON.parse(window.localStorage.getItem(sessionStorageKey) || "null");
+    applyPlayDevice(localSession?.device === "phone" ? "phone" : "pc");
+    enterAccount(data.username, data.progression || {});
+    return true;
+  } catch (error) {
+    if (error.status === 401) {
+      serverToken = "";
+      window.localStorage.removeItem(serverSessionKey);
+    }
+    return false;
+  }
+}
+
 function storeActiveAccountProgression() {
   const accounts = loadAccountRecords();
   const account = accounts.find((item) => item.username.toLowerCase() === activeAccount.toLowerCase());
@@ -2450,6 +2645,7 @@ function persistAccountExtras() {
   account.progression = structuredClone(progression);
   saveAccountRecords(accounts);
   window.localStorage.setItem(sessionStorageKey, JSON.stringify({ username: activeAccount, device: chosenDevice }));
+  queueServerAccountSave();
 }
 
 function isEditingControls() {
@@ -2497,6 +2693,7 @@ function showAccountGate() {
   accountGate.hidden = false;
   frontMenu.hidden = true;
   accountFeedback.textContent = "";
+  syncHostGiftAccess();
   syncSoundtrack();
 }
 
@@ -2515,6 +2712,7 @@ function enterAccount(username, savedProgression) {
   saveProgression();
   persistAccountExtras();
   settingsAccountName.textContent = `Connecté : ${activeAccount}`;
+  syncHostGiftAccess();
   applyTouchLayout();
   showPreparationMenu();
 }
@@ -2535,7 +2733,35 @@ function restoreSession() {
 }
 
 function logoutAccount() {
-  if (activeAccount) saveProgression();
+  if (activeAccount) {
+    try {
+      window.localStorage.setItem(progressionStorageKey, JSON.stringify(progression));
+      storeActiveAccountProgression();
+    } catch {
+      // La déconnexion continue même si la copie locale est pleine.
+    }
+  }
+  const token = serverToken;
+  const body = token && activeAccount
+    ? JSON.stringify({ progression, device: chosenDevice, touchLayout, giftCursor: serverGiftCursor })
+    : "";
+  window.clearTimeout(serverSaveTimer);
+  serverSaveTimer = 0;
+  serverToken = "";
+  serverGiftCursor = 0;
+  window.localStorage.removeItem(serverSessionKey);
+  if (token && body) {
+    fetch("/api/save", {
+      method: "POST",
+      keepalive: true,
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body,
+    }).then(() => fetch("/api/logout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: "{}",
+    })).catch(() => {});
+  }
   if (isEditingControls()) closeControlEditor(false);
   if (gameActive) {
     gameActive = false;
@@ -5458,6 +5684,42 @@ function bindKey(actionId, key) {
   updateKeyLabels();
 }
 
+function isHostAccount() {
+  return activeAccount.toLowerCase() === "admin";
+}
+
+function fillHostGiftItems() {
+  const items = hostGiftCatalog?.[settingsGiftKind.value] || [];
+  settingsGiftItem.replaceChildren();
+  for (const item of items) {
+    const option = document.createElement("option");
+    option.value = item.id;
+    option.textContent = `${item.icon} ${item.label}`;
+    settingsGiftItem.append(option);
+  }
+  const locked = !settingsGiftKind.value;
+  settingsGiftItem.disabled = locked;
+  settingsGiftCount.disabled = locked || !giftCountableKinds.has(settingsGiftKind.value);
+  if (settingsGiftCount.disabled) settingsGiftCount.value = "1";
+}
+
+async function loadHostGiftCatalog() {
+  if (hostGiftCatalog) {
+    fillHostGiftItems();
+    return;
+  }
+  const response = await fetch("/api/catalog", { cache: "no-store" });
+  if (!response.ok) throw new Error("La liste des objets n'a pas pu être lue.");
+  hostGiftCatalog = await response.json();
+  fillHostGiftItems();
+}
+
+function syncHostGiftAccess() {
+  const allowed = isHostAccount();
+  settingsGiveTab.hidden = !allowed;
+  if (!allowed && settingsGiveTab.classList.contains("is-active")) setSettingsTab("account");
+}
+
 function setSettingsTab(tab) {
   for (const button of settingsTabs) {
     const active = button.dataset.settingsTab === tab;
@@ -5465,6 +5727,11 @@ function setSettingsTab(tab) {
     button.setAttribute("aria-selected", String(active));
   }
   for (const section of settingsSections) section.hidden = section.dataset.settingsSection !== tab;
+  if (tab === "give" && isHostAccount()) {
+    loadHostGiftCatalog().catch((error) => {
+      settingsGiftStatus.textContent = error.message;
+    });
+  }
 }
 
 function openSettings() {
@@ -5474,6 +5741,7 @@ function openSettings() {
   keyCaptureAction = "";
   updateMusicToggleControls();
   renderKeyBindings();
+  syncHostGiftAccess();
   settingsPanel.hidden = false;
   arena.classList.add("settings-open");
   settingsCloseButton.focus();
@@ -5494,6 +5762,30 @@ for (const button of settingsOpenButtons) {
     button.blur();
   });
 }
+settingsGiftKind.addEventListener("change", fillHostGiftItems);
+settingsGiftForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!isHostAccount()) return;
+  if (!serverToken) {
+    settingsGiftStatus.textContent = "Reconnecte-toi pour donner des objets.";
+    return;
+  }
+  settingsGiftStatus.textContent = "Enregistrement…";
+  try {
+    const data = await serverRequest("/api/give", {
+      pseudo: settingsGiftPseudo.value.trim(),
+      coins: Number(settingsGiftCoins.value) || 0,
+      kind: settingsGiftKind.value,
+      itemId: settingsGiftKind.value ? settingsGiftItem.value : "",
+      count: Number(settingsGiftCount.value) || 1,
+    });
+    settingsGiftStatus.textContent = `Don enregistré pour ${data.username}. Ce sac a ${data.coins} pièces.`;
+    settingsGiftCoins.value = "0";
+    if (data.username.toLowerCase() === activeAccount.toLowerCase()) pullServerAccount();
+  } catch (error) {
+    settingsGiftStatus.textContent = error.message || "Le don n'a pas pu être enregistré.";
+  }
+});
 settingsCloseButton.addEventListener("click", closeSettings);
 settingsDoneButton.addEventListener("click", closeSettings);
 settingsResetButton.addEventListener("click", () => {
@@ -5617,17 +5909,42 @@ function getMinionSpawnPlan() {
   return { interval: 2.5, count: 3 };
 }
 
+/* Le texte du chrono ne change qu'une fois par seconde : on évite de réécrire
+   le DOM à chaque image. */
+const timerView = { clock: "", run: "", eta: "", urgent: false, showEta: false, close: false };
+
 function updateTimer() {
   const seconds = Math.ceil(waveCountdown > 0 ? waveCountdown : timeLeft);
-  timerDisplay.textContent = formatClock(seconds);
-  timerDisplay.classList.toggle("timer-urgent", waveCountdown === 0 && seconds <= 10 && !waveCleared);
-  runTimeDisplay.textContent = `Partie ${formatClock(runElapsed)}`;
+  const clock = formatClock(seconds);
+  const urgent = waveCountdown === 0 && seconds <= 10 && !waveCleared;
+  const run = `Partie ${formatClock(runElapsed)}`;
   const bossEta = Math.ceil(timeLeft - getBossArrivalTime());
   const showEta = bossesRemaining.length > 0 && bossEta > 0;
-  bossEtaDisplay.hidden = !showEta;
-  if (showEta) {
-    bossEtaDisplay.textContent = `BOSS dans ${formatClock(bossEta)}`;
-    bossEtaDisplay.classList.toggle("is-close", waveCountdown === 0 && bossEta <= 10);
+  const eta = showEta ? `BOSS dans ${formatClock(bossEta)}` : "";
+  const close = showEta && waveCountdown === 0 && bossEta <= 10;
+  if (clock !== timerView.clock) {
+    timerDisplay.textContent = clock;
+    timerView.clock = clock;
+  }
+  if (urgent !== timerView.urgent) {
+    timerDisplay.classList.toggle("timer-urgent", urgent);
+    timerView.urgent = urgent;
+  }
+  if (run !== timerView.run) {
+    runTimeDisplay.textContent = run;
+    timerView.run = run;
+  }
+  if (showEta !== timerView.showEta) {
+    bossEtaDisplay.hidden = !showEta;
+    timerView.showEta = showEta;
+  }
+  if (showEta && eta !== timerView.eta) {
+    bossEtaDisplay.textContent = eta;
+    timerView.eta = eta;
+  }
+  if (close !== timerView.close) {
+    bossEtaDisplay.classList.toggle("is-close", close);
+    timerView.close = close;
   }
 }
 
@@ -9187,7 +9504,15 @@ document.querySelector("#control-reset").addEventListener("click", () => {
   selectEditedControl("stick");
 });
 
+/* Boucle du jeu : une frame à la fois, avec le temps réel entre deux images.
+   Si l'onglet passe en arrière-plan, on fige la partie pour ne pas rattraper
+   d'un coup tout le temps perdu au retour. */
 function gameLoop(time) {
+  if (document.hidden) {
+    previousTime = 0;
+    requestAnimationFrame(gameLoop);
+    return;
+  }
   const delta = previousTime ? Math.min((time - previousTime) / 1000, 0.05) : 0;
   previousTime = time;
   updateShopRotation(delta);
@@ -9277,6 +9602,110 @@ function choosePlayDevice(device) {
 devicePcButton.addEventListener("click", () => choosePlayDevice("pc"));
 devicePhoneButton.addEventListener("click", () => choosePlayDevice("phone"));
 settingsLogout.addEventListener("click", logoutAccount);
+function openPendingAccount(username, savedProgression) {
+  pendingEntry = { username, progression: savedProgression || {} };
+  showDeviceStep();
+}
+
+async function submitAccountLocally(username, password) {
+  const accounts = loadAccountRecords();
+  const existing = accounts.find((account) => account.username.toLowerCase() === username.toLowerCase());
+  if (accountMode === "create") {
+    if (accountConfirm.value !== password) {
+      accountFeedback.textContent = "Les deux mots de passe ne correspondent pas.";
+      return;
+    }
+    if (existing) {
+      accountFeedback.textContent = "Ce compte existe déjà. Connecte-toi.";
+      return;
+    }
+    const salt = randomAccountSalt();
+    const hash = await hashAccountPassword(password, salt);
+    const progressionSeed = accounts.length === 0
+      ? structuredClone(progression)
+      : structuredClone(defaultProgression);
+    if (!progressionSeed.playerName) progressionSeed.playerName = username.slice(0, 16);
+    accounts.push({ username, salt, hash, progression: progressionSeed });
+    saveAccountRecords(accounts);
+    openPendingAccount(username, progressionSeed);
+    return;
+  }
+  if (!existing) {
+    accountFeedback.textContent = "Identifiant ou mot de passe incorrect.";
+    return;
+  }
+  const hash = await hashAccountPassword(password, existing.salt);
+  if (hash !== existing.hash) {
+    accountFeedback.textContent = "Identifiant ou mot de passe incorrect.";
+    return;
+  }
+  openPendingAccount(existing.username, existing.progression);
+}
+
+async function submitAccountOnServer(username, password) {
+  const accounts = loadAccountRecords();
+  const existing = accounts.find((account) => account.username.toLowerCase() === username.toLowerCase());
+  if (accountMode === "create") {
+    if (accountConfirm.value !== password) {
+      accountFeedback.textContent = "Les deux mots de passe ne correspondent pas.";
+      return;
+    }
+    let progressionSeed = null;
+    if (existing) {
+      const hash = await hashAccountPassword(password, existing.salt);
+      if (hash !== existing.hash) {
+        accountFeedback.textContent = "Ce compte existe déjà sur cet appareil.";
+        return;
+      }
+      progressionSeed = existing.progression;
+    } else if (accounts.length === 0) {
+      progressionSeed = structuredClone(progression);
+    }
+    const data = await serverRequest("/api/register", { username, password, progression: progressionSeed });
+    rememberServerSession(data);
+    await mirrorServerAccount(data.username, password, data.progression || progressionSeed || structuredClone(defaultProgression));
+    openPendingAccount(data.username, data.progression);
+    return;
+  }
+  try {
+    const data = await serverRequest("/api/login", { username, password });
+    rememberServerSession(data);
+    await mirrorServerAccount(data.username, password, data.progression || {});
+    openPendingAccount(data.username, data.progression);
+  } catch (error) {
+    if (error.status !== 401 || !existing) throw error;
+    const hash = await hashAccountPassword(password, existing.salt);
+    if (hash !== existing.hash) throw error;
+    try {
+      const data = await serverRequest("/api/register", {
+        username,
+        password,
+        progression: existing.progression,
+      });
+      rememberServerSession(data);
+      await mirrorServerAccount(data.username, password, data.progression || existing.progression);
+      openPendingAccount(data.username, data.progression || existing.progression);
+    } catch (registerError) {
+      if (registerError.status === 409) throw error;
+      throw registerError;
+    }
+  }
+}
+
+async function mirrorServerAccount(username, password, savedProgression) {
+  const accounts = loadAccountRecords();
+  let account = accounts.find((item) => item.username.toLowerCase() === username.toLowerCase());
+  if (!account) {
+    const salt = randomAccountSalt();
+    account = { username, salt, hash: await hashAccountPassword(password, salt), progression: savedProgression };
+    accounts.push(account);
+  } else {
+    account.username = username;
+    account.progression = savedProgression;
+  }
+  saveAccountRecords(accounts);
+}
+
 accountForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const username = accountUsername.value.trim();
@@ -9285,50 +9714,31 @@ accountForm.addEventListener("submit", async (event) => {
     accountFeedback.textContent = "L'identifiant doit faire 3 à 16 caractères, sans espace.";
     return;
   }
-  if (password.length < 4) {
-    accountFeedback.textContent = "Le mot de passe doit faire au moins 4 caractères.";
+  if (password.length < 4 || password.length > 32) {
+    accountFeedback.textContent = "Le mot de passe doit faire entre 4 et 32 caractères.";
     return;
   }
-  const accounts = loadAccountRecords();
-  const existing = accounts.find((account) => account.username.toLowerCase() === username.toLowerCase());
+  accountFeedback.textContent = "Vérification…";
   try {
-    if (accountMode === "create") {
-      if (accountConfirm.value !== password) {
-        accountFeedback.textContent = "Les deux mots de passe ne correspondent pas.";
-        return;
-      }
-      if (existing) {
-        accountFeedback.textContent = "Ce compte existe déjà. Connecte-toi.";
-        return;
-      }
-      const salt = randomAccountSalt();
-      const hash = await hashAccountPassword(password, salt);
-      const progressionSeed = accounts.length === 0
-        ? structuredClone(progression)
-        : structuredClone(defaultProgression);
-      if (!progressionSeed.playerName) progressionSeed.playerName = username.slice(0, 16);
-      accounts.push({ username, salt, hash, progression: progressionSeed });
-      saveAccountRecords(accounts);
-      pendingEntry = { username, progression: progressionSeed };
-      showDeviceStep();
-      return;
-    }
-    if (!existing) {
-      accountFeedback.textContent = "Identifiant ou mot de passe incorrect.";
-      return;
-    }
-    const hash = await hashAccountPassword(password, existing.salt);
-    if (hash !== existing.hash) {
-      accountFeedback.textContent = "Identifiant ou mot de passe incorrect.";
-      return;
-    }
-    pendingEntry = { username: existing.username, progression: existing.progression };
-    showDeviceStep();
-  } catch {
-    accountFeedback.textContent = "La connexion n'a pas pu être vérifiée sur cet appareil.";
+    if (!serverOnline) await detectGameServer();
+    if (serverOnline) await submitAccountOnServer(username, password);
+    else await submitAccountLocally(username, password);
+  } catch (error) {
+    accountFeedback.textContent = error.message || "La connexion n'a pas pu être vérifiée.";
   }
+});
+
+window.addEventListener("pagehide", () => {
+  if (!serverToken || !activeAccount) return;
+  fetch("/api/save", {
+    method: "POST",
+    keepalive: true,
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${serverToken}` },
+    body: JSON.stringify({ progression, device: chosenDevice, touchLayout, giftCursor: serverGiftCursor }),
+  }).catch(() => {});
 });
 
 setAccountMode("login");
 if (!restoreSession()) showAccountGate();
+attachServerWhenReady();
 requestAnimationFrame(gameLoop);
