@@ -2314,10 +2314,10 @@ const defaultTouchLayout = {
   stick: { x: 4, y: 68, s: 1 },
   dodge: { x: 78, y: 52, s: 1 },
   pickup: { x: 78, y: 70, s: 1 },
-  ranged: { x: 2, y: 4, s: 1 },
-  melee: { x: 2, y: 18, s: 1 },
-  power: { x: 2, y: 32, s: 1 },
-  boost: { x: 2, y: 46, s: 1 },
+  ranged: { x: 2, y: 15, s: 1 },
+  melee: { x: 2, y: 26, s: 1 },
+  power: { x: 2, y: 37, s: 1 },
+  boost: { x: 2, y: 48, s: 1 },
 };
 const touchControlBaseSize = { stick: 112, dodge: 64, pickup: 64, ranged: 60, melee: 60, power: 60, boost: 60 };
 let touchLayout = structuredClone(defaultTouchLayout);
@@ -2382,6 +2382,9 @@ function applyPlayDevice(device) {
   devicePcButton.classList.toggle("is-active", device === "pc");
   devicePhoneButton.classList.toggle("is-active", device === "phone");
   editTouchControlsButton.hidden = device !== "phone";
+  syncPhoneView();
+  applyTouchLayout();
+  updatePlayer();
 }
 
 function clampControlSpot(id, spot) {
@@ -2397,6 +2400,17 @@ function readTouchLayout(saved) {
   const next = structuredClone(defaultTouchLayout);
   if (!saved || typeof saved !== "object") return next;
   for (const id of Object.keys(defaultTouchLayout)) next[id] = clampControlSpot(id, saved[id]);
+  const previousColumn = { ranged: 4, melee: 18, power: 32, boost: 46 };
+  const stillDefault = Object.entries(previousColumn).every(([id, y]) => {
+    const spot = saved[id];
+    return spot && Math.abs(Number(spot.x) - 2) < 0.8 && Math.abs(Number(spot.y) - y) < 0.8 && Math.abs((Number(spot.s) || 1) - 1) < 0.05;
+  });
+  if (stillDefault) {
+    next.ranged.y = defaultTouchLayout.ranged.y;
+    next.melee.y = defaultTouchLayout.melee.y;
+    next.power.y = defaultTouchLayout.power.y;
+    next.boost.y = defaultTouchLayout.boost.y;
+  }
   return next;
 }
 
@@ -2471,6 +2485,7 @@ function showAccountGate() {
   pendingEntry = null;
   window.localStorage.removeItem(sessionStorageKey);
   document.documentElement.dataset.device = "pc";
+  syncPhoneView();
   editTouchControlsButton.hidden = true;
   settingsAccountName.textContent = "Aucun compte connecté.";
   accountForm.hidden = false;
@@ -2482,6 +2497,7 @@ function showAccountGate() {
   accountGate.hidden = false;
   frontMenu.hidden = true;
   accountFeedback.textContent = "";
+  syncSoundtrack();
 }
 
 function enterAccount(username, savedProgression) {
@@ -3679,14 +3695,14 @@ function updatePowerFields(delta) {
         const dx = target.x - field.x;
         const dy = target.y - field.y;
         const length = Math.hypot(dx, dy);
-        const step = Math.min(length, field.speed * delta);
+        const step = Math.min(length, field.speed * delta * motionScale());
         if (length > 1) {
           field.x += dx / length * step;
           field.y += dy / length * step;
         }
       }
-      field.x = Math.max(20, Math.min(arena.clientWidth - 20, field.x));
-      field.y = Math.max(20, Math.min(arena.clientHeight - 20, field.y));
+      field.x = Math.max(20, Math.min(playWorldWidth() - 20, field.x));
+      field.y = Math.max(20, Math.min(playWorldHeight() - 20, field.y));
       moveFieldLayer(field);
     }
     if (field.kind === "wolves") {
@@ -3828,7 +3844,7 @@ function useActivePower() {
     throw new Error(`Pouvoir actif équipé inconnu : ${progression.equipped.activePowers}`);
   }
   if (!power) return;
-  const scale = Math.max(0.48, Math.min(1, arena.clientWidth / 1160));
+  const scale = Math.max(0.48, Math.min(1, playWorldWidth() / 1160));
   const level = getPowerLevel(power.id);
   const stats = powerLevelStats[power.effect](level);
   const radius = (stats.radius ?? 0) * scale;
@@ -3994,8 +4010,8 @@ function useActivePower() {
       const angle = Math.random() * Math.PI * 2;
       const distance = randomBetween(90, 260) * scale;
       targets.push({
-        x: Math.max(30, Math.min(arena.clientWidth - 30, center.x + Math.cos(angle) * distance)),
-        y: Math.max(30, Math.min(arena.clientHeight - 30, center.y + Math.sin(angle) * distance)),
+        x: Math.max(30, Math.min(playWorldWidth() - 30, center.x + Math.cos(angle) * distance)),
+        y: Math.max(30, Math.min(playWorldHeight() - 30, center.y + Math.sin(angle) * distance)),
       });
     }
     const castRound = roundId;
@@ -4185,7 +4201,7 @@ function initializeAudio() {
     musicCompressor.attack.value = 0.006;
     musicCompressor.release.value = 0.24;
     effectsMaster.gain.value = 0.7;
-    musicMaster.gain.value = 0.72;
+    musicMaster.gain.value = 0.4;
     effectsMaster.connect(audioContext.destination);
     musicMaster.connect(musicCompressor);
     musicCompressor.connect(audioContext.destination);
@@ -4194,26 +4210,59 @@ function initializeAudio() {
   if (audioContext.state === "suspended") void audioContext.resume();
   const { master, music, effects } = gameSettings.volumes;
   const effectsGain = soundEnabled && effectsEnabled ? 0.7 * (master / 100) * (effects / 100) : 0;
-  const musicGain = soundEnabled && musicEnabled ? 0.72 * (master / 100) * (music / 100) : 0;
+  const musicGain = soundEnabled && musicEnabled ? 0.4 * (master / 100) * (music / 100) : 0;
   effectsMaster.gain.setTargetAtTime(effectsGain, audioContext.currentTime, 0.04);
   musicMaster.gain.setTargetAtTime(musicGain, audioContext.currentTime, 0.04);
-  if (soundEnabled && musicEnabled) ensureMusicAmbience();
   updateMusicTimer();
 }
 
-function updateMusicTimer() {
-  if (!musicEnabled || !soundEnabled) {
-    if (musicTimer) window.clearInterval(musicTimer);
-    musicTimer = undefined;
-    musicTimerTempo = 0;
-    return;
+const themeMusicUrl = "./assets/spooky-scary-skeletons.mp3";
+let themeMusic;
+let themeMusicSource;
+
+function ensureThemeMusic() {
+  if (!audioContext || !musicMaster) return;
+  if (!themeMusic) {
+    themeMusic = new Audio(themeMusicUrl);
+    themeMusic.loop = true;
+    themeMusic.preload = "auto";
+    themeMusicSource = audioContext.createMediaElementSource(themeMusic);
+    themeMusicSource.connect(musicMaster);
   }
-  const tempo = gameActive ? gameMusicTempo : menuMusicTempo;
-  if (musicTimer && musicTimerTempo === tempo) return;
+  if (!gameActive && soundEnabled && musicEnabled) {
+    const playback = themeMusic.play();
+    if (playback) playback.catch(() => {});
+  } else {
+    themeMusic.pause();
+  }
+}
+
+const waveMusicUrl = "./assets/magnific-footsteps-in-the-dark.mp3";
+let waveMusic;
+let waveMusicSource;
+
+function ensureWaveMusic() {
+  if (!audioContext || !musicMaster) return;
+  if (!waveMusic) {
+    waveMusic = new Audio(waveMusicUrl);
+    waveMusic.loop = true;
+    waveMusic.preload = "auto";
+    waveMusicSource = audioContext.createMediaElementSource(waveMusic);
+    waveMusicSource.connect(musicMaster);
+  }
+  if (gameActive && soundEnabled && musicEnabled) {
+    const playback = waveMusic.play();
+    if (playback) playback.catch(() => {});
+  } else {
+    waveMusic.pause();
+  }
+}
+
+function updateMusicTimer() {
   if (musicTimer) window.clearInterval(musicTimer);
-  musicTimerTempo = tempo;
-  playMusicNote();
-  musicTimer = window.setInterval(playMusicNote, tempo);
+  musicTimer = undefined;
+  musicTimerTempo = 0;
+  syncSoundtrack();
 }
 
 function playTone(frequency, duration, type = "sine", volume = 0.15, slide = 1, bus = "effects") {
@@ -4389,52 +4438,178 @@ function playHauntedStinger() {
   ghostVoice.stop(now + 2);
 }
 
-function ensureMusicAmbience() {
-  if (!audioContext || !musicMaster || ambienceNodes) return;
-  const bufferLength = audioContext.sampleRate * 3;
-  const buffer = audioContext.createBuffer(1, bufferLength, audioContext.sampleRate);
-  const samples = buffer.getChannelData(0);
-  for (let index = 0; index < bufferLength; index += 1) {
-    samples[index] = (Math.random() * 2 - 1) * 0.32;
+let waveAmbience;
+
+function playAmbienceNoise(options) {
+  playNoise({ ...options, bus: "music" });
+}
+
+function playAmbiencePitch(options) {
+  playPitch({ ...options, bus: "music" });
+}
+
+function stopWaveAmbience() {
+  if (!waveAmbience) return;
+  window.clearInterval(waveAmbience.timer);
+  for (const source of waveAmbience.sources) {
+    try { source.stop(); } catch { /* déjà arrêté */ }
   }
+  waveAmbience = undefined;
+}
 
-  const wind = audioContext.createBufferSource();
-  wind.buffer = buffer;
-  wind.loop = true;
-  const windFilter = audioContext.createBiquadFilter();
-  windFilter.type = "lowpass";
-  windFilter.frequency.value = 560;
-  const windGain = audioContext.createGain();
-  windGain.gain.value = 0.075;
-  wind.connect(windFilter);
-  windFilter.connect(windGain);
-  windGain.connect(musicMaster);
-  wind.start();
+let ambienceStep = 0;
 
-  const leaves = audioContext.createBufferSource();
-  leaves.buffer = buffer;
-  leaves.loop = true;
-  const leavesFilter = audioContext.createBiquadFilter();
-  leavesFilter.type = "bandpass";
-  leavesFilter.frequency.value = 1450;
-  leavesFilter.Q.value = 0.45;
-  const leavesGain = audioContext.createGain();
-  leavesGain.gain.value = 0.024;
-  leaves.connect(leavesFilter);
-  leavesFilter.connect(leavesGain);
-  leavesGain.connect(musicMaster);
-  leaves.start();
+function playHorrorBones() {
+  for (let index = 0; index < 8; index += 1) {
+    playAmbienceNoise({
+      type: "bandpass", frequency: 1600 + Math.random() * 1800, q: 10,
+      duration: 0.035, volume: 0.16, delay: index * 0.06,
+    });
+  }
+}
 
-  const windPulse = audioContext.createOscillator();
-  const windPulseGain = audioContext.createGain();
-  windPulse.type = "sine";
-  windPulse.frequency.value = 0.075;
-  windPulseGain.gain.value = 0.025;
-  windPulse.connect(windPulseGain);
-  windPulseGain.connect(windGain.gain);
-  windPulse.start();
+function playHorrorMoan(pitch, pitchEnd, duration = 1.1) {
+  playAmbiencePitch({
+    frequency: pitch, frequencyEnd: pitchEnd, duration, type: "sawtooth",
+    volume: 0.07, attack: 0.12, vibrato: 0.045, vibratoRate: 4.5,
+  });
+  playAmbienceNoise({
+    type: "bandpass", frequency: pitch * 3, frequencyEnd: pitchEnd * 2, q: 1.6,
+    duration, volume: 0.08, attack: duration * 0.25,
+  });
+}
 
-  ambienceNodes = { wind, leaves, windPulse };
+function playHorrorCrow() {
+  playAmbiencePitch({ frequency: 860, frequencyEnd: 390, duration: 0.18, type: "square", volume: 0.08 });
+  playAmbiencePitch({ frequency: 740, frequencyEnd: 340, duration: 0.2, type: "square", volume: 0.07, delay: 0.2 });
+  playAmbienceNoise({ type: "bandpass", frequency: 1500, frequencyEnd: 600, q: 1.4, duration: 0.4, volume: 0.1 });
+}
+
+function playHorrorMusicBox() {
+  const phrases = [
+    [523.25, 493.88, 369.99],
+    [622.25, 415.3, 311.13],
+    [440, 466.16, 277.18],
+  ];
+  const phrase = phrases[ambienceStep % phrases.length];
+  phrase.forEach((note, index) => {
+    playAmbiencePitch({ frequency: note, duration: 0.5, volume: 0.08, delay: index * 0.32, attack: 0.008 });
+    playAmbiencePitch({ frequency: note * 2.03, duration: 0.28, volume: 0.03, delay: index * 0.32 });
+  });
+}
+
+function playHorrorLaugh() {
+  for (let index = 0; index < 6; index += 1) {
+    const pitch = 480 + (index % 2) * 90 - index * 22;
+    playAmbiencePitch({
+      frequency: pitch * 1.2, frequencyEnd: pitch, duration: 0.11, type: "triangle",
+      volume: 0.1, delay: index * 0.13, attack: 0.008,
+    });
+    playAmbienceNoise({ type: "highpass", frequency: 2200, duration: 0.04, volume: 0.06, delay: index * 0.13 });
+  }
+}
+
+function playHorrorThunder() {
+  playAmbienceNoise({ type: "highpass", frequency: 2400, duration: 0.06, volume: 0.22 });
+  playAmbienceNoise({ type: "lowpass", frequency: 280, frequencyEnd: 36, duration: 1.5, volume: 0.24, attack: 0.015 });
+  playAmbiencePitch({ frequency: 58, frequencyEnd: 26, duration: 1.2, volume: 0.16, attack: 0.02 });
+}
+
+function playWaveAccent(wave) {
+  const step = ambienceStep % 4;
+  ambienceStep += 1;
+  if (wave === 1) {
+    if (step === 0) playHorrorMoan(130, 62, 1.25);
+    else if (step === 1) playHorrorBones();
+    else if (step === 2) {
+      playAmbiencePitch({ frequency: 820, frequencyEnd: 480, duration: 0.5, volume: 0.07, vibrato: 0.04, vibratoRate: 7 });
+      playAmbienceNoise({ type: "lowpass", frequency: 500, frequencyEnd: 90, duration: 0.7, volume: 0.1, attack: 0.08 });
+    } else playHorrorMoan(90, 48, 1.4);
+    return;
+  }
+  if (wave === 2) {
+    if (step === 0 || step === 3) playHorrorCrow();
+    else if (step === 1) {
+      playAmbienceNoise({ type: "bandpass", frequency: 1200, frequencyEnd: 2800, q: 0.7, duration: 0.55, volume: 0.12, attack: 0.06 });
+      playAmbienceNoise({ type: "highpass", frequency: 3400, duration: 0.08, volume: 0.08, delay: 0.12 });
+      playAmbienceNoise({ type: "highpass", frequency: 2800, duration: 0.06, volume: 0.07, delay: 0.28 });
+    } else {
+      playAmbiencePitch({ frequency: 210, frequencyEnd: 80, duration: 0.9, type: "sine", volume: 0.08, attack: 0.2 });
+      playAmbienceNoise({ type: "bandpass", frequency: 700, frequencyEnd: 180, q: 1.2, duration: 0.8, volume: 0.09, attack: 0.15 });
+    }
+    return;
+  }
+  if (wave === 3) {
+    if (step === 0 || step === 2) playHorrorMusicBox();
+    else if (step === 1) {
+      playAmbienceNoise({ type: "bandpass", frequency: 2600, frequencyEnd: 700, q: 4, duration: 1.1, volume: 0.09, attack: 0.35 });
+      playAmbiencePitch({ frequency: 180, frequencyEnd: 90, duration: 1, type: "triangle", volume: 0.05, attack: 0.3, vibrato: 0.03 });
+    } else {
+      playAmbiencePitch({ frequency: 196, frequencyEnd: 155, duration: 0.7, type: "sawtooth", volume: 0.05 });
+      playAmbiencePitch({ frequency: 247, frequencyEnd: 185, duration: 0.7, type: "sawtooth", volume: 0.04, delay: 0.08 });
+      playAmbienceNoise({ type: "lowpass", frequency: 400, frequencyEnd: 80, duration: 0.8, volume: 0.1 });
+    }
+    return;
+  }
+  if (wave === 4) {
+    if (step === 0 || step === 2) playHorrorLaugh();
+    else if (step === 1) {
+      [1318, 1568, 2093, 1174].forEach((frequency, index) => {
+        playAmbiencePitch({ frequency, duration: 0.28, volume: 0.07, delay: index * 0.11 });
+      });
+    } else {
+      playAmbiencePitch({ frequency: 2400, frequencyEnd: 700, duration: 0.16, type: "square", volume: 0.05 });
+      playAmbienceNoise({ type: "bandpass", frequency: 1800, q: 6, duration: 0.08, volume: 0.12, delay: 0.05 });
+      playHorrorLaugh();
+    }
+    return;
+  }
+  if (step === 0) playHorrorThunder();
+  else if (step === 1) {
+    playAmbiencePitch({ frequency: 72, frequencyEnd: 38, duration: 0.12, volume: 0.2 });
+    playAmbienceNoise({ type: "lowpass", frequency: 160, frequencyEnd: 50, duration: 0.1, volume: 0.16 });
+    playAmbiencePitch({ frequency: 60, frequencyEnd: 32, duration: 0.16, volume: 0.16, delay: 0.24 });
+  } else if (step === 2) {
+    playHorrorMoan(98, 40, 1.6);
+    playHorrorMoan(146, 55, 1.5);
+  } else {
+    playAmbienceNoise({ type: "bandpass", frequency: 1800, frequencyEnd: 400, q: 3, duration: 1.3, volume: 0.1, attack: 0.4 });
+    playAmbiencePitch({ frequency: 42, frequencyEnd: 24, duration: 1.1, volume: 0.18, attack: 0.05 });
+  }
+}
+
+function startWaveAmbience(wave) {
+  stopWaveAmbience();
+  if (!audioContext || !musicMaster) return;
+  ambienceStep = 0;
+  const gap = [2400, 1700, 2600, 1500, 3000][wave - 1] ?? 2000;
+  const timer = window.setInterval(() => {
+    if (!gameActive || !musicEnabled) return;
+    playWaveAccent(wave);
+  }, gap);
+  waveAmbience = { wave, sources: [], timer };
+  playWaveAccent(wave);
+}
+
+function soundtrackWave() {
+  if (stage === "ultimate" || stage === "portal") return 5;
+  if (stage === "boss-wave") return 4;
+  return Math.min(3, Math.max(1, waveNumber));
+}
+
+function syncSoundtrack() {
+  ensureThemeMusic();
+  ensureWaveMusic();
+  if (!gameActive || !soundEnabled || !musicEnabled || !audioContext) {
+    stopWaveAmbience();
+    if (!gameActive) {
+      try { window.speechSynthesis?.cancel(); } catch { /* navigateur sans synthèse vocale */ }
+    }
+    return;
+  }
+  const wave = soundtrackWave();
+  if (waveAmbience?.wave === wave) return;
+  startWaveAmbience(wave);
 }
 
 function playMusicNote() {
@@ -4520,9 +4695,12 @@ function getDriveCurve(amount) {
 // Souffle, détonation, crépitement : un bruit blanc filtré dont la fréquence glisse.
 function playNoise({
   duration = 0.2, volume = 0.2, type = "bandpass", frequency = 1000, frequencyEnd = frequency,
-  q = 1, attack = 0.004, delay = 0,
+  q = 1, attack = 0.004, delay = 0, bus = "effects",
 } = {}) {
-  if (!canPlayEffects()) return;
+  const destination = bus === "music" ? musicMaster : effectsMaster;
+  if (bus === "music") {
+    if (!audioContext || !musicMaster || !soundEnabled || !musicEnabled) return;
+  } else if (!canPlayEffects()) return;
   const start = audioContext.currentTime + delay;
   const source = audioContext.createBufferSource();
   source.buffer = getNoiseBuffer();
@@ -4537,15 +4715,18 @@ function playNoise({
   gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
   source.connect(filter);
   filter.connect(gain);
-  gain.connect(effectsMaster);
+  gain.connect(destination);
   source.start(start, Math.random() * 1.4, duration + 0.05);
 }
 
 function playPitch({
   frequency, frequencyEnd = frequency, duration = 0.2, type = "sine", volume = 0.15, delay = 0,
-  attack = 0.005, vibrato = 0, vibratoRate = 6,
+  attack = 0.005, vibrato = 0, vibratoRate = 6, bus = "effects",
 }) {
-  if (!canPlayEffects()) return;
+  const destination = bus === "music" ? musicMaster : effectsMaster;
+  if (bus === "music") {
+    if (!audioContext || !musicMaster || !soundEnabled || !musicEnabled) return;
+  } else if (!canPlayEffects()) return;
   const start = audioContext.currentTime + delay;
   const oscillator = audioContext.createOscillator();
   oscillator.type = type;
@@ -4556,7 +4737,7 @@ function playPitch({
   gain.gain.linearRampToValueAtTime(volume, start + Math.min(attack, duration / 2));
   gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
   oscillator.connect(gain);
-  gain.connect(effectsMaster);
+  gain.connect(destination);
   if (vibrato > 0) {
     const lfo = audioContext.createOscillator();
     const depth = audioContext.createGain();
@@ -4884,6 +5065,9 @@ function playBladeHit(weaponId) {
 
 function playPowerSound(effect) {
   if (!canPlayEffects()) return;
+  if (effect !== "bone-hit" && effect !== "wolf-bite" && effect !== "meteor-impact") {
+    playNoise({ type: "bandpass", frequency: 280, frequencyEnd: 1600, q: 1.2, duration: 0.16, volume: 0.2, attack: 0.008 });
+  }
   if (effect === "ice") {
     playNoise({ type: "highpass", frequency: 5000, frequencyEnd: 2500, duration: 0.6, volume: 0.16, attack: 0.02 });
     for (let index = 0; index < 8; index += 1) {
@@ -4984,6 +5168,123 @@ function playPowerSound(effect) {
 }
 const powerHitSoundTimes = new Map();
 
+const specialShotSounds = {
+  fronde: () => {
+    playPitch({ frequency: 180, frequencyEnd: 90, duration: 0.08, volume: 0.16 });
+    playNoise({ type: "bandpass", frequency: 420, frequencyEnd: 1800, q: 2, duration: 0.12, volume: 0.22, attack: 0.02 });
+    playNoise({ type: "highpass", frequency: 2400, duration: 0.04, volume: 0.1, delay: 0.06 });
+  },
+  "double-fronde": () => {
+    specialShotSounds.fronde();
+    playNoise({ type: "bandpass", frequency: 500, frequencyEnd: 2000, q: 2, duration: 0.1, volume: 0.16, delay: 0.05 });
+  },
+  arbalete: () => {
+    playNoise({ type: "bandpass", frequency: 220, frequencyEnd: 90, q: 1, duration: 0.08, volume: 0.28 });
+    playNoise({ type: "highpass", frequency: 1800, frequencyEnd: 4200, duration: 0.16, volume: 0.16, attack: 0.01 });
+    playPitch({ frequency: 1400, frequencyEnd: 700, duration: 0.12, volume: 0.06, delay: 0.02 });
+  },
+  "arc-long": () => {
+    playNoise({ type: "bandpass", frequency: 160, frequencyEnd: 70, duration: 0.14, volume: 0.3 });
+    playNoise({ type: "bandpass", frequency: 900, frequencyEnd: 3200, q: 2, duration: 0.22, volume: 0.18, attack: 0.03 });
+    playPitch({ frequency: 880, frequencyEnd: 320, duration: 0.2, volume: 0.07 });
+  },
+  "fusil-pompe": () => {
+    playNoise({ type: "lowpass", frequency: 900, frequencyEnd: 80, duration: 0.28, volume: 0.42 });
+    playPitch({ frequency: 90, frequencyEnd: 40, duration: 0.2, volume: 0.32 });
+    for (let index = 0; index < 4; index += 1) {
+      playNoise({ type: "bandpass", frequency: 1200 + index * 400, q: 3, duration: 0.04, volume: 0.1, delay: 0.02 + index * 0.02 });
+    }
+  },
+  "lance-clous": () => {
+    playNoise({ type: "highpass", frequency: 1800, duration: 0.04, volume: 0.22 });
+    playNoise({ type: "bandpass", frequency: 900, frequencyEnd: 2400, q: 4, duration: 0.06, volume: 0.2 });
+    playPitch({ frequency: 240, frequencyEnd: 120, duration: 0.05, volume: 0.12 });
+  },
+  "faux-spectrale": () => {
+    playNoise({ type: "bandpass", frequency: 240, frequencyEnd: 1600, q: 1.6, duration: 0.28, volume: 0.24, attack: 0.06 });
+    playPitch({ frequency: 2200, frequencyEnd: 900, duration: 0.16, volume: 0.06, delay: 0.05 });
+    playPitch({ frequency: 3100, frequencyEnd: 1400, duration: 0.12, volume: 0.04, delay: 0.1 });
+  },
+  "lance-bonbons": () => {
+    playNoise({ type: "bandpass", frequency: 600, frequencyEnd: 1800, q: 2, duration: 0.08, volume: 0.2 });
+    playPitch({ frequency: 880, frequencyEnd: 1320, duration: 0.08, volume: 0.08 });
+    playNoise({ type: "highpass", frequency: 3000, duration: 0.05, volume: 0.08, delay: 0.06 });
+  },
+  "tir-chauve-souris": () => {
+    for (let index = 0; index < 5; index += 1) {
+      playNoise({ type: "bandpass", frequency: 500 + Math.random() * 250, q: 3, duration: 0.04, volume: 0.14, delay: index * 0.03 });
+    }
+    playPitch({ frequency: 2400, frequencyEnd: 1800, duration: 0.08, volume: 0.05 });
+  },
+  "lanterne-ames": () => {
+    playNoise({ type: "lowpass", frequency: 400, frequencyEnd: 1600, duration: 0.2, volume: 0.22, attack: 0.04 });
+    playNoise({ type: "bandpass", frequency: 900, frequencyEnd: 300, q: 1, duration: 0.35, volume: 0.16 });
+    playPitch({ frequency: 520, frequencyEnd: 260, duration: 0.3, volume: 0.06, vibrato: 0.04, vibratoRate: 9 });
+  },
+  "grimoire-maudit": () => {
+    playPitch({ frequency: 330, frequencyEnd: 660, duration: 0.18, type: "triangle", volume: 0.1 });
+    playPitch({ frequency: 494, frequencyEnd: 247, duration: 0.28, volume: 0.08, delay: 0.05, vibrato: 0.03 });
+    playNoise({ type: "bandpass", frequency: 1800, frequencyEnd: 600, q: 3, duration: 0.3, volume: 0.12, attack: 0.04 });
+  },
+  "fouet-ronces": () => {
+    playNoise({ type: "bandpass", frequency: 300, frequencyEnd: 2200, q: 1.5, duration: 0.08, volume: 0.28, attack: 0.01 });
+    playNoise({ type: "highpass", frequency: 2500, duration: 0.03, volume: 0.22, delay: 0.07 });
+    playPitch({ frequency: 140, frequencyEnd: 70, duration: 0.08, volume: 0.12, delay: 0.07 });
+  },
+};
+
+function playSpecialShot(weaponId) {
+  const shot = specialShotSounds[weaponId];
+  if (shot) shot();
+  else playNoise({ type: "bandpass", frequency: 500, frequencyEnd: 1400, q: 2, duration: 0.1, volume: 0.2 });
+}
+
+const bossLines = {
+  gardien: { text: "Turn back. This gate is mine.", pitch: 0.62, rate: 0.84 },
+  chasseur: { text: "Run. I already see you.", pitch: 0.9, rate: 1.02 },
+  colosse: { text: "Too small. I will break you.", pitch: 0.42, rate: 0.76 },
+  "fossoyeur-maudit": { text: "Dig deeper. The dead are not finished.", pitch: 0.5, rate: 0.8 },
+  "epouvantail-automne": { text: "Stay in my field. The crows are hungry.", pitch: 0.72, rate: 0.86 },
+  "maitre-des-cauchemars": { text: "Close your eyes. I live in the dark.", pitch: 0.46, rate: 0.78 },
+  "bouffon-frondeur": { text: "Smile wider. The crowd wants blood.", pitch: 1.25, rate: 1.08 },
+  "mega-cauchemar": { text: "Bow to the throne. Your night ends here.", pitch: 0.38, rate: 0.72 },
+};
+
+function playBossBoom(name) {
+  const heavy = name === "mega-cauchemar" || name === "colosse";
+  playNoise({ type: "lowpass", frequency: heavy ? 700 : 420, frequencyEnd: 40, duration: heavy ? 1.3 : 0.8, volume: heavy ? 0.55 : 0.4, attack: 0.01 });
+  playPitch({ frequency: heavy ? 55 : 80, frequencyEnd: 28, duration: heavy ? 0.9 : 0.5, volume: heavy ? 0.5 : 0.32 });
+  if (name === "epouvantail-automne") {
+    playNoise({ type: "highpass", frequency: 2800, duration: 0.2, volume: 0.16 });
+    playPitch({ frequency: 720, frequencyEnd: 380, duration: 0.3, type: "square", volume: 0.08 });
+  } else if (name === "bouffon-frondeur") {
+    for (let index = 0; index < 5; index += 1) playPitch({ frequency: 1200 + index * 180, duration: 0.2, volume: 0.07, delay: index * 0.06 });
+  } else if (name === "fossoyeur-maudit") {
+    playNoise({ type: "lowpass", frequency: 500, frequencyEnd: 90, duration: 0.7, volume: 0.28, attack: 0.08 });
+  } else if (name === "maitre-des-cauchemars" || name === "mega-cauchemar") {
+    playNoise({ type: "bandpass", frequency: 2400, frequencyEnd: 600, q: 3, duration: 1.1, volume: 0.14, attack: 0.3 });
+  } else if (name === "gardien") {
+    playNoise({ type: "bandpass", frequency: 1800, q: 6, duration: 0.2, volume: 0.22 });
+  } else if (name === "chasseur") {
+    playPitch({ frequency: 1400, frequencyEnd: 500, duration: 0.35, volume: 0.1, vibrato: 0.05 });
+  }
+}
+
+function speakBossLine(name) {
+  const line = bossLines[name];
+  if (!line || !window.speechSynthesis || !soundEnabled || !effectsEnabled) return;
+  const { master, effects } = gameSettings.volumes;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(line.text);
+  utterance.lang = "en-US";
+  utterance.pitch = line.pitch;
+  utterance.rate = line.rate;
+  utterance.volume = Math.max(0.15, (master / 100) * (effects / 100));
+  const voice = window.speechSynthesis.getVoices().find((item) => item.lang?.toLowerCase().startsWith("en"));
+  if (voice) utterance.voice = voice;
+  window.speechSynthesis.speak(utterance);
+}
+
 function playSound(name, type) {
   if (name === "creature-cry") {
     playCreatureCry(type?.name, type?.mood);
@@ -5006,33 +5307,8 @@ function playSound(name, type) {
     return;
   }
   if (name === "shoot") {
-    const shotTones = {
-      fronde: 540,
-      arbalete: 285,
-      "double-fronde": 610,
-      "fusil-pompe": 120,
-      "lance-clous": 760,
-      "arc-long": 390,
-      "faux-spectrale": 205,
-      "lance-bonbons": 680,
-      "tir-chauve-souris": 330,
-      "lanterne-ames": 175,
-      "grimoire-maudit": 490,
-      "fouet-ronces": 235,
-      "pistolet-silex": 170,
-      "revolver-sherif": 210,
-      "pistolet-citrouille": 150,
-      "pistolet-spectral": 260,
-      "canon-roi-ombres": 110,
-    };
-    const blade = loadoutOptions.weapons.find((weapon) => weapon.id === type)?.melee;
-    if (blade) {
-      playTone(900, 0.12, "sawtooth", 0.08, 0.35);
-      playTone(260, 0.1, "triangle", 0.12, 0.6);
-      return;
-    }
-    const pitch = shotTones[type] ?? 540;
-    playTone(pitch, type === "fusil-pompe" ? 0.2 : 0.1, type === "grimoire-maudit" ? "sine" : "triangle", 0.2, 0.55);
+    playSpecialShot(type);
+    return;
   }
   if (name === "weapon-swap") {
     if (type === "melee") {
@@ -5079,8 +5355,9 @@ function playSound(name, type) {
     playCreatureCry(type, "death");
   }
   if (name === "boss-arrive") {
-    playNoise({ type: "lowpass", frequency: 300, frequencyEnd: 60, duration: 1.2, volume: 0.25, attack: 0.2 });
+    playBossBoom(type);
     playCreatureCry(type, "spawn");
+    speakBossLine(type);
   }
   if (name === "boss-down") {
     const pitch = type === "gardien" ? 240 : type === "chasseur" ? 300 : 125;
@@ -5360,13 +5637,13 @@ const footDropRatio = 0.9;
 const footRadiusRatio = 0.7;
 
 function getPlayerBody() {
-  const scale = Math.max(0.48, Math.min(1, arena.clientWidth / 1160));
+  const scale = Math.max(0.48, Math.min(1, playWorldWidth() / 1160));
   return {
     radius: 20 * scale * characterScale,
     footDrop: 25 * scale * characterScale,
     footRadius: 14 * scale * characterScale,
-    edgeX: arena.clientWidth * 0.018 + 34 * scale * characterScale,
-    edgeY: arena.clientHeight * 0.025 + 41 * scale * characterScale,
+    edgeX: playWorldWidth() * 0.018 + 34 * scale * characterScale,
+    edgeY: playWorldHeight() * 0.025 + 41 * scale * characterScale,
   };
 }
 
@@ -5374,8 +5651,8 @@ const obstacleShapeCache = { key: "", shapes: [] };
 
 function getObstacleShapes() {
   if (stage === "ultimate") return [];
-  const width = arena.clientWidth;
-  const height = arena.clientHeight;
+  const width = playWorldWidth();
+  const height = playWorldHeight();
   const key = `${arena.dataset.wave}|${width}x${height}`;
   if (obstacleShapeCache.key === key) return obstacleShapeCache.shapes;
   obstacleShapeCache.key = key;
@@ -5497,8 +5774,8 @@ function segmentTouchesShape(ax, ay, bx, by, radius, shape) {
 }
 
 function resolvePlayerCollisions(x, y, body) {
-  const width = arena.clientWidth;
-  const height = arena.clientHeight;
+  const width = playWorldWidth();
+  const height = playWorldHeight();
   const { edgeX, edgeY, footDrop, footRadius } = body;
   for (let pass = 0; pass < 4; pass += 1) {
     x = Math.max(edgeX, Math.min(width - edgeX, x));
@@ -5523,14 +5800,14 @@ function canPlayerOccupy(x, y, body) {
 function updatePlayer() {
   const body = getPlayerBody();
   let { x, y } = playerCenter();
-  x = Math.max(body.edgeX, Math.min(arena.clientWidth - body.edgeX, x));
-  y = Math.max(body.edgeY, Math.min(arena.clientHeight - body.edgeY, y));
+  x = Math.max(body.edgeX, Math.min(playWorldWidth() - body.edgeX, x));
+  y = Math.max(body.edgeY, Math.min(playWorldHeight() - body.edgeY, y));
   if (!canPlayerOccupy(x, y, body)) {
     ({ x, y } = resolvePlayerCollisions(x, y, body));
     if (!canPlayerOccupy(x, y, body)) ({ x, y } = findFreeSpot(x, y, body.radius, body.footDrop, body.footRadius));
   }
-  position.x = x / arena.clientWidth;
-  position.y = y / arena.clientHeight;
+  position.x = x / playWorldWidth();
+  position.y = y / playWorldHeight();
 
   player.style.left = `${x}px`;
   player.style.top = `${y}px`;
@@ -5542,8 +5819,8 @@ function updatePlayer() {
 
 function playerCenter() {
   return {
-    x: position.x * arena.clientWidth,
-    y: position.y * arena.clientHeight,
+    x: position.x * playWorldWidth(),
+    y: position.y * playWorldHeight(),
   };
 }
 
@@ -5569,12 +5846,12 @@ function findFreeSpot(x, y, radius, footDrop = radius * footDropRatio, footRadiu
 }
 
 function settleOnCurrentMap() {
-  const scale = Math.max(0.48, Math.min(1, arena.clientWidth / 1160));
+  const scale = Math.max(0.48, Math.min(1, playWorldWidth() / 1160));
   const center = playerCenter();
   const body = getPlayerBody();
   const spot = findFreeSpot(center.x, center.y, body.radius, body.footDrop, body.footRadius);
-  position.x = spot.x / arena.clientWidth;
-  position.y = spot.y / arena.clientHeight;
+  position.x = spot.x / playWorldWidth();
+  position.y = spot.y / playWorldHeight();
   updatePlayer();
   for (const pickup of pickups) {
     const pickupSpot = findFreeSpot(pickup.x, pickup.y, 12 * scale);
@@ -5586,9 +5863,9 @@ function settleOnCurrentMap() {
 }
 
 function canOccupy(x, y, radius, footDrop = radius * footDropRatio, footRadius = radius * footRadiusRatio) {
-  const minX = arena.clientWidth * 0.018 + radius;
-  const minY = arena.clientHeight * 0.025 + radius;
-  if (x < minX || y < minY || x > arena.clientWidth - minX || y > arena.clientHeight - minY) return false;
+  const minX = playWorldWidth() * 0.018 + radius;
+  const minY = playWorldHeight() * 0.025 + radius;
+  if (x < minX || y < minY || x > playWorldWidth() - minX || y > playWorldHeight() - minY) return false;
   return !getObstacleShapes().some((shape) => circleTouchesShape(x, y + footDrop, footRadius, shape));
 }
 
@@ -5603,8 +5880,8 @@ function movePlayerBy(dx, dy) {
     x = next.x;
     y = next.y;
   }
-  position.x = x / arena.clientWidth;
-  position.y = y / arena.clientHeight;
+  position.x = x / playWorldWidth();
+  position.y = y / playWorldHeight();
   updatePlayer();
 }
 
@@ -5640,8 +5917,8 @@ const navWalkableCache = new Map();
 const navFieldCache = new Map();
 
 function getNavWalkable(radius) {
-  const cols = Math.ceil(arena.clientWidth / navCellSize);
-  const rows = Math.ceil(arena.clientHeight / navCellSize);
+  const cols = Math.ceil(playWorldWidth() / navCellSize);
+  const rows = Math.ceil(playWorldHeight() / navCellSize);
   const key = `${arena.dataset.wave}|${stage === "ultimate"}|${cols}x${rows}|${radius}`;
   let entry = navWalkableCache.get(key);
   if (!entry) {
@@ -5780,7 +6057,7 @@ function getNavWaypoint(enemy, goalX, goalY) {
 }
 
 function getEnemyMoveRadius(enemy) {
-  const scale = Math.max(0.48, Math.min(1, arena.clientWidth / 1160));
+  const scale = Math.max(0.48, Math.min(1, playWorldWidth() / 1160));
   return enemy.element.offsetWidth * scale * characterScale * 0.38;
 }
 
@@ -5799,8 +6076,8 @@ function moveEnemyToward(enemy, targetX, targetY, distance, delta) {
     const nextX = enemy.x + Math.cos(angle) * step;
     const nextY = enemy.y + Math.sin(angle) * step;
     if (stage === "ultimate" && enemy.profileName === "mega-cauchemar"
-      && (nextX < arena.clientWidth * 0.16 || nextX > arena.clientWidth * 0.84
-        || nextY < arena.clientHeight * 0.14 || nextY > arena.clientHeight * 0.4)) continue;
+      && (nextX < playWorldWidth() * 0.16 || nextX > playWorldWidth() * 0.84
+        || nextY < playWorldHeight() * 0.14 || nextY > playWorldHeight() * 0.4)) continue;
     if (!canOccupy(nextX, nextY, radius)) continue;
     enemy.x = nextX;
     enemy.y = nextY;
@@ -5810,27 +6087,95 @@ function moveEnemyToward(enemy, targetX, targetY, distance, delta) {
   }
 }
 
+const mapWidth = 1405;
+const mapHeight = 768;
+
+function playWorldWidth() {
+  return chosenDevice === "phone" ? mapWidth : arena.clientWidth;
+}
+
+function playWorldHeight() {
+  return chosenDevice === "phone" ? mapHeight : arena.clientHeight;
+}
+
+function phoneViewport() {
+  const view = window.visualViewport;
+  return {
+    width: Math.max(1, Math.round(view?.width || window.innerWidth)),
+    height: Math.max(1, Math.round(view?.height || window.innerHeight)),
+    left: Math.round(view?.offsetLeft || 0),
+    top: Math.round(view?.offsetTop || 0),
+  };
+}
+
+function clearPhoneFit() {
+  for (const prop of ["position", "left", "top", "right", "bottom", "width", "height", "max-width", "max-height", "margin", "aspect-ratio"]) {
+    arena.style.removeProperty(prop);
+  }
+}
+
+function syncPhoneView() {
+  if (chosenDevice !== "phone") {
+    camera.zoom = 1.6;
+    world.style.width = "";
+    world.style.height = "";
+    clearPhoneFit();
+    return;
+  }
+  const view = phoneViewport();
+  arena.style.setProperty("position", "fixed", "important");
+  arena.style.setProperty("left", `${view.left}px`, "important");
+  arena.style.setProperty("top", `${view.top}px`, "important");
+  arena.style.setProperty("right", "auto", "important");
+  arena.style.setProperty("bottom", "auto", "important");
+  arena.style.setProperty("width", `${view.width}px`, "important");
+  arena.style.setProperty("height", `${view.height}px`, "important");
+  arena.style.setProperty("max-width", "none", "important");
+  arena.style.setProperty("max-height", "none", "important");
+  arena.style.setProperty("margin", "0", "important");
+  arena.style.setProperty("aspect-ratio", "auto", "important");
+  world.style.width = `${mapWidth}px`;
+  world.style.height = `${mapHeight}px`;
+  const cover = Math.max(view.width / mapWidth, view.height / mapHeight);
+  const desktopSlice = 1400 / 1.6;
+  camera.zoom = Math.max(cover, view.width / desktopSlice);
+}
+
+function motionScale() {
+  if (chosenDevice !== "phone") return 1;
+  const visible = arena.clientWidth / Math.max(camera.zoom, 0.2);
+  return Math.max(0.32, Math.min(1, visible / (1400 / 1.6)));
+}
+
 function updateFog() {
+  syncPhoneView();
   const center = playerCenter();
-  const scale = Math.max(0.48, Math.min(1, arena.clientWidth / 1160));
+  const scale = scaleActor();
   arena.style.setProperty("--world-scale", String(scale));
   arena.style.setProperty("--actor-scale", String(scale * characterScale));
   const focus = cameraFocus();
-  arena.style.setProperty("--cam-x", `${arena.clientWidth / 2 - focus.x * camera.zoom}px`);
-  arena.style.setProperty("--cam-y", `${arena.clientHeight / 2 - focus.y * camera.zoom}px`);
+  const viewW = arena.clientWidth;
+  const viewH = arena.clientHeight;
+  arena.style.setProperty("--cam-x", `${viewW / 2 - focus.x * camera.zoom}px`);
+  arena.style.setProperty("--cam-y", `${viewH / 2 - focus.y * camera.zoom}px`);
   arena.style.setProperty("--cam-zoom", String(camera.zoom));
-  arena.style.setProperty("--fog-x", `${50 + (center.x - focus.x) * camera.zoom / arena.clientWidth * 100}%`);
-  arena.style.setProperty("--fog-y", `${50 + (center.y - focus.y) * camera.zoom / arena.clientHeight * 100}%`);
-  arena.style.setProperty("--fog-radius", `${fogRadius * scale * camera.zoom}px`);
+  arena.style.setProperty("--fog-x", `${50 + (center.x - focus.x) * camera.zoom / viewW * 100}%`);
+  arena.style.setProperty("--fog-y", `${50 + (center.y - focus.y) * camera.zoom / viewH * 100}%`);
+  const fogScreen = chosenDevice === "phone"
+    ? Math.min(viewW, viewH) * 0.46
+    : fogRadius * scale * camera.zoom;
+  arena.style.setProperty("--fog-radius", `${fogScreen}px`);
 }
 
 function cameraFocus() {
   const center = playerCenter();
   const halfWidth = arena.clientWidth / (2 * camera.zoom);
   const halfHeight = arena.clientHeight / (2 * camera.zoom);
+  const worldW = playWorldWidth();
+  const worldH = playWorldHeight();
   return {
-    x: Math.max(halfWidth, Math.min(arena.clientWidth - halfWidth, center.x)),
-    y: Math.max(halfHeight, Math.min(arena.clientHeight - halfHeight, center.y)),
+    x: Math.max(halfWidth, Math.min(worldW - halfWidth, center.x)),
+    y: Math.max(halfHeight, Math.min(worldH - halfHeight, center.y)),
   };
 }
 
@@ -5838,8 +6183,8 @@ function screenToWorld(clientX, clientY) {
   const bounds = arena.getBoundingClientRect();
   const focus = cameraFocus();
   return {
-    x: focus.x + (clientX - bounds.left - arena.clientWidth / 2) / camera.zoom,
-    y: focus.y + (clientY - bounds.top - arena.clientHeight / 2) / camera.zoom,
+    x: focus.x + (clientX - bounds.left - bounds.width / 2) / camera.zoom,
+    y: focus.y + (clientY - bounds.top - bounds.height / 2) / camera.zoom,
   };
 }
 
@@ -6000,7 +6345,7 @@ function findHitsOnPath(startX, startY, endX, endY) {
     const nearestY = startY + progress * pathY;
     const distance = Math.hypot(enemy.x - nearestX, enemy.y - nearestY);
 
-    const projectileRadius = 8 * Math.max(0.48, Math.min(1, arena.clientWidth / 1160));
+    const projectileRadius = 8 * Math.max(0.48, Math.min(1, playWorldWidth() / 1160));
     const reach = getEnemyHitRadius(enemy) + projectileRadius;
     if (distance > reach) continue;
     const contactProgress = Math.max(0, progress - Math.sqrt(reach * reach - distance * distance) / Math.sqrt(pathLengthSquared));
@@ -6104,7 +6449,7 @@ function fireStone(targetX, targetY, volley = true, withSound = true) {
   if (arc) frames.push({ transform: `translate(${distanceX / 2}px, ${distanceY / 2 - arc}px) rotate(${angle}deg)` });
   frames.push({ transform: `translate(${distanceX}px, ${distanceY}px) rotate(${angle}deg)` });
   const flight = stone.animate(frames, {
-    duration: Math.min(800, Math.max(90, distance * shotSpeeds[kind])),
+    duration: Math.min(800 / motionScale(), Math.max(90, distance * shotSpeeds[kind] / motionScale())),
     easing: "linear",
   });
 
@@ -6342,8 +6687,8 @@ function currentAim() {
   if (shootingWithPointer) return aim;
   const origin = playerCenter();
   const distances = [
-    facing.x > 0 ? (arena.clientWidth - origin.x) / facing.x : facing.x < 0 ? -origin.x / facing.x : Infinity,
-    facing.y > 0 ? (arena.clientHeight - origin.y) / facing.y : facing.y < 0 ? -origin.y / facing.y : Infinity,
+    facing.x > 0 ? (playWorldWidth() - origin.x) / facing.x : facing.x < 0 ? -origin.x / facing.x : Infinity,
+    facing.y > 0 ? (playWorldHeight() - origin.y) / facing.y : facing.y < 0 ? -origin.y / facing.y : Infinity,
   ];
   const distance = Math.min(...distances);
   return { x: origin.x + facing.x * distance, y: origin.y + facing.y * distance };
@@ -6446,18 +6791,18 @@ function createBoss(profileName) {
   const boss = createCharacter("boss", type, `enemy-boss enemy-boss-${profile.name}`);
   boss.bossTier = tier;
   boss.element.dataset.bossTier = String(tier + 1);
-  const spawn = bossSpawnPoints[profile.name] ?? { x: boss.x / arena.clientWidth, y: boss.y / arena.clientHeight, style: "throne" };
-  const scale = Math.max(0.48, Math.min(1, arena.clientWidth / 1160));
+  const spawn = bossSpawnPoints[profile.name] ?? { x: boss.x / playWorldWidth(), y: boss.y / playWorldHeight(), style: "throne" };
+  const scale = Math.max(0.48, Math.min(1, playWorldWidth() / 1160));
   const spot = findFreeSpot(
-    arena.clientWidth * spawn.x,
-    arena.clientHeight * spawn.y,
+    playWorldWidth() * spawn.x,
+    playWorldHeight() * spawn.y,
     type.size * scale * characterScale * 0.38,
   );
   boss.x = spot.x;
   boss.y = spot.y;
   boss.element.style.left = `${boss.x}px`;
   boss.element.style.top = `${boss.y}px`;
-  boss.spawnPoint = { x: boss.x / arena.clientWidth, y: boss.y / arena.clientHeight };
+  boss.spawnPoint = { x: boss.x / playWorldWidth(), y: boss.y / playWorldHeight() };
   boss.spawnRemaining = bossSpawnDuration;
   boss.element.classList.add("boss-spawning", `boss-spawn-${spawn.style}`);
   createBossSpawnEffect(boss.x, boss.y, spawn.style);
@@ -6520,7 +6865,7 @@ function createBossSpawnEffect(x, y, style) {
 }
 
 function createCharacter(typeName, type, extraClass = "", spawnFromEdge = false) {
-  const scale = Math.max(0.48, Math.min(1, arena.clientWidth / 1160));
+  const scale = Math.max(0.48, Math.min(1, playWorldWidth() / 1160));
   const radius = type.size * scale * characterScale * 0.38;
   const { x, y } = findEnemySpawnPoint(radius, 180 * scale, spawnFromEdge);
 
@@ -6637,25 +6982,25 @@ function createPatrolPoints(x, y) {
     const angle = start + index * (Math.PI * 2 / 3);
     const reach = 78 + Math.random() * 64;
     return {
-      x: Math.max(36, Math.min(arena.clientWidth - 36, x + Math.cos(angle) * reach)),
-      y: Math.max(36, Math.min(arena.clientHeight - 36, y + Math.sin(angle) * reach * 0.72)),
+      x: Math.max(36, Math.min(playWorldWidth() - 36, x + Math.cos(angle) * reach)),
+      y: Math.max(36, Math.min(playWorldHeight() - 36, y + Math.sin(angle) * reach * 0.72)),
     };
   });
 }
 
 function findEnemySpawnPoint(radius, minPlayerDistance, spawnFromEdge = false) {
   const bounds = {
-    left: arena.clientWidth * 0.018 + radius,
-    right: arena.clientWidth * 0.982 - radius,
-    top: arena.clientHeight * 0.025 + radius,
-    bottom: arena.clientHeight * 0.975 - radius,
+    left: playWorldWidth() * 0.018 + radius,
+    right: playWorldWidth() * 0.982 - radius,
+    top: playWorldHeight() * 0.025 + radius,
+    bottom: playWorldHeight() * 0.975 - radius,
   };
   const chooseZone = () => {
     if (spawnFromEdge) {
       const edge = spawnFromEdge === "left" ? 3
         : spawnFromEdge === "right" ? 1
           : Math.floor(Math.random() * 4);
-      const inset = Math.min(0.1, 48 / Math.min(arena.clientWidth, arena.clientHeight));
+      const inset = Math.min(0.1, 48 / Math.min(playWorldWidth(), playWorldHeight()));
       if (edge === 1) return { name: "bord droit", bounds: [0.98 - inset, 0.025, 0.98, 0.975] };
       if (edge === 3) return { name: "bord gauche", bounds: [0.02, 0.025, 0.02 + inset, 0.975] };
       if (edge === 0) return { name: "bord supérieur", bounds: [0.02, 0.025, 0.98, 0.025 + inset] };
@@ -6681,8 +7026,8 @@ function findEnemySpawnPoint(radius, minPlayerDistance, spawnFromEdge = false) {
 
   for (let attempt = 0; attempt < 120; attempt += 1) {
     const [left, top, right, bottom] = chooseZone().bounds;
-    const x = (left + Math.random() * (right - left)) * arena.clientWidth;
-    const y = (top + Math.random() * (bottom - top)) * arena.clientHeight;
+    const x = (left + Math.random() * (right - left)) * playWorldWidth();
+    const y = (top + Math.random() * (bottom - top)) * playWorldHeight();
     if (isValid(x, y)) return { x, y };
   }
 
@@ -6702,8 +7047,8 @@ function findEnemySpawnPoint(radius, minPlayerDistance, spawnFromEdge = false) {
     for (const x of columns) {
       const candidates = [];
       for (let y = top; y <= bottom; y += 0.025) {
-        const candidateX = x * arena.clientWidth;
-        const candidateY = y * arena.clientHeight;
+        const candidateX = x * playWorldWidth();
+        const candidateY = y * playWorldHeight();
         if (isValid(candidateX, candidateY)) candidates.push({ x: candidateX, y: candidateY });
       }
       if (candidates.length) return candidates[Math.floor(Math.random() * candidates.length)];
@@ -6891,8 +7236,8 @@ function startPortalWave() {
   timeLeft = finalWaveLength;
   fogRadius = 145;
   arena.dataset.wave = "5";
-  const portalCenterX = arena.clientWidth * thronePortalPosition.x;
-  const portalCenterY = arena.clientHeight * thronePortalPosition.y;
+  const portalCenterX = playWorldWidth() * thronePortalPosition.x;
+  const portalCenterY = playWorldHeight() * thronePortalPosition.y;
   const playerStart = playerCenter();
   if (Math.hypot(playerStart.x - portalCenterX, playerStart.y - portalCenterY) < 160) {
     position.x = 0.5;
@@ -6909,6 +7254,7 @@ function startPortalWave() {
   updateFog();
   updateCombatLoadout();
   spawnBossPortal();
+  syncSoundtrack();
 }
 
 function spawnBossPortal() {
@@ -6963,8 +7309,8 @@ function spawnPortal(destination, point) {
   }
   const caption = part("portal-caption", gate);
   caption.textContent = destination === "throne" ? "SALLE DU TRÔNE · E" : `${nextLabel.toUpperCase()} · E`;
-  portalElement.style.left = `${arena.clientWidth * portalPoint.x}px`;
-  portalElement.style.top = `${arena.clientHeight * portalPoint.y}px`;
+  portalElement.style.left = `${playWorldWidth() * portalPoint.x}px`;
+  portalElement.style.top = `${playWorldHeight() * portalPoint.y}px`;
   world.append(portalElement);
   portalElement.addEventListener("click", enterPortal);
   playSound("portal-open");
@@ -6981,7 +7327,7 @@ function enterPortal() {
   if (!gameActive || !portalElement) return;
   if (portalDestination === "throne" && stage !== "portal") return;
   const center = playerCenter();
-  if (Math.hypot(center.x - arena.clientWidth * portalPoint.x, center.y - arena.clientHeight * portalPoint.y) > 115) {
+  if (Math.hypot(center.x - playWorldWidth() * portalPoint.x, center.y - playWorldHeight() * portalPoint.y) > 115) {
     roundMessage.textContent = "Approche-toi du portail pour entrer.";
     roundMessage.hidden = false;
     window.setTimeout(() => { roundMessage.hidden = true; }, 1200);
@@ -7027,7 +7373,7 @@ function clearWaveAfterBoss(boss) {
   }, 650);
   window.setTimeout(() => {
     if (clearedRound !== roundId || !gameActive || !waveCleared) return;
-    spawnPortal("next-wave", boss.spawnPoint ?? { x: boss.x / arena.clientWidth, y: boss.y / arena.clientHeight });
+    spawnPortal("next-wave", boss.spawnPoint ?? { x: boss.x / playWorldWidth(), y: boss.y / playWorldHeight() });
     roundMessage.textContent = `Le portail est ouvert : entre dedans (ou appuie sur ${keyLabel("portal")}) pour la vague suivante.`;
     roundMessage.hidden = false;
     window.setTimeout(() => { if (clearedRound === roundId) roundMessage.hidden = true; }, 3200);
@@ -7093,6 +7439,7 @@ function startUltimateBossStage(forced = false) {
   updateTimer();
   updateFog();
   updateCombatLoadout();
+  syncSoundtrack();
 }
 
 function removeEnemy(enemy) {
@@ -7101,8 +7448,8 @@ function removeEnemy(enemy) {
 }
 
 function createWeaponPickup(x, y, rarity, weapon) {
-  const pickupX = Math.max(25, Math.min(arena.clientWidth - 25, x));
-  const pickupY = Math.max(25, Math.min(arena.clientHeight - 25, y));
+  const pickupX = Math.max(25, Math.min(playWorldWidth() - 25, x));
+  const pickupY = Math.max(25, Math.min(playWorldHeight() - 25, y));
   const element = document.createElement("span");
   element.className = `weapon-pickup weapon-pickup-rarity-${rarity}`;
   element.setAttribute("role", "img");
@@ -7146,8 +7493,8 @@ function getEnemyXp(enemy) {
 }
 
 function createXpPickup(x, y, value) {
-  const pickupX = Math.max(12, Math.min(arena.clientWidth - 12, x));
-  const pickupY = Math.max(12, Math.min(arena.clientHeight - 12, y));
+  const pickupX = Math.max(12, Math.min(playWorldWidth() - 12, x));
+  const pickupY = Math.max(12, Math.min(playWorldHeight() - 12, y));
   const element = document.createElement("span");
   element.className = `loot-pickup loot-xp${value >= 20 ? " is-large" : ""}`;
   element.setAttribute("role", "img");
@@ -7310,6 +7657,7 @@ function setMenuScreen(name) {
   gameOver.hidden = true;
   frontMenu.hidden = false;
   frontMenu.dataset.screen = name;
+  syncSoundtrack();
   const activeNav = name === "locker" && activeLockerTab === "upgrades" ? "upgrades" : name;
   for (const button of menuNavButtons) {
     const isActive = button.dataset.nav === activeNav;
@@ -7492,8 +7840,8 @@ function startWave(number) {
   arena.dataset.wave = String(number);
   if (number === 3) {
     const start = playerCenter();
-    const vortexX = arena.clientWidth * vortexPosition.x;
-    const vortexY = arena.clientHeight * vortexPosition.y;
+    const vortexX = playWorldWidth() * vortexPosition.x;
+    const vortexY = playWorldHeight() * vortexPosition.y;
     if (Math.hypot(start.x - vortexX, start.y - vortexY) < 260) {
       position.x = 0.24;
       position.y = 0.6;
@@ -7508,6 +7856,7 @@ function startWave(number) {
   waveCountdownDisplay.setAttribute("aria-label", `La vague ${number} commence dans ${waveCountdownLength} secondes`);
   waveCountdownDisplay.hidden = false;
   updateCombatLoadout();
+  syncSoundtrack();
 }
 
 function restoreHealthForNextWave() {
@@ -7547,6 +7896,7 @@ function startBossWave() {
   updateTimer();
   updateFog();
   updateCombatLoadout();
+  syncSoundtrack();
 }
 
 function advanceWave() {
@@ -7593,6 +7943,7 @@ function showGameOver(message, won = false) {
   gameOver.hidden = false;
   frontMenu.hidden = true;
   if (!won) progressionFeedback.textContent = `Défaite : +${completionBonus} pièces. Elles sont conservées pour tes prochains achats.`;
+  syncSoundtrack();
 }
 
 function restartRound() {
@@ -7691,7 +8042,7 @@ function damagePlayer(amount, source) {
     const dx = center.x - source.x;
     const dy = center.y - source.y;
     const length = Math.hypot(dx, dy) || 1;
-    const scale = Math.max(0.48, Math.min(1, arena.clientWidth / 1160));
+    const scale = Math.max(0.48, Math.min(1, playWorldWidth() / 1160));
     movePlayerBy(dx / length * 34 * scale, dy / length * 34 * scale);
   }
   updatePlayerHealth();
@@ -7810,7 +8161,7 @@ function updateEnemies(delta) {
             enemy.x + enemy.dashX * 250,
             enemy.y + enemy.dashY * 250,
             250,
-            dashStep * 2.8,
+            dashStep * 2.8 * motionScale(),
           );
           enemy.dashRemaining -= dashStep;
           const meleeRadius = getEnemyHitRadius(enemy) + getPlayerHitRadius();
@@ -7830,9 +8181,9 @@ function updateEnemies(delta) {
             moveEnemyToward(
               enemy,
               center.x,
-              arena.clientHeight * 0.36,
-              Math.hypot(center.x - enemy.x, arena.clientHeight * 0.36 - enemy.y),
-              delta * movementSpeed / enemy.speed,
+              playWorldHeight() * 0.36,
+              Math.hypot(center.x - enemy.x, playWorldHeight() * 0.36 - enemy.y),
+              delta * movementSpeed / enemy.speed * motionScale(),
             );
           }
         }
@@ -7863,8 +8214,8 @@ function updateEnemies(delta) {
           const drift = 72;
           const span = playerDistance || 1;
           point = {
-            x: Math.max(36, Math.min(arena.clientWidth - 36, enemy.x + ((center.x - enemy.x) / span) * drift)),
-            y: Math.max(36, Math.min(arena.clientHeight - 36, enemy.y + ((center.y - enemy.y) / span) * drift)),
+            x: Math.max(36, Math.min(playWorldWidth() - 36, enemy.x + ((center.x - enemy.x) / span) * drift)),
+            y: Math.max(36, Math.min(playWorldHeight() - 36, enemy.y + ((center.y - enemy.y) / span) * drift)),
           };
           points[enemy.patrolIndex] = point;
         }
@@ -7874,7 +8225,7 @@ function updateEnemies(delta) {
           point.x,
           point.y,
           Math.hypot(point.x - enemy.x, point.y - enemy.y) || 1,
-          delta * movementSpeed / enemy.speed,
+          delta * movementSpeed / enemy.speed * motionScale(),
         );
       }
       continue;
@@ -7898,7 +8249,7 @@ function updateEnemies(delta) {
     const dx = targetX - enemy.x;
     const dy = targetY - enemy.y;
     const distance = waypoint ? Infinity : Math.hypot(dx, dy) || 1;
-    moveEnemyToward(enemy, targetX, targetY, distance, delta * movementSpeed / enemy.speed);
+    moveEnemyToward(enemy, targetX, targetY, distance, delta * movementSpeed / enemy.speed * motionScale());
 
     const contactDistance = Math.hypot(center.x - enemy.x, center.y - enemy.y);
     if (!(enemy.frozenRemaining > 0) && enemy.attackCooldown === 0 && contactDistance <= attackRange) {
@@ -7908,7 +8259,7 @@ function updateEnemies(delta) {
 }
 
 function scaleActor() {
-  return Math.max(0.48, Math.min(1, arena.clientWidth / 1160));
+  return Math.max(0.48, Math.min(1, playWorldWidth() / 1160));
 }
 
 function getEnemyAttackProfile(enemy) {
@@ -8071,11 +8422,11 @@ function setBossAnimationState(boss, state, duration = 0) {
   }
 
 function getPlayerHitRadius() {
-    return 20 * Math.max(0.48, Math.min(1, arena.clientWidth / 1160)) * characterScale;
+    return 20 * Math.max(0.48, Math.min(1, playWorldWidth() / 1160)) * characterScale;
   }
 
 function getEnemyHitRadius(enemy) {
-    return enemy.element.offsetWidth * Math.max(0.48, Math.min(1, arena.clientWidth / 1160)) * characterScale * 0.42;
+    return enemy.element.offsetWidth * Math.max(0.48, Math.min(1, playWorldWidth() / 1160)) * characterScale * 0.42;
   }
 
 function circlesOverlap(x1, y1, radius1, x2, y2, radius2) {
@@ -8133,7 +8484,7 @@ function resolveMegaBossAttack(boss) {
       if (stage === "ultimate") {
         const x = boss.attackTargetX;
         const y = boss.attackTargetY;
-        const radius = 86 * Math.max(0.48, Math.min(1, arena.clientWidth / 1160));
+        const radius = 86 * Math.max(0.48, Math.min(1, playWorldWidth() / 1160));
         const slash = document.createElement("span");
         slash.className = "mega-shockwave throne-sweep";
         slash.setAttribute("aria-hidden", "true");
@@ -8172,7 +8523,7 @@ function resolveMegaBossAttack(boss) {
     } else {
       const x = boss.attackTargetX;
       const y = boss.attackTargetY;
-      const radius = 138 * Math.max(0.48, Math.min(1, arena.clientWidth / 1160));
+      const radius = 138 * Math.max(0.48, Math.min(1, playWorldWidth() / 1160));
       const shockwave = document.createElement("span");
       shockwave.className = "mega-shockwave";
       shockwave.setAttribute("aria-hidden", "true");
@@ -8296,8 +8647,8 @@ function createBossProjectile(x, y, angle, damage, style) {
 function updateBossProjectiles(delta) {
     const center = playerCenter();
     for (const projectile of bossProjectiles) {
-      projectile.x += projectile.velocityX * delta;
-      projectile.y += projectile.velocityY * delta;
+      projectile.x += projectile.velocityX * delta * motionScale();
+      projectile.y += projectile.velocityY * delta * motionScale();
       projectile.element.style.left = `${projectile.x}px`;
       projectile.element.style.top = `${projectile.y}px`;
       if (circlesOverlap(projectile.x, projectile.y, projectile.radius, center.x, center.y, getPlayerHitRadius())) {
@@ -8311,7 +8662,7 @@ function updateBossProjectiles(delta) {
         projectile.element.remove();
         bossProjectiles.delete(projectile);
       } else if (projectile.x < -30 || projectile.y < -30
-        || projectile.x > arena.clientWidth + 30 || projectile.y > arena.clientHeight + 30) {
+        || projectile.x > playWorldWidth() + 30 || projectile.y > playWorldHeight() + 30) {
         projectile.element.remove();
         bossProjectiles.delete(projectile);
       }
@@ -8430,7 +8781,7 @@ function updateGame(delta) {
     portalElement.classList.toggle("is-armed", portalArmRemaining === 0);
     const center = playerCenter();
     if (portalArmRemaining === 0
-      && Math.hypot(center.x - arena.clientWidth * portalPoint.x, center.y - arena.clientHeight * portalPoint.y) < 78) {
+      && Math.hypot(center.x - playWorldWidth() * portalPoint.x, center.y - playWorldHeight() * portalPoint.y) < 78) {
       enterPortal();
     }
   }
@@ -8529,6 +8880,13 @@ window.addEventListener("blur", () => {
   stopShooting();
 });
 window.addEventListener("resize", updatePlayer);
+window.addEventListener("orientationchange", () => {
+  updatePlayer();
+  window.setTimeout(updatePlayer, 60);
+  window.setTimeout(updatePlayer, 180);
+  window.setTimeout(updatePlayer, 400);
+});
+window.visualViewport?.addEventListener("resize", updatePlayer);
 startButton.addEventListener("click", () => {
   restartRound();
 });
@@ -8850,7 +9208,7 @@ function gameLoop(time) {
 
     if (dodgeRemaining > 0) {
       const dashTime = Math.min(delta, dodgeRemaining);
-      movePlayerBy(dodgeDirection.x * dodgeSpeed * dashTime, dodgeDirection.y * dodgeSpeed * dashTime);
+      movePlayerBy(dodgeDirection.x * dodgeSpeed * dashTime * motionScale(), dodgeDirection.y * dodgeSpeed * dashTime * motionScale());
       dodgeRemaining = Math.max(0, dodgeRemaining - delta);
       if (dodgeRemaining === 0) player.classList.remove("is-dodging");
     } else if (dx !== 0 || dy !== 0) {
@@ -8869,7 +9227,7 @@ function gameLoop(time) {
       const boostSpeed = (activeBoostId === "vitesse" && activeBoostRemaining > 0 ? 1.35 : 1)
         * (activePowerInvulnerabilityRemaining > 0 ? 1.3 : 1)
         * attackSlow;
-      const gaitSpeed = speed * boostSpeed * (walkSpeedRatio + (1 - walkSpeedRatio) * moveMomentum);
+      const gaitSpeed = speed * boostSpeed * (walkSpeedRatio + (1 - walkSpeedRatio) * moveMomentum) * motionScale();
       movePlayerBy((dx / length) * gaitSpeed * delta, (dy / length) * gaitSpeed * delta);
       playFootsteps(delta, running);
       if (running) {
