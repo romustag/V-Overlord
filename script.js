@@ -259,17 +259,42 @@ const bossRelicCatalog = [
 ];
 const defaultRelicInventory = Object.fromEntries(bossRelicCatalog.map((relic) => [relic.id, 0]));
 const activePowerOptions = [
-  { id: "glace", label: "Souffle de givre", description: "Gèle et blesse les monstres proches, puis les ralentit quand la glace fond.", icon: "❄️", cooldown: 12, price: 0, rotation: 0, effect: "ice", tier: "commun" },
-  { id: "essaim-spectral", label: "Essaim spectral", description: "Des chauves-souris frappent tous les ennemis proches et te rendent 1 PV par morsure.", icon: "🦇", cooldown: 14, price: 150, rotation: 0, effect: "bats", tier: "peu-commun" },
-  { id: "nuee-toxique", label: "Nuée toxique", description: "Un nuage de poison : empoisonne, ralentit et rend les monstres plus fragiles (+25 % de dégâts subis).", icon: "☠️", cooldown: 15, price: 165, rotation: 2, effect: "poison", tier: "peu-commun" },
-  { id: "citrouille-infernale", label: "Citrouille infernale", description: "Une citrouille explose sur le groupe le plus proche : souffle, recul et brûlure.", icon: "🎃", cooldown: 16, price: 185, rotation: 1, effect: "pumpkin", tier: "rare" },
-  { id: "tempete-foudre", label: "Tempête de foudre", description: "Un éclair rebondit d'ennemi en ennemi, les électrocute et les paralyse.", icon: "⚡", cooldown: 15, price: 235, rotation: 0, effect: "lightning", tier: "rare" },
-  { id: "onde-sismique", label: "Onde sismique", description: "Tu frappes le sol : l'onde de choc blesse, repousse et étourdit tout autour de toi.", icon: "🪨", cooldown: 16, price: 230, rotation: 1, effect: "quake", tier: "rare" },
-  { id: "voile-fantome", label: "Voile du fantôme", description: "Te rend intouchable et 30 % plus rapide pendant un court instant.", icon: "👻", cooldown: 18, price: 210, rotation: 2, effect: "veil", tier: "legendaire" },
-  { id: "vortex-ombre", label: "Vortex d'ombre", description: "Un trou noir aspire les monstres, les broie puis implose en les projetant au loin.", icon: "🌀", cooldown: 20, price: 280, rotation: 2, effect: "vortex", tier: "legendaire" },
-  { id: "flamme-infernale", label: "Flamme infernale", description: "Une explosion de feu maudit brûle et repousse les monstres proches.", icon: "🔥", cooldown: 17, price: 225, rotation: 1, effect: "fire", tier: "divin" },
-  { id: "pacte-vampirique", label: "Pacte vampirique", description: "Aspire le sang des monstres proches : dégâts, saignement et soin pour chaque victime.", icon: "🩸", cooldown: 18, price: 300, rotation: 0, effect: "vampire", tier: "divin" },
+  { id: "glace", label: "Souffle de givre", description: "Gèle et blesse les monstres proches, puis les ralentit quand la glace fond.", icon: "❄️", cooldown: 12, price: 0, rotation: 0, effect: "ice", tier: "commun", kind: "control" },
+  { id: "essaim-spectral", label: "Essaim spectral", description: "Des chauves-souris frappent tous les ennemis proches et te rendent 1 PV par morsure.", icon: "🦇", cooldown: 14, price: 150, rotation: 0, effect: "bats", tier: "peu-commun", kind: "attack" },
+  { id: "nuee-toxique", label: "Nuée toxique", description: "Un nuage de poison : empoisonne, ralentit et rend les monstres plus fragiles (+25 % de dégâts subis).", icon: "☠️", cooldown: 15, price: 165, rotation: 2, effect: "poison", tier: "peu-commun", kind: "control" },
+  { id: "lumiere-sacree", label: "Lumière sacrée", description: "Un pilier de lumière te soigne, brûle les monstres autour de toi et les aveugle (ralentis).", icon: "✨", cooldown: 20, price: 160, rotation: 1, effect: "holy", tier: "peu-commun", kind: "heal" },
+  { id: "citrouille-infernale", label: "Citrouille infernale", description: "Une citrouille explose sur le groupe le plus proche : souffle, recul et brûlure.", icon: "🎃", cooldown: 16, price: 185, rotation: 1, effect: "pumpkin", tier: "rare", kind: "attack" },
+  { id: "tempete-foudre", label: "Tempête de foudre", description: "Un éclair rebondit d'ennemi en ennemi, les électrocute et les paralyse.", icon: "⚡", cooldown: 15, price: 235, rotation: 0, effect: "lightning", tier: "rare", kind: "attack" },
+  { id: "onde-sismique", label: "Onde sismique", description: "Tu frappes le sol : l'onde de choc blesse, repousse et étourdit tout autour de toi.", icon: "🪨", cooldown: 16, price: 230, rotation: 1, effect: "quake", tier: "rare", kind: "control" },
+  { id: "armure-ossements", label: "Armure d'ossements", description: "Des os tournoient autour de toi : ils frappent les monstres au contact et divisent par deux les dégâts reçus.", icon: "🦴", cooldown: 18, price: 220, rotation: 2, effect: "boneshield", tier: "rare", kind: "defense" },
+  { id: "tornade-hurlante", label: "Tornade hurlante", description: "Une tornade fonce vers les monstres, les aspire, les fait tournoyer puis les projette au loin.", icon: "🌪️", cooldown: 16, price: 240, rotation: 0, effect: "tornado", tier: "rare", kind: "control" },
+  { id: "voile-fantome", label: "Voile du fantôme", description: "Te rend intouchable et 30 % plus rapide pendant un court instant.", icon: "👻", cooldown: 18, price: 210, rotation: 2, effect: "veil", tier: "legendaire", kind: "defense" },
+  { id: "vortex-ombre", label: "Vortex d'ombre", description: "Un trou noir aspire les monstres, les broie puis implose en les projetant au loin.", icon: "🌀", cooldown: 20, price: 280, rotation: 2, effect: "vortex", tier: "legendaire", kind: "control" },
+  { id: "pluie-meteores", label: "Pluie de météores", description: "Des météores enflammés s'écrasent sur les monstres : explosion, brûlure et étourdissement.", icon: "☄️", cooldown: 19, price: 290, rotation: 1, effect: "meteor", tier: "legendaire", kind: "attack" },
+  { id: "meute-spectrale", label: "Meute spectrale", description: "Invoque des loups fantômes qui t'escortent et bondissent sur les monstres proches pour les mordre.", icon: "🐺", cooldown: 22, price: 300, rotation: 0, effect: "wolves", tier: "legendaire", kind: "summon" },
+  { id: "flamme-infernale", label: "Flamme infernale", description: "Une explosion de feu maudit brûle et repousse les monstres proches.", icon: "🔥", cooldown: 17, price: 225, rotation: 1, effect: "fire", tier: "divin", kind: "attack" },
+  { id: "pacte-vampirique", label: "Pacte vampirique", description: "Aspire le sang des monstres proches : dégâts, saignement et soin pour chaque victime.", icon: "🩸", cooldown: 18, price: 300, rotation: 0, effect: "vampire", tier: "divin", kind: "heal" },
+  { id: "arret-du-temps", label: "Arrêt du temps", description: "Le temps se fige : tous les monstres alentour sont immobilisés et subissent 50 % de dégâts en plus.", icon: "⏳", cooldown: 24, price: 320, rotation: 2, effect: "timestop", tier: "divin", kind: "control" },
 ];
+const powerKindLabels = { attack: "Attaque", control: "Contrôle", defense: "Défense", heal: "Soin", summon: "Invocation" };
+const skinStyleLabels = { aventure: "Aventure", animal: "Animal", guerrier: "Guerrier", western: "Western", futuriste: "Futuriste", halloween: "Halloween" };
+const weaponTypeLabels = {
+  fronde: "Fronde", "double-fronde": "Fronde", arbalete: "Arbalète", "arc-long": "Arc",
+  "fusil-pompe": "Fusil", "lance-clous": "Lanceur", "lance-bonbons": "Lanceur",
+  "faux-spectrale": "Faux", "tir-chauve-souris": "Magie", "lanterne-ames": "Magie", "grimoire-maudit": "Magie", "fouet-ronces": "Fouet",
+  "epee-rouillee": "Épée", "epee-chevalier": "Épée", "coutelas-fantome": "Épée", "lame-braise": "Épée", "epee-lune-sanglante": "Épée",
+  "hache-bucheron": "Hache", "lance-centurion": "Lance", "marteau-guerre": "Marteau", "dague-assassin": "Dague", "katana-ombre": "Katana",
+  "pistolet-silex": "Pistolet", "revolver-sherif": "Pistolet", "pistolet-citrouille": "Pistolet", "pistolet-spectral": "Pistolet", "canon-roi-ombres": "Pistolet",
+  "tromblon-pirate": "Fusil", "fusil-precision": "Fusil", "pistolet-givre": "Pistolet", "baguette-foudre": "Magie", "blaster-neon": "Laser",
+};
+const weaponTypeIcons = { Épée: "🗡️", Hache: "🪓", Lance: "🔱", Marteau: "🔨", Dague: "🔪", Katana: "⚔️", Faux: "🌙", Fouet: "🌿", Pistolet: "🔫", Fusil: "💥", Laser: "🔆", Magie: "🪄", Arc: "🏹", Arbalète: "🏹", Fronde: "🎯", Lanceur: "🔩" };
+function getItemTypeLabel(category, item) {
+  if (!item) return "";
+  if (category === "weapons") return weaponTypeLabels[item.id] || (item.melee ? "Mêlée" : "Distance");
+  if (category === "skins") return skinStyleLabels[item.style] || "";
+  if (category === "activePowers") return powerKindLabels[item.kind] || "";
+  return "";
+}
 const defaultPowerLevels = Object.fromEntries(activePowerOptions.map((power) => [power.id, 1]));
 const loadoutOptions = {
   characters: [
@@ -279,24 +304,35 @@ const loadoutOptions = {
     { id: "sentinelle", label: "Sentinelle", description: "Armure robuste pour tenir la ligne.", icon: "🛡️" },
   ],
   skins: [
-    { id: "survivant", label: "Survivant", description: "Tenue de terrain d'origine.", icon: "🧭", tier: "commun" },
-    { id: "feuillage", label: "Feuillage", description: "Camouflage vert de forêt.", icon: "🌿", tier: "commun" },
-    { id: "cendre", label: "Cendre", description: "Tenue sombre de récupérateur.", icon: "🌫️", tier: "commun" },
-    { id: "aventuriere", label: "Aventurière", description: "Personnage féminin avec cheveux longs et tenue d'exploration.", icon: "🧭", tier: "commun" },
-    { id: "renard", label: "Costume de renard", description: "Combinaison rousse avec capuche, oreilles et museau de renard.", icon: "🦊", tier: "peu-commun" },
-    { id: "loup", label: "Costume de loup", description: "Combinaison grise avec capuche et oreilles de loup.", icon: "🐺", tier: "peu-commun" },
-    { id: "chevalier", label: "Armure de chevalier", description: "Armure métallique avec casque et détails dorés.", icon: "⚔️", tier: "legendaire" },
-    { id: "nomade", label: "Nomade des ruines", description: "Capuche, foulard et manteau de voyageur.", icon: "🧣", tier: "commun" },
-    { id: "mecanicien", label: "Mécanicien", description: "Casque de chantier, lunettes et combinaison à outils.", icon: "🔧", tier: "peu-commun" },
-    { id: "garde-forestier", label: "Garde forestier", description: "Chapeau large, barbe et tenue de pisteur.", icon: "🌲", tier: "rare" },
-    { id: "sorciere", label: "Sorcière des brumes", description: "Chapeau pointu et manteau ensorcelé.", icon: "🧙", tier: "rare", halloween: true },
-    { id: "citrouille", label: "Citrouille vivante", description: "Costume orange sculpté aux accents lumineux.", icon: "🎃", tier: "peu-commun", halloween: true },
-    { id: "vampire", label: "Vampire de minuit", description: "Cape sombre et tenue de noble vampire.", icon: "🧛", tier: "divin", halloween: true },
-    { id: "momie", label: "Momie des catacombes", description: "Bandages antiques, yeux hantés et amulette de tombeau.", icon: "🧟", tier: "rare", halloween: true },
-    { id: "epouvantail", label: "Épouvantail maudit", description: "Chapeau rapiécé, paille et coutures ensorcelées.", icon: "🌾", tier: "rare", halloween: true },
-    { id: "fantome", label: "Fantôme des marais", description: "Linceul spectral translucide et lueur glaciale.", icon: "👻", tier: "legendaire", halloween: true },
-    { id: "demon", label: "Démon cornu", description: "Cornes rouges, armure infernale et braises ardentes.", icon: "😈", tier: "divin", halloween: true },
-    { id: "squelette", label: "Squelette de minuit", description: "Masque d'os, côtes apparentes et manteau funèbre.", icon: "💀", tier: "legendaire", halloween: true },
+    { id: "survivant", label: "Survivant", description: "Tenue de terrain d'origine.", icon: "🧭", tier: "commun", style: "aventure" },
+    { id: "feuillage", label: "Feuillage", description: "Camouflage vert de forêt.", icon: "🌿", tier: "commun", style: "aventure" },
+    { id: "cendre", label: "Cendre", description: "Tenue sombre de récupérateur.", icon: "🌫️", tier: "commun", style: "aventure" },
+    { id: "aventuriere", label: "Aventurière", description: "Personnage féminin avec cheveux longs et tenue d'exploration.", icon: "🧭", tier: "commun", style: "aventure" },
+    { id: "renard", label: "Costume de renard", description: "Combinaison rousse avec capuche, oreilles et museau de renard.", icon: "🦊", tier: "peu-commun", style: "animal" },
+    { id: "loup", label: "Costume de loup", description: "Combinaison grise avec capuche et oreilles de loup.", icon: "🐺", tier: "peu-commun", style: "animal" },
+    { id: "chevalier", label: "Armure de chevalier", description: "Armure métallique avec casque et détails dorés.", icon: "⚔️", tier: "legendaire", style: "guerrier" },
+    { id: "nomade", label: "Nomade des ruines", description: "Capuche, foulard et manteau de voyageur.", icon: "🧣", tier: "commun", style: "aventure" },
+    { id: "mecanicien", label: "Mécanicien", description: "Casque de chantier, lunettes et combinaison à outils.", icon: "🔧", tier: "peu-commun", style: "aventure" },
+    { id: "garde-forestier", label: "Garde forestier", description: "Chapeau large, barbe et tenue de pisteur.", icon: "🌲", tier: "rare", style: "aventure" },
+    { id: "sorciere", label: "Sorcière des brumes", description: "Chapeau pointu et manteau ensorcelé.", icon: "🧙", tier: "rare", halloween: true, style: "halloween" },
+    { id: "citrouille", label: "Citrouille vivante", description: "Costume orange sculpté aux accents lumineux.", icon: "🎃", tier: "peu-commun", halloween: true, style: "halloween" },
+    { id: "vampire", label: "Vampire de minuit", description: "Cape sombre et tenue de noble vampire.", icon: "🧛", tier: "divin", halloween: true, style: "halloween" },
+    { id: "momie", label: "Momie des catacombes", description: "Bandages antiques, yeux hantés et amulette de tombeau.", icon: "🧟", tier: "rare", halloween: true, style: "halloween" },
+    { id: "epouvantail", label: "Épouvantail maudit", description: "Chapeau rapiécé, paille et coutures ensorcelées.", icon: "🌾", tier: "rare", halloween: true, style: "halloween" },
+    { id: "fantome", label: "Fantôme des marais", description: "Linceul spectral translucide et lueur glaciale.", icon: "👻", tier: "legendaire", halloween: true, style: "halloween" },
+    { id: "demon", label: "Démon cornu", description: "Cornes rouges, armure infernale et braises ardentes.", icon: "😈", tier: "divin", halloween: true, style: "halloween" },
+    { id: "squelette", label: "Squelette de minuit", description: "Masque d'os, côtes apparentes et manteau funèbre.", icon: "💀", tier: "legendaire", halloween: true, style: "halloween" },
+    { id: "cowboy", label: "Cowboy des plaines", description: "Chapeau de cuir, foulard rouge et étoile de shérif.", icon: "🤠", tier: "commun", style: "western" },
+    { id: "pirate", label: "Pirate fantôme", description: "Tricorne, manteau de capitaine et lueur spectrale.", icon: "🏴‍☠️", tier: "peu-commun", halloween: true, style: "halloween" },
+    { id: "zombie", label: "Zombie des marais", description: "Peau verdâtre, vêtements déchirés et regard vide.", icon: "🧟", tier: "peu-commun", halloween: true, style: "halloween" },
+    { id: "ninja", label: "Ninja de l'ombre", description: "Tenue noire silencieuse et bandeau rouge.", icon: "🥷", tier: "rare", style: "guerrier" },
+    { id: "samourai", label: "Samouraï écarlate", description: "Armure laquée rouge et casque à cornes dorées.", icon: "⛩️", tier: "rare", style: "guerrier" },
+    { id: "viking", label: "Viking du nord", description: "Casque de fer, fourrure et barbe tressée.", icon: "🪓", tier: "rare", style: "guerrier" },
+    { id: "clown", label: "Clown maléfique", description: "Sourire cruel, collerette et costume rayé.", icon: "🤡", tier: "legendaire", halloween: true, style: "halloween" },
+    { id: "chasseur-vampires", label: "Chasseur de vampires", description: "Chapeau large, long manteau et pieux d'argent.", icon: "🗡️", tier: "legendaire", halloween: true, style: "halloween" },
+    { id: "astronaute", label: "Astronaute perdu", description: "Combinaison spatiale blanche et visière dorée.", icon: "🧑‍🚀", tier: "legendaire", style: "futuriste" },
+    { id: "faucheuse", label: "La Faucheuse", description: "Capuche noire sans visage et aura de mort.", icon: "☠️", tier: "divin", halloween: true, style: "halloween" },
+    { id: "cyborg", label: "Cyborg néon", description: "Armure chromée et circuits lumineux.", icon: "🤖", tier: "divin", style: "futuriste" },
   ],
   equipment: [
     { id: "standard", label: "Sac de terrain", description: "Équipement équilibré." },
@@ -327,6 +363,16 @@ const loadoutOptions = {
     { id: "pistolet-citrouille", label: "Pistolet à citrouilles", description: "Tire deux balles de citrouille enflammées à la fois.", damage: 3, interval: 0.42, projectiles: 2, icon: "🎃", rarity: "orange", tier: "rare", crate: true },
     { id: "pistolet-spectral", label: "Pistolet spectral", description: "Ectoplasme condensé : des balles fantômes puissantes.", damage: 5, interval: 0.3, projectiles: 1, icon: "👻", rarity: "orange", tier: "legendaire", crate: true },
     { id: "canon-roi-ombres", label: "Canon du Roi des ombres", description: "Arme divine : double salve d'ombre dévastatrice.", damage: 6, interval: 0.28, projectiles: 2, icon: "👑", rarity: "doree", tier: "divin", crate: true },
+    { id: "hache-bucheron", label: "Hache du bûcheron", description: "Lourde hache à double tranchant : grosses entailles qui font saigner.", damage: 6, interval: 0.62, projectiles: 1, icon: "🪓", rarity: "violette", tier: "peu-commun", crate: true, melee: { reach: 122, arc: 110, color: "#d9c3a0" } },
+    { id: "lance-centurion", label: "Lance du centurion", description: "Très longue portée : transperce les monstres en ligne droite.", damage: 5, interval: 0.5, projectiles: 1, icon: "🔱", rarity: "violette", tier: "peu-commun", crate: true, melee: { reach: 178, arc: 42, color: "#f3e3b0" } },
+    { id: "marteau-guerre", label: "Marteau de guerre", description: "Chaque coup fait trembler le sol : onde de choc et étourdissement.", damage: 9, interval: 0.82, projectiles: 1, icon: "🔨", rarity: "orange", tier: "rare", crate: true, melee: { reach: 112, arc: 100, color: "#ffd27a" } },
+    { id: "dague-assassin", label: "Dague de l'assassin", description: "Coups éclairs empoisonnés, souvent critiques.", damage: 3, interval: 0.24, projectiles: 1, icon: "🗡️", rarity: "orange", tier: "rare", crate: true, melee: { reach: 92, arc: 90, color: "#9dff6a" } },
+    { id: "katana-ombre", label: "Katana de l'ombre", description: "Lame d'ombre : double entaille ultra rapide qui fait saigner.", damage: 8, interval: 0.34, projectiles: 1, icon: "⚔️", rarity: "orange", tier: "legendaire", crate: true, melee: { reach: 142, arc: 150, color: "#c48bff" } },
+    { id: "tromblon-pirate", label: "Tromblon du pirate", description: "Cinq plombs en éventail à courte portée : idéal contre les groupes.", damage: 2, interval: 0.7, projectiles: 5, icon: "🏴‍☠️", rarity: "violette", tier: "peu-commun", crate: true },
+    { id: "fusil-precision", label: "Fusil de précision", description: "Balle lente mais perforante qui traverse 3 monstres, gros critiques.", damage: 9, interval: 0.9, projectiles: 1, icon: "🎯", rarity: "orange", tier: "rare", crate: true },
+    { id: "pistolet-givre", label: "Pistolet de givre", description: "Balles de glace qui ralentissent et peuvent geler sur place.", damage: 3, interval: 0.36, projectiles: 1, icon: "❄️", rarity: "orange", tier: "rare", crate: true },
+    { id: "baguette-foudre", label: "Baguette de foudre", description: "Un éclair magique qui rebondit sur les monstres voisins.", damage: 4, interval: 0.5, projectiles: 1, icon: "🪄", rarity: "orange", tier: "legendaire", crate: true },
+    { id: "blaster-neon", label: "Blaster néon", description: "Arme divine du futur : rafale laser perforante et explosive.", damage: 4, interval: 0.2, projectiles: 1, icon: "🔆", rarity: "doree", tier: "divin", crate: true },
   ],
   coatings: [
     { id: "aucun", label: "Sans revêtement", description: "La finition d'origine de ton arme.", icon: "⬜", tier: "commun" },
@@ -380,6 +426,12 @@ const powerUpgradeDetails = {
   "onde-sismique": { label: "Onde sismique", icon: "🪨", benefit: "élargit l'onde, renforce le choc et l'étourdissement" },
   "vortex-ombre": { label: "Vortex d'ombre", icon: "🌀", benefit: "aspire de plus loin et renforce l'implosion" },
   "pacte-vampirique": { label: "Pacte vampirique", icon: "🩸", benefit: "plus de dégâts, de saignement et de soin" },
+  "lumiere-sacree": { label: "Lumière sacrée", icon: "✨", benefit: "plus de soin, de dégâts et un pilier plus large" },
+  "armure-ossements": { label: "Armure d'ossements", icon: "🦴", benefit: "prolonge l'armure et renforce les os tournoyants" },
+  "tornade-hurlante": { label: "Tornade hurlante", icon: "🌪️", benefit: "tornade plus large, plus longue et plus violente" },
+  "pluie-meteores": { label: "Pluie de météores", icon: "☄️", benefit: "plus de météores, plus de dégâts et de brûlure" },
+  "meute-spectrale": { label: "Meute spectrale", icon: "🐺", benefit: "plus de loups, des morsures plus fortes et plus longues" },
+  "arret-du-temps": { label: "Arrêt du temps", icon: "⏳", benefit: "fige le temps plus longtemps et plus loin" },
 };
 const powerMaxLevel = 5;
 const powerLevelStats = {
@@ -393,6 +445,12 @@ const powerLevelStats = {
   quake: (level) => ({ damage: 16 + (level - 1) * 5, radius: 240 + (level - 1) * 15, stun: 1 + (level - 1) * 0.25, push: 85 }),
   vortex: (level) => ({ damage: 24 + (level - 1) * 8, radius: 220 + (level - 1) * 15, tick: 2 + (level - 1), duration: 1.7 }),
   vampire: (level) => ({ damage: 9 + (level - 1) * 4, radius: 220 + (level - 1) * 15, heal: 3 + (level - 1), bleed: 1 + Math.floor((level - 1) / 2), bleedDuration: 4 }),
+  holy: (level) => ({ heal: 18 + (level - 1) * 6, damage: 10 + (level - 1) * 4, radius: 200 + (level - 1) * 15, slow: 2.5 + (level - 1) * 0.4 }),
+  boneshield: (level) => ({ duration: 6 + (level - 1), damage: 6 + (level - 1) * 2, radius: 95 + (level - 1) * 6, reduction: 0.5 }),
+  tornado: (level) => ({ damage: 4 + (level - 1) * 2, radius: 120 + (level - 1) * 10, duration: 3.5 + (level - 1) * 0.4, push: 110 }),
+  meteor: (level) => ({ count: 4 + level, damage: 20 + (level - 1) * 6, radius: 85 + (level - 1) * 6, burn: 2 + Math.floor((level - 1) / 2), burnDuration: 3, stun: 0.6 }),
+  wolves: (level) => ({ count: 2 + Math.floor((level + 1) / 2), damage: 9 + (level - 1) * 3, duration: 7 + (level - 1), bleed: 1 + Math.floor((level - 1) / 2), range: 320 }),
+  timestop: (level) => ({ duration: 2.5 + (level - 1) * 0.4, radius: 420 + (level - 1) * 30 }),
 };
 const weaponMaxLevel = 5;
 const weaponUpgradeBaseCosts = { violette: 55, orange: 85, doree: 130 };
@@ -432,15 +490,31 @@ const shopCrates = [
   { id: "caisse-costumes", category: "skins", label: "Caisse de costumes", description: "Un costume au hasard parmi toutes les tenues, de la plus simple à la plus rare.", price: 110, odds: standardCrateOdds, emblem: "🎭", style: "garde-robe", includes: (item) => item.id !== "survivant" },
   { id: "caisse-halloween", category: "skins", label: "Caisse d'Halloween", description: "Uniquement des costumes d'Halloween : momie, sorcière, fantôme, vampire, démon…", price: 160, odds: halloweenCrateOdds, emblem: "🎃", style: "hantee", includes: (item) => item.halloween },
   { id: "caisse-halloween-royale", category: "skins", label: "Caisse d'Halloween royale", description: "Jamais de costume peu commun : 35 % de chances d'un légendaire et 15 % d'un costume divin.", price: 360, odds: halloweenRoyalCrateOdds, emblem: "🦇", style: "royale", premium: true, includes: (item) => item.halloween },
+  { id: "caisse-legendes", category: "skins", label: "Caisse des légendes", description: "Guerriers, cow-boys et héros du futur : ninja, samouraï, viking, astronaute, cyborg…", price: 180, odds: { commun: 30, "peu-commun": 0, rare: 42, legendaire: 20, divin: 8 }, emblem: "🛡️", style: "royale", includes: (item) => ["guerrier", "western", "futuriste"].includes(item.style) },
   { id: "caisse-pouvoirs", category: "activePowers", label: "Caisse de pouvoirs", description: "Un pouvoir au hasard. Un pouvoir que tu possèdes déjà gagne un niveau gratuit.", price: 130, odds: standardCrateOdds, emblem: "✨", style: "grimoire", includes: () => true },
-  { id: "caisse-pouvoirs-royale", category: "activePowers", label: "Caisse de pouvoirs royale", description: "Jamais le souffle de givre et 5× plus de chances d'obtenir un pouvoir divin (flamme infernale, pacte vampirique).", price: 320, odds: royalCrateOdds, emblem: "🔮", style: "arcane", premium: true, includes: () => true },
-  { id: "caisse-epees", category: "weapons", label: "Caisse d'épées", description: "Une épée au hasard parmi 5 lames, de la rouillée à la divine.", price: 120, odds: standardCrateOdds, emblem: "⚔️", style: "bois", includes: (item) => item.crate && item.melee },
-  { id: "caisse-epees-royale", category: "weapons", label: "Caisse d'épées royale", description: "Jamais de lame commune et 5× plus de chances d'obtenir l'épée divine.", price: 340, odds: royalCrateOdds, emblem: "⚔️", style: "royale", premium: true, includes: (item) => item.crate && item.melee },
-  { id: "caisse-pistolets", category: "weapons", label: "Caisse de pistolets", description: "Un pistolet au hasard parmi 5 armes à feu hantées.", price: 120, odds: standardCrateOdds, emblem: "🔫", style: "bois", includes: (item) => item.crate && !item.melee },
-  { id: "caisse-pistolets-royale", category: "weapons", label: "Caisse de pistolets royale", description: "Jamais de pistolet commun et 5× plus de chances d'obtenir le canon divin.", price: 340, odds: royalCrateOdds, emblem: "🔫", style: "royale", premium: true, includes: (item) => item.crate && !item.melee },
+  { id: "caisse-pouvoirs-royale", category: "activePowers", label: "Caisse de pouvoirs royale", description: "Jamais le souffle de givre et 5× plus de chances d'obtenir un pouvoir divin (flamme infernale, pacte vampirique, arrêt du temps).", price: 320, odds: royalCrateOdds, emblem: "🔮", style: "arcane", premium: true, includes: () => true },
+  { id: "caisse-epees", category: "weapons", label: "Caisse d'épées", description: "Une arme de mêlée au hasard parmi 10 : épées, hache, lance, marteau, dague et katana.", price: 120, odds: standardCrateOdds, emblem: "⚔️", style: "bois", includes: (item) => item.crate && item.melee },
+  { id: "caisse-epees-royale", category: "weapons", label: "Caisse d'épées royale", description: "Jamais d'arme de mêlée commune et 5× plus de chances d'obtenir l'épée divine.", price: 340, odds: royalCrateOdds, emblem: "⚔️", style: "royale", premium: true, includes: (item) => item.crate && item.melee },
+  { id: "caisse-pistolets", category: "weapons", label: "Caisse de pistolets", description: "Une arme à distance au hasard parmi 10 : pistolets, tromblon, fusil de précision, baguette et blaster.", price: 120, odds: standardCrateOdds, emblem: "🔫", style: "bois", includes: (item) => item.crate && !item.melee },
+  { id: "caisse-pistolets-royale", category: "weapons", label: "Caisse de pistolets royale", description: "Jamais d'arme commune et 5× plus de chances d'obtenir le canon ou le blaster divins.", price: 340, odds: royalCrateOdds, emblem: "🔫", style: "royale", premium: true, includes: (item) => item.crate && !item.melee },
   { id: "caisse-hantee", category: "weapons", label: "Caisse hantée", description: "Les armes de l'avant-poste : frondes, arbalète, grimoire, faux spectrale…", price: 160, odds: standardCrateOdds, emblem: "🎃", style: "hantee", includes: (item) => !item.crate && item.id !== "fronde" },
   { id: "caisse-revetements", category: "coatings", label: "Caisse de revêtements", description: "Une peinture au hasard pour changer la couleur de toutes tes armes.", price: 90, odds: standardCrateOdds, emblem: "🎨", style: "peinture", includes: (item) => item.id !== "aucun" },
   { id: "caisse-revetements-prestige", category: "coatings", label: "Caisse de revêtements prestige", description: "Jamais de revêtement commun et 5× plus de chances d'obtenir un revêtement divin.", price: 260, odds: royalCrateOdds, emblem: "🎨", style: "prestige", premium: true, includes: (item) => item.id !== "aucun" },
+];
+const packTierValues = { commun: 60, "peu-commun": 110, rare: 180, legendaire: 300, divin: 480 };
+const packDiscount = 0.3;
+const shopPacks = [
+  { id: "pack-far-west", label: "Pack Far West", emblem: "🤠", theme: "western", description: "Le shérif des plaines : revolver gravé, hache de bûcheron et tornade hurlante.", items: [["skins", "cowboy"], ["weapons", "revolver-sherif"], ["weapons", "hache-bucheron"], ["activePowers", "tornade-hurlante"]] },
+  { id: "pack-mort-vivant", label: "Pack Mort-vivant", emblem: "🧟", theme: "marais", description: "Sorti du marais avec sa vieille épée, ses citrouilles et sa meute de loups fantômes.", items: [["skins", "zombie"], ["weapons", "pistolet-citrouille"], ["weapons", "epee-rouillee"], ["activePowers", "meute-spectrale"]] },
+  { id: "pack-pirate", label: "Pack Pirate fantôme", emblem: "🏴‍☠️", theme: "pirate", description: "Tromblon, coutelas spectral et vortex des abysses pour piller les ombres.", items: [["skins", "pirate"], ["weapons", "tromblon-pirate"], ["weapons", "coutelas-fantome"], ["activePowers", "vortex-ombre"]] },
+  { id: "pack-ninja", label: "Pack Ninja", emblem: "🥷", theme: "ninja", description: "Dague empoisonnée, lance-clous et nuée toxique : frappe sans être vu.", items: [["skins", "ninja"], ["weapons", "dague-assassin"], ["weapons", "lance-clous"], ["activePowers", "nuee-toxique"]] },
+  { id: "pack-samourai", label: "Pack Samouraï", emblem: "⛩️", theme: "samourai", description: "Katana de l'ombre, arbalète et onde sismique : l'honneur du guerrier écarlate.", items: [["skins", "samourai"], ["weapons", "katana-ombre"], ["weapons", "arbalete"], ["activePowers", "onde-sismique"]] },
+  { id: "pack-viking", label: "Pack Viking", emblem: "🪓", theme: "viking", description: "Marteau de guerre, lance du centurion et armure d'ossements pour tenir la ligne.", items: [["skins", "viking"], ["weapons", "marteau-guerre"], ["weapons", "lance-centurion"], ["activePowers", "armure-ossements"]] },
+  { id: "pack-chasseur", label: "Pack Chasseur de la nuit", emblem: "🗡️", theme: "chasseur", description: "Fusil de précision, épée du chevalier et lumière sacrée contre les vampires.", items: [["skins", "chasseur-vampires"], ["weapons", "fusil-precision"], ["weapons", "epee-chevalier"], ["activePowers", "lumiere-sacree"]] },
+  { id: "pack-cirque", label: "Pack Cirque maudit", emblem: "🤡", theme: "cirque", description: "Lance-bonbons, marteau de foire et citrouille infernale : le spectacle commence.", items: [["skins", "clown"], ["weapons", "lance-bonbons"], ["weapons", "marteau-guerre"], ["activePowers", "citrouille-infernale"]] },
+  { id: "pack-galactique", label: "Pack Galactique", emblem: "🧑‍🚀", theme: "galactique", description: "Blaster néon, pistolet de givre et pluie de météores venue de l'espace.", items: [["skins", "astronaute"], ["weapons", "blaster-neon"], ["weapons", "pistolet-givre"], ["activePowers", "pluie-meteores"]] },
+  { id: "pack-neon", label: "Pack Cyborg néon", emblem: "🤖", theme: "neon", description: "Blaster, baguette de foudre et tempête électrique : la puissance du futur.", items: [["skins", "cyborg"], ["weapons", "blaster-neon"], ["weapons", "baguette-foudre"], ["activePowers", "tempete-foudre"]] },
+  { id: "pack-faucheuse", label: "Pack de la Faucheuse", emblem: "☠️", theme: "faucheuse", description: "Le pack ultime : faux spectrale, pacte vampirique et arrêt du temps.", items: [["skins", "faucheuse"], ["weapons", "faux-spectrale"], ["activePowers", "pacte-vampirique"], ["activePowers", "arret-du-temps"]] },
 ];
 const crateShopTabs = { skins: "skins", activePowers: "activePowers", weapons: "weapons", coatings: "weapons" };
 const crateCategoryLabels = {
@@ -711,6 +785,16 @@ const weaponMotions = {
   "pistolet-citrouille": { kind: "gun" },
   "pistolet-spectral": { kind: "gun" },
   "canon-roi-ombres": { kind: "gun" },
+  "hache-bucheron": { kind: "melee" },
+  "lance-centurion": { kind: "melee" },
+  "marteau-guerre": { kind: "melee" },
+  "dague-assassin": { kind: "melee" },
+  "katana-ombre": { kind: "melee" },
+  "tromblon-pirate": { kind: "gun" },
+  "fusil-precision": { kind: "gun" },
+  "pistolet-givre": { kind: "gun" },
+  "baguette-foudre": { kind: "magic" },
+  "blaster-neon": { kind: "gun" },
 };
 // Prise en main : point tenu par la main avant (en % de l'image), rotation qui aligne l'arme sur le bras
 // tendu, hauteur relative au héros, proportions de l'image, nombre de mains et distance main → bouche
@@ -738,6 +822,16 @@ const weaponGrips = {
   "pistolet-citrouille": { x: 32, y: 87, rotate: 90, size: 0.27, ratio: 1.655, hands: "one", muzzle: 1.15 },
   "pistolet-spectral": { x: 37, y: 82, rotate: 90, size: 0.29, ratio: 1.401, hands: "one", muzzle: 0.9 },
   "canon-roi-ombres": { x: 32, y: 85, rotate: 90, size: 0.29, ratio: 1.524, hands: "one", muzzle: 1.05 },
+  "hache-bucheron": { x: 28, y: 86, rotate: 90, size: 0.48, ratio: 0.266, hands: "one", muzzle: 0.85 },
+  "lance-centurion": { x: 50, y: 74, rotate: 90, size: 0.78, ratio: 0.12, hands: "two", muzzle: 0.85 },
+  "marteau-guerre": { x: 49, y: 86, rotate: 90, size: 0.5, ratio: 0.37, hands: "two", muzzle: 0.85 },
+  "dague-assassin": { x: 48, y: 86, rotate: 90, size: 0.3, ratio: 0.13, hands: "one", muzzle: 0.85 },
+  "katana-ombre": { x: 48, y: 88, rotate: 90, size: 0.56, ratio: 0.156, hands: "one", muzzle: 0.85 },
+  "tromblon-pirate": { x: 30, y: 80, rotate: 90, size: 0.26, ratio: 1.745, hands: "two", muzzle: 1.22 },
+  "fusil-precision": { x: 33, y: 52, rotate: 90, size: 0.2, ratio: 2.743, hands: "two", muzzle: 1.84 },
+  "pistolet-givre": { x: 30, y: 80, rotate: 90, size: 0.26, ratio: 1.587, hands: "one", muzzle: 1.11 },
+  "baguette-foudre": { x: 10, y: 86, rotate: 128, size: 0.3, ratio: 1.143, hands: "one", muzzle: 1.23 },
+  "blaster-neon": { x: 30, y: 80, rotate: 90, size: 0.26, ratio: 1.745, hands: "one", muzzle: 1.22 },
 };
 const shotKinds = {
   fronde: "seed",
@@ -762,6 +856,16 @@ const shotKinds = {
   "pistolet-citrouille": "bullet",
   "pistolet-spectral": "bullet",
   "canon-roi-ombres": "bullet",
+  "hache-bucheron": "slash",
+  "lance-centurion": "slash",
+  "marteau-guerre": "slash",
+  "dague-assassin": "slash",
+  "katana-ombre": "slash",
+  "tromblon-pirate": "pellet",
+  "fusil-precision": "bullet",
+  "pistolet-givre": "bullet",
+  "baguette-foudre": "rune",
+  "blaster-neon": "bullet",
 };
 // Chaque lame et chaque pistolet a sa signature : altération infligée, visuel et durée du geste (ms).
 const weaponEffects = {
@@ -775,6 +879,16 @@ const weaponEffects = {
   "pistolet-citrouille": { fx: "pumpkin", motion: 320, burn: 1, burnDuration: 2.5 },
   "pistolet-spectral": { fx: "spectral", motion: 300, pierce: 2, slow: 1, slowFactor: 0.6 },
   "canon-roi-ombres": { fx: "shadow", motion: 400, splash: 58, splashRatio: 0.5 },
+  "hache-bucheron": { fx: "axe", motion: 460, knockback: 36, bleed: 2, bleedDuration: 3 },
+  "lance-centurion": { fx: "spear", motion: 360, knockback: 30, thrust: true },
+  "marteau-guerre": { fx: "hammer", motion: 560, knockback: 70, stun: 0.6, shock: 80, shockRatio: 0.5 },
+  "dague-assassin": { fx: "poison", motion: 200, poison: 2, poisonDuration: 4, critChance: 0.25, critMultiplier: 2.5 },
+  "katana-ombre": { fx: "katana", motion: 260, echo: 0.6, bleed: 2, bleedDuration: 3 },
+  "tromblon-pirate": { fx: "blunderbuss", motion: 460, knockback: 34, spread: 9, range: 0.65 },
+  "fusil-precision": { fx: "sniper", motion: 520, pierce: 3, critChance: 0.35, critMultiplier: 2.5, knockback: 40 },
+  "pistolet-givre": { fx: "frost", motion: 280, slow: 2, slowFactor: 0.45, freezeChance: 0.18, freeze: 1 },
+  "baguette-foudre": { fx: "storm", motion: 340, chain: 2, chainRange: 170, stun: 0.4 },
+  "blaster-neon": { fx: "neon", motion: 180, pierce: 1, critChance: 0.15, critMultiplier: 2, splash: 40, splashRatio: 0.35 },
 };
 // Millisecondes de vol par pixel : les balles et clous filent, la magie flotte davantage.
 const shotSpeeds = { seed: 1.05, candy: 1.1, arrow: 0.62, bolt: 0.58, pellet: 0.42, nail: 0.48, bat: 1.1, soul: 1, rune: 1, thorn: 0.8, bullet: 0.3 };
@@ -813,6 +927,17 @@ const rigProfiles = {
   "heros/squelette": [60.3, 27, 49.8, 18, 81.5, 70.3, 70.3],
   "heros/survivant": [57.5, 18, 50, 14.7, 80.1, 60, 65.9],
   "heros/vampire": [69.1, 26, 49.8, 11.7, 87.9, 79.1, 79.1],
+  "heros/cowboy": [56.9, 21.6, 49.7, 12.4, 85.7, 66.9, 66.9],
+  "heros/pirate": [71.2, 25.6, 49.7, 24, 77.7, 80, 80],
+  "heros/zombie": [52.8, 21.9, 50, 21.6, 76.3, 62.8, 62.8],
+  "heros/ninja": [66.9, 17.2, 50, 19.3, 62.2, 76.9, 76.9],
+  "heros/samourai": [58.8, 23.4, 50, 22.3, 79.5, 68.8, 68.8],
+  "heros/viking": [57.2, 16.9, 50, 15.8, 82.9, 58.1, 62.2],
+  "heros/clown": [57.5, 27, 49.8, 26.5, 73.5, 67.5, 67.5],
+  "heros/chasseur-vampires": [61.6, 27, 50, 16.2, 82.8, 71.6, 71.6],
+  "heros/astronaute": [53.1, 21.9, 49.8, 19.5, 79.5, 64.7, 63.1],
+  "heros/faucheuse": [75, 27, 50, 20.6, 75.7, 80, 80],
+  "heros/cyborg": [46.2, 17.8, 50, 22.9, 74.1, 56.2, 56.2],
 };
 const rigWingArts = new Set(["minion-gargouille"]);
 const rigPartNames = ["leg-l", "leg-r", "torso", "arm-l", "arm-r"];
@@ -1147,6 +1272,7 @@ function getCurrentShopItems() {
 }
 
 const shopTabNotes = {
+  packs: "Packs complets : un costume, des armes et un pouvoir à prix réduit (-30 %). Tu ne paies que les objets que tu n'as pas encore.",
   skins: "Caisses de costumes : chaque ouverture donne une tenue au hasard. Raretés : Commun, Peu commun, Rare, Légendaire, Divin. Un doublon te rembourse une partie du prix.",
   weapons: "Caisses d'armes : chaque ouverture donne un objet au hasard. Raretés : Commun, Peu commun, Rare, Légendaire, Divin. Un doublon d'arme l'améliore gratuitement d'un niveau.",
   activePowers: "Caisses de pouvoirs (touche O en partie) : un pouvoir au hasard. Un doublon fait monter ton pouvoir d'un niveau gratuitement.",
@@ -1398,7 +1524,7 @@ function getShopCategoryLabel(category) {
     skins: "Tenue et chapeau",
     equipment: "Vêtement et équipement",
     weapons: "Arme",
-    melee: "Arme de mêlée · épée",
+    melee: "Arme de mêlée",
     coatings: "Revêtement d'arme",
     activePowers: "Pouvoir actif · touche O",
     boosts: "Boost",
@@ -1502,9 +1628,12 @@ function createShopCard(item, featured = false) {
 
   const category = document.createElement("span");
   category.className = `shop-item-category${rarity ? ` rarity-label rarity-${rarity}` : ""}`;
-  category.textContent = rarity
-    ? `${getShopCategoryLabel(item.category)} · ${rarityLabels[rarity]}`
-    : getShopCategoryLabel(item.category);
+  const typeLabel = getItemTypeLabel(item.category, item);
+  category.textContent = [
+    getShopCategoryLabel(item.category),
+    typeLabel,
+    rarity ? rarityLabels[rarity] : "",
+  ].filter(Boolean).join(" · ");
   const title = document.createElement("h3");
   title.textContent = item.label;
   const description = document.createElement("p");
@@ -1669,7 +1798,8 @@ function createCrateCard(crate) {
       const entry = document.createElement("li");
       entry.className = `crate-content tier-${tier}${owned.includes(item.id) ? " is-owned" : ""}`;
       const odds = formatChance(chance / items.length);
-      entry.title = `${item.label} · ${crateTierLabels[tier]} · ${odds}${owned.includes(item.id) ? " · possédé" : ""}`;
+      const typeLabel = getItemTypeLabel(crate.category, item);
+      entry.title = `${item.label}${typeLabel ? ` (${typeLabel})` : ""} · ${crateTierLabels[tier]} · ${odds}${owned.includes(item.id) ? " · possédé" : ""}`;
       const label = document.createElement("span");
       label.textContent = odds;
       entry.append(createCrateItemArt(crate, item), label);
@@ -1857,7 +1987,7 @@ function revealCrateReward() {
   result.className = `crate-result tier-${item.tier}`;
   result.hidden = false;
   overlay.querySelector(".crate-result-art").replaceChildren(createCrateItemArt(crate, item));
-  overlay.querySelector(".crate-result-tier").textContent = crateTierLabels[item.tier];
+  overlay.querySelector(".crate-result-tier").textContent = [crateTierLabels[item.tier], getItemTypeLabel(crate.category, item)].filter(Boolean).join(" · ");
   overlay.querySelector(".crate-result-name").textContent = item.label;
   overlay.querySelector(".crate-result-note").textContent = reward;
   progressionFeedback.textContent = `${crate.label} : ${item.label} (${crateTierLabels[item.tier]}). ${reward}`;
@@ -1894,6 +2024,218 @@ function closeCrateOpening() {
   }
 }
 
+function getPackEntries(pack) {
+  return pack.items.map(([category, id]) => {
+    const item = loadoutOptions[category].find((entry) => entry.id === id);
+    if (!item) throw new Error(`Objet de pack inconnu : ${category}/${id}`);
+    return { category, item, owned: progression.unlocked[category].includes(id) };
+  });
+}
+
+function getPackPricing(pack) {
+  const missing = getPackEntries(pack).filter((entry) => !entry.owned);
+  const value = missing.reduce((total, entry) => total + packTierValues[entry.item.tier], 0);
+  return { missing, value, price: Math.round((value * (1 - packDiscount)) / 10) * 10 };
+}
+
+function createPackItemArt(category, item) {
+  if (category === "skins") return createCharacterPreview(progression.equipped.characters, item.id, progression.equipped.equipment);
+  if (category === "weapons") return createShopPreviewIcon({ ...item, category: "weapons" });
+  const icon = document.createElement("span");
+  icon.className = "shop-item-icon crate-power-icon";
+  icon.textContent = item.icon;
+  return icon;
+}
+
+function createPackItemRow({ category, item, owned }) {
+  const row = document.createElement("li");
+  row.className = `pack-item tier-${item.tier}${owned ? " is-owned" : ""}`;
+  const art = document.createElement("span");
+  art.className = "pack-item-art";
+  art.setAttribute("aria-hidden", "true");
+  art.append(createPackItemArt(category, item));
+  const text = document.createElement("span");
+  text.className = "pack-item-text";
+  const name = document.createElement("strong");
+  name.textContent = item.label;
+  const meta = document.createElement("small");
+  const kind = { skins: "Costume", weapons: item.melee ? "Mêlée" : "Distance", activePowers: "Pouvoir" }[category];
+  meta.textContent = [kind, getItemTypeLabel(category, item), crateTierLabels[item.tier]].filter(Boolean).join(" · ");
+  text.append(name, meta);
+  row.append(art, text);
+  if (owned) {
+    const check = document.createElement("span");
+    check.className = "pack-item-owned";
+    check.textContent = "✔ Possédé";
+    row.append(check);
+  }
+  return row;
+}
+
+function createPackCard(pack) {
+  const entries = getPackEntries(pack);
+  const { missing, value, price } = getPackPricing(pack);
+  const complete = missing.length === 0;
+  const topTier = entries.reduce((best, entry) =>
+    crateTierOrder.indexOf(entry.item.tier) > crateTierOrder.indexOf(best) ? entry.item.tier : best, "commun");
+  const card = document.createElement("article");
+  card.className = `shop-card store-card pack-card pack-theme-${pack.theme} tier-${topTier}${complete ? " is-complete" : ""}`;
+  const badges = document.createElement("div");
+  badges.className = "store-badges";
+  const addBadge = (text, kind) => {
+    const badge = document.createElement("span");
+    badge.className = `store-badge store-badge-${kind}`;
+    badge.textContent = text;
+    badges.append(badge);
+  };
+  if (complete) addBadge("COMPLET", "owned");
+  else addBadge(`-${Math.round(packDiscount * 100)} %`, "promo");
+  addBadge(crateTierLabels[topTier].toUpperCase(), `tier tier-${topTier}`);
+
+  const preview = document.createElement("div");
+  preview.className = "shop-preview store-preview pack-preview";
+  preview.setAttribute("aria-hidden", "true");
+  const skin = entries.find((entry) => entry.category === "skins")?.item;
+  const rangedWeapon = entries.find((entry) => entry.category === "weapons")?.item;
+  const emblem = document.createElement("span");
+  emblem.className = "pack-emblem";
+  emblem.textContent = pack.emblem;
+  preview.append(emblem);
+  if (skin) {
+    preview.append(createCharacterPreview(progression.equipped.characters, skin.id, progression.equipped.equipment, rangedWeapon?.id));
+  }
+
+  const category = document.createElement("span");
+  category.className = "shop-item-category";
+  category.textContent = `Pack · ${entries.length} objets`;
+  const title = document.createElement("h3");
+  title.textContent = pack.label;
+  const description = document.createElement("p");
+  description.textContent = pack.description;
+  const list = document.createElement("ul");
+  list.className = "pack-items";
+  list.append(...entries.map(createPackItemRow));
+
+  const footer = document.createElement("div");
+  footer.className = "shop-card-footer store-card-footer";
+  const priceTag = document.createElement("span");
+  priceTag.className = "store-price";
+  if (complete) {
+    priceTag.textContent = "Tout débloqué";
+  } else {
+    const oldPrice = document.createElement("s");
+    oldPrice.textContent = `${value}`;
+    const currentPrice = document.createElement("strong");
+    currentPrice.textContent = `${price} ◉`;
+    priceTag.append(oldPrice, " ", currentPrice);
+  }
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "shop-buy-button pack-buy-button";
+  button.dataset.action = "buy-pack";
+  button.dataset.packId = pack.id;
+  button.disabled = complete || progression.coins < price;
+  button.textContent = complete ? "Pack complet" : progression.coins < price ? "Pas assez de pièces" : "Acheter le pack";
+  footer.append(priceTag, button);
+  card.append(badges, preview, category, title, description, list, footer);
+  return card;
+}
+
+let packReveal = null;
+
+function getPackOverlay() {
+  if (packReveal) return packReveal;
+  const overlay = document.createElement("div");
+  overlay.className = "crate-opening pack-opening";
+  overlay.hidden = true;
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-modal", "true");
+  overlay.setAttribute("aria-label", "Contenu du pack");
+  overlay.innerHTML = `
+    <div class="crate-opening-panel pack-opening-panel">
+      <span class="pack-opening-emblem" aria-hidden="true"></span>
+      <h2 class="crate-opening-title"></h2>
+      <p class="pack-opening-note"></p>
+      <ul class="pack-items pack-opening-items"></ul>
+      <div class="crate-opening-actions">
+        <button type="button" class="shop-buy-button store-equip-button" data-pack-action="equip">Tout équiper</button>
+        <button type="button" class="menu-secondary" data-pack-action="close">Fermer</button>
+      </div>
+    </div>`;
+  document.body.append(overlay);
+  packReveal = { overlay, pack: null };
+  overlay.addEventListener("click", (event) => {
+    if (!(event.target instanceof Element)) return;
+    const button = event.target.closest("[data-pack-action]");
+    if (!(button instanceof HTMLButtonElement) || button.disabled) return;
+    if (button.dataset.packAction === "equip") equipPack(packReveal.pack);
+    else overlay.hidden = true;
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !overlay.hidden) overlay.hidden = true;
+  });
+  return packReveal;
+}
+
+function equipPack(pack) {
+  const filled = new Set();
+  for (const [category, id] of pack.items) {
+    if (!progression.unlocked[category].includes(id)) continue;
+    const slot = getEquipSlot(category, id);
+    if (filled.has(slot)) continue;
+    filled.add(slot);
+    equipLoadoutItem(category, id);
+  }
+  saveProgression(`${pack.label} équipé !`);
+  refreshLoadoutMenu();
+  updatePlayerLoadoutAppearance();
+  renderShop();
+  if (!lockerScreen.hidden) renderLocker();
+  const button = packReveal?.overlay.querySelector('[data-pack-action="equip"]');
+  if (button) {
+    button.disabled = true;
+    button.textContent = "Équipé ✔";
+  }
+}
+
+function purchasePack(packId) {
+  const pack = shopPacks.find((entry) => entry.id === packId);
+  if (!pack) throw new Error(`Pack inconnu : ${packId}`);
+  const { missing, price } = getPackPricing(pack);
+  if (missing.length === 0) return;
+  if (progression.coins < price) {
+    progressionFeedback.textContent = "Tu n'as pas assez de pièces pour ce pack.";
+    return;
+  }
+  progression.coins -= price;
+  for (const { category, item } of missing) progression.unlocked[category].push(item.id);
+  saveProgression(`${pack.label} acheté : ${missing.map((entry) => entry.item.label).join(", ")} !`);
+  renderShop();
+  refreshLoadoutMenu();
+  if (!lockerScreen.hidden) renderLocker();
+
+  const state = getPackOverlay();
+  state.pack = pack;
+  const { overlay } = state;
+  overlay.querySelector(".pack-opening-panel").className = `crate-opening-panel pack-opening-panel pack-theme-${pack.theme}`;
+  overlay.querySelector(".pack-opening-emblem").textContent = pack.emblem;
+  overlay.querySelector(".crate-opening-title").textContent = pack.label;
+  overlay.querySelector(".pack-opening-note").textContent = `${missing.length} nouvel${missing.length > 1 ? "s" : ""} objet${missing.length > 1 ? "s" : ""} ajouté${missing.length > 1 ? "s" : ""} à ton casier !`;
+  const missingIds = new Set(missing.map((entry) => `${entry.category}/${entry.item.id}`));
+  overlay.querySelector(".pack-opening-items").replaceChildren(...getPackEntries(pack).map((entry, index) => {
+    const row = createPackItemRow({ ...entry, owned: false });
+    if (missingIds.has(`${entry.category}/${entry.item.id}`)) row.classList.add("is-new");
+    row.style.setProperty("--delay", `${index * 0.14}s`);
+    return row;
+  }));
+  const equipButton = overlay.querySelector('[data-pack-action="equip"]');
+  equipButton.disabled = false;
+  equipButton.textContent = "Tout équiper";
+  overlay.hidden = false;
+  equipButton.focus();
+  [523, 659, 784, 1046, 1318].forEach((pitch, index) => window.setTimeout(() => playTone(pitch, 0.24, "triangle", 0.18, 1.02), index * 110));
+}
+
 let activeShopTab = "skins";
 
 function renderShop() {
@@ -1904,6 +2246,12 @@ function renderShop() {
     tab.setAttribute("aria-selected", String(tab.dataset.tab === activeShopTab));
   }
   shopTabNote.textContent = shopTabNotes[activeShopTab] ?? "";
+  if (activeShopTab === "packs") {
+    for (const filter of document.querySelectorAll(".store-filter")) filter.hidden = true;
+    shopCatalogItems.replaceChildren(...shopPacks.map(createPackCard));
+    updateMenuBalance();
+    return;
+  }
   const tabCrates = shopCrates.filter((crate) => crateShopTabs[crate.category] === activeShopTab);
   for (const filter of document.querySelectorAll(".store-filter")) filter.hidden = tabCrates.length > 0;
   if (tabCrates.length > 0) {
@@ -1969,7 +2317,7 @@ const lockerSlotDefinitions = [
   { category: "skins", label: "Tenue" },
   { category: "equipment", label: "Équipement" },
   { category: "weapons", label: "Arme · distance" },
-  { category: "melee", label: "Épée · mêlée" },
+  { category: "melee", label: "Arme · mêlée" },
   { category: "coatings", label: "Revêtement" },
   { category: "activePowers", label: "Pouvoir · O" },
   { category: "boosts", label: "Boost · P" },
@@ -2054,6 +2402,13 @@ function createLockerTile(category, item, { slotLabel = "", equipped = false, se
   name.className = "locker-tile-name";
   name.textContent = item?.label ?? "Aucun";
   tile.append(art, name);
+  const typeLabel = item ? getItemTypeLabel(getLockerItemCategory(category), item) : "";
+  if (typeLabel && !slotLabel) {
+    const type = document.createElement("span");
+    type.className = "locker-tile-type";
+    type.textContent = typeLabel;
+    tile.append(type);
+  }
   if (slotLabel) {
     const label = document.createElement("span");
     label.className = "locker-tile-slot";
@@ -2800,6 +3155,91 @@ function createVortexField(x, y, radius, duration) {
   }, duration);
 }
 
+function createHolyPillar(x, y, radius) {
+  const layer = createFxLayer("pfx pfx-holy", x, y, 1700);
+  layer.style.setProperty("--r", `${Math.round(radius)}px`);
+  addFxParts(layer, "pfx-holy-glow");
+  addFxParts(layer, "pfx-holy-pillar");
+  addFxParts(layer, "pfx-ring");
+  addFxParts(layer, "pfx-holy-rune");
+  addFxParts(layer, "pfx-feather", 12, (style, index) => scatterFx(style, index, 12, radius * 0.3, radius * 0.95, { delay: 0.35, spin: 160, scaleMin: 0.6, scaleMax: 1.2 }));
+  addFxParts(layer, "pfx-mote", 16, (style, index) => scatterFx(style, index, 16, radius * 0.1, radius * 0.8, { delay: 0.6, scaleMin: 0.4, scaleMax: 1 }));
+  addFxParts(layer, "pfx-flash");
+}
+
+function createBoneShield(x, y, radius, duration) {
+  const layer = createFxLayer("pfx pfx-boneshield", x, y, duration + 600);
+  layer.style.setProperty("--r", `${Math.round(radius)}px`);
+  addFxParts(layer, "pfx-bone-aura");
+  const orbit = document.createElement("span");
+  orbit.className = "pfx-bone-orbit";
+  addFxParts(orbit, "pfx-bone", 6, (style, index) => style.setProperty("--a", `${index * 60}deg`));
+  layer.append(orbit);
+  const burst = createFxLayer("pfx pfx-bone-burst", x, y, 900);
+  burst.style.setProperty("--r", `${Math.round(radius)}px`);
+  addFxParts(burst, "pfx-ring");
+  addFxParts(burst, "pfx-bone-chip", 10, (style, index) => scatterFx(style, index, 10, radius * 0.5, radius * 1.1, { spin: 360, scaleMin: 0.6, scaleMax: 1.1 }));
+  return layer;
+}
+
+function createTornado(x, y, radius, duration) {
+  const layer = createFxLayer("pfx pfx-tornado", x, y, duration + 600);
+  layer.style.setProperty("--r", `${Math.round(radius)}px`);
+  addFxParts(layer, "pfx-tornado-base");
+  const funnel = document.createElement("span");
+  funnel.className = "pfx-tornado-funnel";
+  addFxParts(funnel, "pfx-tornado-band", 6, (style, index) => {
+    style.setProperty("--i", String(index));
+    style.setProperty("--t", `${(-index * 0.11).toFixed(2)}s`);
+  });
+  layer.append(funnel);
+  addFxParts(layer, "pfx-tornado-debris", 10, (style, index) => {
+    style.setProperty("--a", `${index * 36}deg`);
+    style.setProperty("--h", `${randomBetween(10, 90).toFixed(0)}%`);
+    style.setProperty("--t", `${randomBetween(-1, 0).toFixed(2)}s`);
+    style.setProperty("--s", randomBetween(0.6, 1.3).toFixed(2));
+  });
+  return layer;
+}
+
+function createMeteor(x, y, radius, delay) {
+  window.setTimeout(() => {
+    if (!gameActive) return;
+    const marker = createFxLayer("pfx pfx-meteor-mark", x, y, 520);
+    marker.style.setProperty("--r", `${Math.round(radius)}px`);
+    const fall = createFxLayer("pfx-meteor-fall", x, y, 460);
+    fall.animate([
+      { transform: "translate(160px, -420px) rotate(-35deg) scale(0.7)", opacity: 0.4 },
+      { transform: "translate(0, 0) rotate(-35deg) scale(1.1)", opacity: 1 },
+    ], { duration: 420, easing: "cubic-bezier(0.55, 0, 1, 0.6)", fill: "forwards" });
+    window.setTimeout(() => {
+      const layer = createFxLayer("pfx pfx-meteor", x, y, 1700);
+      layer.style.setProperty("--r", `${Math.round(radius)}px`);
+      addFxParts(layer, "pfx-scorch");
+      addFxParts(layer, "pfx-crater");
+      addFxParts(layer, "pfx-fireball");
+      addFxParts(layer, "pfx-shockwave");
+      addFxParts(layer, "pfx-rock", 9, (style, index) => scatterFx(style, index, 9, radius * 0.4, radius * 1.1, { spin: 420, scaleMin: 0.5, scaleMax: 1.2 }));
+      addFxParts(layer, "pfx-ember", 10, (style, index) => scatterFx(style, index, 10, radius * 0.3, radius * 0.9, { delay: 0.15, scaleMin: 0.5, scaleMax: 1.1 }));
+      addFxParts(layer, "pfx-flash");
+      shakeArena("light");
+    }, 420);
+  }, delay);
+}
+
+function createWolfPack(x, y, count, duration) {
+  const layer = createFxLayer("pfx-wolf-pack", x, y, duration + 600);
+  addFxParts(layer, "pfx-wolf", count, (style, index) => {
+    style.setProperty("--a", `${(index * 360) / count}deg`);
+    style.setProperty("--t", `${(-index * 0.35).toFixed(2)}s`);
+  });
+  const howl = createFxLayer("pfx pfx-howl", x, y, 1000);
+  howl.style.setProperty("--r", "110px");
+  addFxParts(howl, "pfx-ring");
+  addFxParts(howl, "pfx-ghost", 6, (style, index) => scatterFx(style, index, 6, 50, 110, { delay: 0.1, scaleMin: 0.7, scaleMax: 1.1 }));
+  return layer;
+}
+
 function createPoisonCloud(x, y, radius, duration) {
   const layer = createFxLayer("pfx pfx-poison-cloud", x, y, duration + 800);
   layer.style.setProperty("--r", `${Math.round(radius)}px`);
@@ -2909,7 +3349,62 @@ const powerFields = new Set();
 
 function clearPowerFields() {
   powerFields.clear();
-  world.querySelectorAll(".pfx-vortex, .pfx-poison-cloud").forEach((layer) => layer.remove());
+  player.classList.remove("power-boneshield-active");
+  arena.classList.remove("arena-timestop");
+  world.querySelectorAll(".pfx-vortex, .pfx-poison-cloud, .pfx-boneshield, .pfx-tornado, .pfx-wolf-pack, .pfx-wolf-lunge, .pfx-timestop, .pfx-meteor-fall")
+    .forEach((layer) => layer.remove());
+}
+
+function hasPowerField(kind) {
+  for (const field of powerFields) if (field.kind === kind && field.round === roundId) return true;
+  return false;
+}
+
+function moveFieldLayer(field) {
+  if (!field.layer) return;
+  field.layer.style.left = `${field.x}px`;
+  field.layer.style.top = `${field.y}px`;
+}
+
+function endPowerField(field) {
+  powerFields.delete(field);
+  if (field.kind === "boneshield" && !hasPowerField("boneshield")) player.classList.remove("power-boneshield-active");
+  if (field.kind === "timestop") arena.classList.remove("arena-timestop");
+  if (field.layer) {
+    field.layer.classList.add("is-ending");
+    const layer = field.layer;
+    window.setTimeout(() => layer.remove(), 420);
+  }
+  if (field.kind === "tornado") {
+    for (const enemy of enemiesWithin(field.x, field.y, field.radius)) {
+      damageEnemy(enemy, field.damage * 2, { knockback: false });
+      if (enemies.has(enemy)) applyEnemyKnockback(enemy, field, isMegaBoss(enemy) ? 0 : field.push);
+    }
+  }
+}
+
+function launchWolf(field, enemy) {
+  const from = { x: field.x + randomBetween(-30, 30), y: field.y + randomBetween(-20, 20) };
+  const wolf = createFxLayer("pfx-wolf-lunge", from.x, from.y, 520);
+  const dx = enemy.x - from.x;
+  const dy = enemy.y - from.y;
+  wolf.classList.toggle("is-left", dx < 0);
+  wolf.animate([
+    { transform: "translate(0, 0) scale(0.6)", opacity: 0 },
+    { transform: `translate(${dx * 0.55}px, ${dy * 0.55 - 34}px) scale(1.05)`, opacity: 1, offset: 0.55 },
+    { transform: `translate(${dx}px, ${dy}px) scale(0.9)`, opacity: 0.9 },
+  ], { duration: 380, easing: "cubic-bezier(0.3, 0, 0.5, 1)", fill: "forwards" });
+  const castRound = roundId;
+  window.setTimeout(() => {
+    if (castRound !== roundId || !enemies.has(enemy)) return;
+    const bite = createFxLayer("pfx pfx-bite", enemy.x, enemy.y, 600);
+    bite.style.setProperty("--r", "36px");
+    addFxParts(bite, "pfx-bite-jaw");
+    addFxParts(bite, "pfx-drop", 6, (style, index) => scatterFx(style, index, 6, 12, 34, { scaleMin: 0.5, scaleMax: 1 }));
+    damageEnemy(enemy, field.damage, { knockback: false });
+    applyDamageOverTime(enemy, "bleed", field.bleed, 3);
+    playSound("power", "wolf-bite");
+  }, 360);
 }
 
 function updatePowerFields(delta) {
@@ -2922,6 +3417,45 @@ function updatePowerFields(delta) {
     field.tickElapsed += delta;
     const tick = field.tickElapsed >= field.tickInterval;
     if (tick) field.tickElapsed -= field.tickInterval;
+    if (field.follow) {
+      const center = playerCenter();
+      field.x = center.x;
+      field.y = center.y;
+      moveFieldLayer(field);
+    }
+    if (field.kind === "tornado") {
+      const target = nearestEnemy();
+      if (target) {
+        const dx = target.x - field.x;
+        const dy = target.y - field.y;
+        const length = Math.hypot(dx, dy);
+        const step = Math.min(length, field.speed * delta);
+        if (length > 1) {
+          field.x += dx / length * step;
+          field.y += dy / length * step;
+        }
+      }
+      field.x = Math.max(20, Math.min(arena.clientWidth - 20, field.x));
+      field.y = Math.max(20, Math.min(arena.clientHeight - 20, field.y));
+      moveFieldLayer(field);
+    }
+    if (field.kind === "wolves") {
+      if (tick) {
+        const targets = enemiesWithin(field.x, field.y, field.range)
+          .filter((enemy) => enemy.spawnRemaining <= 0)
+          .sort((a, b) => Math.hypot(a.x - field.x, a.y - field.y) - Math.hypot(b.x - field.x, b.y - field.y))
+          .slice(0, field.count);
+        targets.forEach((enemy, index) => window.setTimeout(() => {
+          if (field.round === roundId && powerFields.has(field) && enemies.has(enemy)) launchWolf(field, enemy);
+        }, index * 120));
+      }
+      if (field.remaining <= 0) endPowerField(field);
+      continue;
+    }
+    if (field.kind === "timestop") {
+      if (field.remaining <= 0) endPowerField(field);
+      continue;
+    }
     for (const enemy of [...enemies]) {
       if (enemy.spawnRemaining > 0) continue;
       const offsetX = field.x - enemy.x;
@@ -2947,7 +3481,35 @@ function updatePowerFields(delta) {
       } else if (field.kind === "poison") {
         applyDamageOverTime(enemy, "poison", field.poison, field.poisonDuration);
         slowEnemy(enemy, 0.6, 0.55);
+      } else if (field.kind === "boneshield") {
+        if (tick && distance <= field.radius + getEnemyHitRadius(enemy) * 0.5) {
+          damageEnemy(enemy, field.damage, { knockback: false });
+          if (enemies.has(enemy)) applyEnemyKnockback(enemy, field, isMegaBoss(enemy) ? 0 : 26);
+          playSound("power", "bone-hit");
+        }
+      } else if (field.kind === "tornado") {
+        const strength = isMegaBoss(enemy) ? 0 : enemy.typeName === "boss" ? 0.25 : 1;
+        const step = Math.min(Math.max(0, distance - 10), field.pull * strength * delta);
+        const swirl = 1.1;
+        const nx = distance > 0.5 ? offsetX / distance : 0;
+        const ny = distance > 0.5 ? offsetY / distance : 0;
+        const nextX = enemy.x + nx * step - ny * field.pull * strength * delta * swirl * 0.6;
+        const nextY = enemy.y + ny * step + nx * field.pull * strength * delta * swirl * 0.6;
+        if (canOccupy(nextX, nextY, getEnemyMoveRadius(enemy))) {
+          enemy.x = nextX;
+          enemy.y = nextY;
+          enemy.element.style.left = `${enemy.x}px`;
+          enemy.element.style.top = `${enemy.y}px`;
+        }
+        if (tick) {
+          damageEnemy(enemy, field.tick, { knockback: false });
+          slowEnemy(enemy, 0.5, 0.4);
+        }
       }
+    }
+    if (field.kind === "boneshield" || field.kind === "tornado") {
+      if (field.remaining <= 0) endPowerField(field);
+      continue;
     }
     if (field.remaining <= 0) {
       powerFields.delete(field);
@@ -3138,6 +3700,100 @@ function useActivePower() {
       totalHeal += stats.heal;
     }
     if (totalHeal > 0) window.setTimeout(() => healPlayer(Math.min(totalHeal, 30 + level * 5)), 450);
+    castPlayerPose("power-cast-generic", 700);
+  } else if (power.effect === "holy") {
+    createHolyPillar(center.x, center.y, radius);
+    window.setTimeout(() => healPlayer(stats.heal), 260);
+    const castRound = roundId;
+    window.setTimeout(() => {
+      if (castRound !== roundId) return;
+      for (const enemy of enemiesWithin(center.x, center.y, radius)) {
+        damageEnemy(enemy, stats.damage, { knockback: false });
+        if (!enemies.has(enemy)) continue;
+        slowEnemy(enemy, stats.slow, 0.45);
+        applyEnemyKnockback(enemy, center, isMegaBoss(enemy) ? 0 : 40 * scale);
+      }
+    }, 180);
+    castPlayerPose("power-holy-casting", 800);
+  } else if (power.effect === "boneshield") {
+    for (const field of [...powerFields]) if (field.kind === "boneshield") endPowerField(field);
+    const layer = createBoneShield(center.x, center.y, radius, stats.duration * 1000);
+    powerFields.add({
+      kind: "boneshield", x: center.x, y: center.y, radius, remaining: stats.duration, round: roundId, follow: true,
+      tickElapsed: 0, tickInterval: 0.45, damage: stats.damage, reduction: stats.reduction, layer,
+    });
+    player.classList.add("power-boneshield-active");
+    castPlayerPose("power-cast-generic", 600);
+  } else if (power.effect === "tornado") {
+    const target = findPowerTarget(scale);
+    const start = { x: center.x + (target.x - center.x) * 0.35, y: center.y + (target.y - center.y) * 0.35 };
+    const layer = createTornado(start.x, start.y, radius, stats.duration * 1000);
+    powerFields.add({
+      kind: "tornado", x: start.x, y: start.y, radius, remaining: stats.duration, round: roundId,
+      tickElapsed: 0, tickInterval: 0.3, tick: stats.damage, damage: stats.damage, pull: 150 * scale,
+      speed: 120 * scale, push: stats.push * scale, layer,
+    });
+    castPlayerPose("power-cast-generic", 600);
+  } else if (power.effect === "meteor") {
+    const targets = [...enemies]
+      .filter((enemy) => enemy.spawnRemaining <= 0)
+      .sort((a, b) => Math.hypot(a.x - center.x, a.y - center.y) - Math.hypot(b.x - center.x, b.y - center.y))
+      .slice(0, stats.count)
+      .map((enemy) => ({ x: enemy.x, y: enemy.y }));
+    while (targets.length < stats.count) {
+      const angle = Math.random() * Math.PI * 2;
+      const distance = randomBetween(90, 260) * scale;
+      targets.push({
+        x: Math.max(30, Math.min(arena.clientWidth - 30, center.x + Math.cos(angle) * distance)),
+        y: Math.max(30, Math.min(arena.clientHeight - 30, center.y + Math.sin(angle) * distance)),
+      });
+    }
+    const castRound = roundId;
+    targets.forEach((target, index) => {
+      const delay = index * 170;
+      createMeteor(target.x, target.y, radius, delay);
+      window.setTimeout(() => {
+        if (castRound !== roundId) return;
+        for (const enemy of enemiesWithin(target.x, target.y, radius)) {
+          damageEnemy(enemy, stats.damage, { knockback: false });
+          if (!enemies.has(enemy)) continue;
+          igniteEnemy(enemy, stats.burn, stats.burnDuration);
+          stunEnemy(enemy, stats.stun);
+          applyEnemyKnockback(enemy, target, isMegaBoss(enemy) ? 0 : 36 * scale);
+        }
+        playSound("power", "meteor-impact");
+      }, delay + 420);
+    });
+    castPlayerPose("power-cast-generic", 700);
+  } else if (power.effect === "wolves") {
+    for (const field of [...powerFields]) if (field.kind === "wolves") endPowerField(field);
+    const layer = createWolfPack(center.x, center.y, stats.count, stats.duration * 1000);
+    powerFields.add({
+      kind: "wolves", x: center.x, y: center.y, radius: 0, remaining: stats.duration, round: roundId, follow: true,
+      tickElapsed: 0.6, tickInterval: 1.1, count: stats.count, damage: stats.damage, bleed: stats.bleed,
+      range: stats.range * scale, layer,
+    });
+    castPlayerPose("power-cast-generic", 650);
+  } else if (power.effect === "timestop") {
+    const layer = createFxLayer("pfx pfx-timestop", center.x, center.y, stats.duration * 1000 + 600);
+    layer.style.setProperty("--r", `${Math.round(radius)}px`);
+    layer.style.setProperty("--life", `${stats.duration * 1000}ms`);
+    addFxParts(layer, "pfx-flash");
+    addFxParts(layer, "pfx-clock");
+    addFxParts(layer, "pfx-clock-hand");
+    addFxParts(layer, "pfx-clock-hand pfx-clock-hand-long");
+    addFxParts(layer, "pfx-ring");
+    addFxParts(layer, "pfx-sand", 14, (style, index) => scatterFx(style, index, 14, radius * 0.2, radius * 0.9, { delay: 0.5, scaleMin: 0.5, scaleMax: 1.1 }));
+    arena.classList.add("arena-timestop");
+    const until = performance.now() + stats.duration * 1000;
+    for (const enemy of enemiesWithin(center.x, center.y, radius)) {
+      stunEnemy(enemy, stats.duration);
+      enemy.timeStoppedUntil = isMegaBoss(enemy) ? 0 : until;
+    }
+    powerFields.add({
+      kind: "timestop", x: center.x, y: center.y, radius, remaining: stats.duration, round: roundId,
+      tickElapsed: 0, tickInterval: 1, layer,
+    });
     castPlayerPose("power-cast-generic", 700);
   }
 
@@ -3861,6 +4517,11 @@ const gunSounds = {
   "pistolet-citrouille": { crack: 3000, body: 760, thump: 105, tail: 0.45, volume: 0.36, fire: true, double: true },
   "pistolet-spectral": { crack: 2200, body: 520, thump: 85, tail: 0.6, volume: 0.3, ghost: true },
   "canon-roi-ombres": { crack: 1700, body: 380, thump: 62, tail: 1, volume: 0.46, shadow: true, double: true },
+  "tromblon-pirate": { crack: 1500, body: 420, thump: 70, tail: 1.1, volume: 0.48, flint: true, scatter: true },
+  "fusil-precision": { crack: 4200, body: 1100, thump: 80, tail: 1.4, volume: 0.46, bolt: true },
+  "pistolet-givre": { crack: 3800, body: 1200, thump: 140, tail: 0.4, volume: 0.3, frost: true },
+  "baguette-foudre": { crack: 2400, body: 900, thump: 60, tail: 0.5, volume: 0.22, zap: true },
+  "blaster-neon": { crack: 2000, body: 1400, thump: 180, tail: 0.25, volume: 0.2, laser: true },
 };
 
 function playGunshot(weaponId) {
@@ -3887,7 +4548,28 @@ function playGunshot(weaponId) {
     playNoise({ type: "bandpass", frequency: 1800, frequencyEnd: 700, q: 5, duration: 0.4, volume: 0.1, attack: 0.15 });
   }
   if (gun.shadow) playPitch({ frequency: 44, frequencyEnd: 28, duration: 0.6, volume: 0.32 });
-  if (!gun.hammer && !gun.flint) {
+  if (gun.scatter) {
+    for (let index = 0; index < 6; index += 1) {
+      playNoise({ type: "bandpass", frequency: 1800 + Math.random() * 2400, q: 6, duration: 0.03, volume: 0.08, delay: 0.12 + Math.random() * 0.25 });
+    }
+  }
+  if (gun.bolt) {
+    playNoise({ type: "bandpass", frequency: 2400, q: 8, duration: 0.04, volume: 0.16, delay: 0.42 });
+    playNoise({ type: "bandpass", frequency: 1700, q: 8, duration: 0.05, volume: 0.14, delay: 0.55 });
+  }
+  if (gun.frost) {
+    playNoise({ type: "highpass", frequency: 5200, frequencyEnd: 3000, duration: 0.3, volume: 0.1, attack: 0.02 });
+    playPitch({ frequency: 3100, frequencyEnd: 2600, duration: 0.2, volume: 0.04, delay: 0.03 });
+  }
+  if (gun.zap) {
+    playPitch({ frequency: 90, duration: 0.25, type: "sawtooth", volume: 0.08, vibrato: 0.3, vibratoRate: 45 });
+    playNoise({ type: "highpass", frequency: 3500, duration: 0.12, volume: 0.14, delay: 0.02 });
+  }
+  if (gun.laser) {
+    playPitch({ frequency: 1800, frequencyEnd: 260, duration: 0.16, type: "square", volume: 0.06 });
+    playPitch({ frequency: 2400, frequencyEnd: 400, duration: 0.12, type: "sawtooth", volume: 0.03 });
+  }
+  if (!gun.hammer && !gun.flint && !gun.laser && !gun.zap) {
     playPitch({ frequency: 4200, frequencyEnd: 3900, duration: 0.06, volume: 0.04, delay: 0.28 });
     playPitch({ frequency: 5100, frequencyEnd: 4800, duration: 0.05, volume: 0.03, delay: 0.36 });
   }
@@ -3900,6 +4582,11 @@ const bladeSounds = {
   "coutelas-fantome": { low: 700, high: 3200, length: 0.17, volume: 0.2, extra: "ghost" },
   "lame-braise": { low: 300, high: 1800, length: 0.3, volume: 0.26, extra: "fire" },
   "epee-lune-sanglante": { low: 260, high: 2000, length: 0.34, volume: 0.28, extra: "moon" },
+  "hache-bucheron": { low: 200, high: 1100, length: 0.34, volume: 0.28, extra: "heavy" },
+  "lance-centurion": { low: 500, high: 2600, length: 0.2, volume: 0.22, extra: "thrust" },
+  "marteau-guerre": { low: 140, high: 800, length: 0.42, volume: 0.3, extra: "heavy" },
+  "dague-assassin": { low: 900, high: 4200, length: 0.12, volume: 0.16, extra: "venom" },
+  "katana-ombre": { low: 600, high: 3800, length: 0.18, volume: 0.22, extra: "ring" },
 };
 
 function playBladeSwing(weaponId) {
@@ -3919,6 +4606,12 @@ function playBladeSwing(weaponId) {
     for (let index = 0; index < 4; index += 1) {
       playNoise({ type: "highpass", frequency: 3000, duration: 0.02, volume: 0.09, delay: 0.08 + Math.random() * 0.3 });
     }
+  } else if (blade.extra === "heavy") {
+    playNoise({ type: "lowpass", frequency: 500, frequencyEnd: 160, duration: blade.length, volume: 0.14, attack: blade.length * 0.4 });
+  } else if (blade.extra === "thrust") {
+    playNoise({ type: "highpass", frequency: 2500, frequencyEnd: 4500, duration: 0.12, volume: 0.1, attack: 0.03 });
+  } else if (blade.extra === "venom") {
+    playNoise({ type: "highpass", frequency: 4000, frequencyEnd: 2200, duration: 0.18, volume: 0.06, attack: 0.04, delay: 0.05 });
   } else if (blade.extra === "moon") {
     playVoice({ pitch: 220, duration: 0.5, volume: 0.06, vowel: "a", vibrato: 0.02, attack: 0.1 });
     playVoice({ pitch: 330, duration: 0.5, volume: 0.04, vowel: "o", vibrato: 0.02, attack: 0.1 });
@@ -3930,8 +4623,12 @@ function playBladeHit(weaponId) {
   if (!canPlayEffects()) return;
   playNoise({ type: "lowpass", frequency: 600, frequencyEnd: 150, duration: 0.1, volume: 0.22 });
   playPitch({ frequency: 140, frequencyEnd: 70, duration: 0.08, volume: 0.15 });
-  if (weaponId === "epee-chevalier" || weaponId === "epee-rouillee") {
+  if (weaponId === "epee-chevalier" || weaponId === "epee-rouillee" || weaponId === "katana-ombre") {
     playNoise({ type: "bandpass", frequency: 2800, q: 9, duration: 0.05, volume: 0.08 });
+  }
+  if (weaponId === "marteau-guerre" || weaponId === "hache-bucheron") {
+    playPitch({ frequency: 70, frequencyEnd: 34, duration: 0.25, volume: 0.28 });
+    playNoise({ type: "lowpass", frequency: 400, frequencyEnd: 90, duration: 0.3, volume: 0.25 });
   }
 }
 
@@ -3949,7 +4646,7 @@ function playPowerSound(effect) {
       playNoise({ type: "bandpass", frequency: 500 + Math.random() * 300, q: 3, duration: 0.05, volume: 0.12, delay: index * 0.035 });
       if (index % 3 === 0) playPitch({ frequency: 6200, frequencyEnd: 5200, duration: 0.05, volume: 0.04, delay: index * 0.035 });
     }
-  } else if (effect === "pumpkin" || effect === "meteor") {
+  } else if (effect === "pumpkin" || effect === "meteor-impact") {
     playNoise({ type: "lowpass", frequency: 1500, frequencyEnd: 90, duration: 0.9, volume: 0.42, attack: 0.005 });
     playPitch({ frequency: 90, frequencyEnd: 30, duration: 0.6, volume: 0.4 });
     playNoise({ type: "highpass", frequency: 2500, duration: 0.08, volume: 0.25 });
@@ -3996,8 +4693,46 @@ function playPowerSound(effect) {
     playPitch({ frequency: 58, frequencyEnd: 42, duration: 0.14, volume: 0.32, delay: 0.22 });
     playVoice({ pitch: 196, pitchEnd: 147, duration: 0.9, volume: 0.06, vowel: "u", vibrato: 0.03, attack: 0.3, delay: 0.1 });
     playNoise({ type: "bandpass", frequency: 500, frequencyEnd: 1500, q: 3, duration: 0.6, volume: 0.12, attack: 0.3, delay: 0.2 });
+  } else if (effect === "meteor") {
+    for (let index = 0; index < 3; index += 1) {
+      playNoise({ type: "bandpass", frequency: 3000, frequencyEnd: 400, q: 1.5, duration: 0.45, volume: 0.12, attack: 0.1, delay: index * 0.17 });
+    }
+  } else if (effect === "holy") {
+    [523, 659, 784, 1046].forEach((frequency, index) => {
+      playPitch({ frequency, duration: 1.1, volume: 0.05, attack: 0.15, delay: index * 0.07, vibrato: 0.01 });
+    });
+    playVoice({ pitch: 392, duration: 1.1, volume: 0.05, vowel: "a", attack: 0.3, vibrato: 0.015 });
+    playNoise({ type: "highpass", frequency: 3000, frequencyEnd: 6000, duration: 0.9, volume: 0.08, attack: 0.4 });
+  } else if (effect === "boneshield") {
+    for (let index = 0; index < 10; index += 1) {
+      playNoise({ type: "bandpass", frequency: 1800 + Math.random() * 1800, q: 8, duration: 0.03, volume: 0.16, delay: index * 0.04 });
+    }
+    playPitch({ frequency: 110, frequencyEnd: 70, duration: 0.4, volume: 0.15 });
+  } else if (effect === "bone-hit" || effect === "wolf-bite") {
+    const now = audioContext.currentTime;
+    if (now - (powerHitSoundTimes.get(effect) ?? -10) < 0.18) return;
+    powerHitSoundTimes.set(effect, now);
+    if (effect === "bone-hit") {
+      playNoise({ type: "bandpass", frequency: 2600, q: 7, duration: 0.04, volume: 0.12 });
+    } else {
+      playVoice({ pitch: 180, pitchEnd: 120, duration: 0.18, volume: 0.07, vowel: "a", growl: 0.6, growlRate: 50, drive: 0.4 });
+      playNoise({ type: "bandpass", frequency: 1500, q: 4, duration: 0.05, volume: 0.12, delay: 0.05 });
+    }
+  } else if (effect === "tornado") {
+    playNoise({ type: "bandpass", frequency: 300, frequencyEnd: 900, q: 1.2, duration: 2.4, volume: 0.2, attack: 0.5 });
+    playNoise({ type: "highpass", frequency: 1500, frequencyEnd: 3200, duration: 2.2, volume: 0.07, attack: 0.8 });
+  } else if (effect === "wolves") {
+    playVoice({ pitch: 330, pitchEnd: 520, duration: 1.3, volume: 0.08, vowel: "u", vibrato: 0.02, attack: 0.25 });
+    playVoice({ pitch: 280, pitchEnd: 440, duration: 1.2, volume: 0.05, vowel: "o", vibrato: 0.03, attack: 0.3, delay: 0.25 });
+  } else if (effect === "timestop") {
+    playPitch({ frequency: 880, frequencyEnd: 110, duration: 0.9, volume: 0.1, attack: 0.02 });
+    for (let index = 0; index < 6; index += 1) {
+      playNoise({ type: "bandpass", frequency: 3200, q: 12, duration: 0.03, volume: 0.14, delay: 0.2 + index * 0.33 });
+    }
+    playNoise({ type: "lowpass", frequency: 800, frequencyEnd: 120, duration: 1.2, volume: 0.15, attack: 0.05 });
   }
 }
+const powerHitSoundTimes = new Map();
 
 function playSound(name, type) {
   if (name === "creature-cry") {
@@ -5016,7 +5751,7 @@ function hasClearShot(enemy) {
   return getShotBlockProgress(center.x, center.y, enemy.x, enemy.y) >= 1 - reach;
 }
 
-function fireStone(targetX, targetY, volley = true) {
+function fireStone(targetX, targetY, volley = true, withSound = true) {
   if (!gameActive) return;
 
   const center = playerCenter();
@@ -5030,12 +5765,21 @@ function fireStone(targetX, targetY, volley = true) {
     swingBlade(directionX, directionY, runWeapon);
     return;
   }
+  const volleyEffect = weaponEffects[runWeaponId] ?? {};
+  if (volley && projectilesPerShot > 1 && volleyEffect.spread) {
+    const baseAngle = Math.atan2(directionY, directionX);
+    for (let index = 0; index < projectilesPerShot; index += 1) {
+      const spreadAngle = baseAngle + (index - (projectilesPerShot - 1) / 2) * volleyEffect.spread * Math.PI / 180;
+      fireStone(center.x + Math.cos(spreadAngle) * directionLength, center.y + Math.sin(spreadAngle) * directionLength, false, index === 0);
+    }
+    return;
+  }
   if (volley && projectilesPerShot > 1) {
     const perpendicularX = -directionY / directionLength;
     const perpendicularY = directionX / directionLength;
     for (let index = 0; index < projectilesPerShot; index += 1) {
       const offset = (index - (projectilesPerShot - 1) / 2) * 18;
-      fireStone(targetX + perpendicularX * offset, targetY + perpendicularY * offset, false);
+      fireStone(targetX + perpendicularX * offset, targetY + perpendicularY * offset, false, index === 0 || projectilesPerShot <= 3);
     }
     return;
   }
@@ -5046,7 +5790,8 @@ function fireStone(targetX, targetY, volley = true) {
   const aimY = targetY - startY;
   const aimDistance = Math.hypot(aimX, aimY);
   if (aimDistance < 1) return;
-  const shotDistance = Math.min(aimDistance, Math.max(0, playerAttackRange * scale - muzzleOffset));
+  const rangeFactor = weaponEffects[runWeaponId]?.range ?? 1;
+  const shotDistance = Math.min(aimDistance, Math.max(0, playerAttackRange * rangeFactor * scale - muzzleOffset));
   const shotEndX = startX + aimX / aimDistance * shotDistance;
   const shotEndY = startY + aimY / aimDistance * shotDistance;
   const blockProgress = getShotBlockProgress(startX, startY, shotEndX, shotEndY);
@@ -5067,7 +5812,7 @@ function fireStone(targetX, targetY, volley = true) {
 
   const weapon = loadoutOptions.weapons.find((item) => item.id === runWeaponId);
   if (!weapon) throw new Error(`Arme de partie inconnue : ${runWeaponId}`);
-  playSound("shoot", weapon.id);
+  if (withSound) playSound("shoot", weapon.id);
   aimWeaponToward(directionX, directionY);
   animateShot();
   const shotRound = roundId;
@@ -5111,6 +5856,7 @@ function fireStone(targetX, targetY, volley = true) {
     if (!effect.pierce || hitEnemies.length === 0) {
       createImpact(boundedEndX, boundedEndY, kind, angle, Boolean(hitEnemy), effect.fx);
     }
+    if (effect.chain && hitEnemy) chainWeaponLightning(hitEnemy, effect, baseDamage, scale);
     if (effect.splash) {
       createShadowBlast(boundedEndX, boundedEndY, effect.splash * scale);
       for (const enemy of [...enemies]) {
@@ -5138,6 +5884,45 @@ function applyGunHit(enemy, effect, rawDamage, angle) {
   }
   if (effect.burn) igniteEnemy(enemy, effect.burn, effect.burnDuration);
   if (effect.slow) slowEnemy(enemy, effect.slow, effect.slowFactor);
+  if (effect.stun) stunEnemy(enemy, effect.stun);
+  if (effect.freezeChance && Math.random() < effect.freezeChance) freezeEnemyBriefly(enemy, effect.freeze);
+}
+
+function freezeEnemyBriefly(enemy, duration) {
+  if (!enemies.has(enemy) || isMegaBoss(enemy)) return;
+  stunEnemy(enemy, duration);
+  enemy.element.classList.add("enemy-frozen");
+  const frozenRound = roundId;
+  window.setTimeout(() => {
+    if (frozenRound === roundId && enemies.has(enemy) && !(enemy.frozenRemaining > 0)) enemy.element.classList.remove("enemy-frozen");
+  }, duration * 1000);
+  const shards = createFxLayer("pfx pfx-ice", enemy.x, enemy.y, 900);
+  shards.style.setProperty("--r", "44px");
+  addFxParts(shards, "pfx-shard", 7, (style, index) => scatterFx(style, index, 7, 18, 44));
+  addFxParts(shards, "pfx-flash");
+}
+
+function chainWeaponLightning(firstEnemy, effect, baseDamage, scale) {
+  const struck = [firstEnemy];
+  let from = { x: firstEnemy.x, y: firstEnemy.y - 10 * scale };
+  const castRound = roundId;
+  for (let hop = 0; hop < effect.chain; hop += 1) {
+    const origin = from;
+    const next = [...enemies]
+      .filter((enemy) => !struck.includes(enemy) && enemy.spawnRemaining <= 0
+        && Math.hypot(enemy.x - origin.x, enemy.y - origin.y) <= effect.chainRange * scale)
+      .sort((a, b) => Math.hypot(a.x - origin.x, a.y - origin.y) - Math.hypot(b.x - origin.x, b.y - origin.y))[0];
+    if (!next) break;
+    struck.push(next);
+    const to = { x: next.x, y: next.y - 10 * scale };
+    createLightningBolt(from, to, hop * 60);
+    window.setTimeout(() => {
+      if (castRound !== roundId || !enemies.has(next)) return;
+      damageEnemy(next, baseDamage * 0.6, { knockback: false });
+      if (effect.stun) stunEnemy(next, effect.stun);
+    }, hop * 60);
+    from = to;
+  }
 }
 
 function createShadowBlast(x, y, radius) {
@@ -5157,7 +5942,10 @@ function createSlashFx(center, angle, reach, weapon, effect, mirrored = false) {
   slash.style.setProperty("--slash-color", weapon.melee.color);
   addFxParts(slash, "slash-arc");
   addFxParts(slash, "slash-edge");
-  const particle = { rust: "slash-flake", ember: "slash-ember", ghost: "slash-wisp" }[effect.fx];
+  const particle = {
+    rust: "slash-flake", ember: "slash-ember", ghost: "slash-wisp",
+    axe: "slash-chip", hammer: "slash-dust", poison: "slash-venom", katana: "slash-petal",
+  }[effect.fx];
   if (particle) {
     addFxParts(slash, particle, 7, (style) => {
       const spread = weapon.melee.arc / 2;
@@ -5167,7 +5955,8 @@ function createSlashFx(center, angle, reach, weapon, effect, mirrored = false) {
       style.setProperty("--s", randomBetween(0.6, 1.3).toFixed(2));
     });
   }
-  if (effect.fx === "knight") addFxParts(slash, "slash-glint");
+  if (effect.fx === "knight" || effect.fx === "spear") addFxParts(slash, "slash-glint");
+  if (effect.thrust) addFxParts(slash, "slash-thrust");
   if (effect.wave) {
     slash.style.setProperty("--wave", String(effect.wave));
     addFxParts(slash, "slash-crescent");
@@ -5191,15 +5980,36 @@ function bladeHitsInArc(center, angle, reach, halfArc, minimumReach = 0) {
 let bladeLifestealCooldown = 0;
 
 function applyBladeHit(enemy, effect, damage, center, angle) {
-  damageEnemy(enemy, damage, { knockback: !effect.knockback });
+  let finalDamage = damage;
+  if (effect.critChance && Math.random() < effect.critChance) {
+    finalDamage *= effect.critMultiplier;
+    showCritText(enemy.x, enemy.y);
+  }
+  damageEnemy(enemy, finalDamage, { knockback: !effect.knockback });
   createImpact(enemy.x, enemy.y, "slash", angle * 180 / Math.PI, true, effect.fx);
   if (!enemies.has(enemy)) return;
   if (effect.knockback) {
     applyEnemyKnockback(enemy, center, effect.knockback * scaleActor() * (enemy.typeName === "boss" ? 0.3 : 1));
   }
   if (effect.bleed) applyDamageOverTime(enemy, "bleed", effect.bleed, effect.bleedDuration);
+  if (effect.poison) applyDamageOverTime(enemy, "poison", effect.poison, effect.poisonDuration);
   if (effect.burn) igniteEnemy(enemy, effect.burn, effect.burnDuration);
   if (effect.slow) slowEnemy(enemy, effect.slow, effect.slowFactor);
+  if (effect.stun) stunEnemy(enemy, effect.stun);
+}
+
+function createHammerShock(x, y, radius) {
+  const layer = createFxLayer("pfx pfx-quake pfx-hammer-shock", x, y, 1000);
+  layer.style.setProperty("--r", `${Math.round(radius)}px`);
+  addFxParts(layer, "pfx-crater");
+  addFxParts(layer, "pfx-shockwave");
+  addFxParts(layer, "pfx-crack", 6, (style, index) => {
+    style.setProperty("--a", `${(index * 60) + randomBetween(-15, 15)}deg`);
+    style.setProperty("--d", `${randomBetween(radius * 0.5, radius).toFixed(1)}px`);
+    style.setProperty("--t", "0s");
+  });
+  addFxParts(layer, "pfx-dust", 7, (style, index) => scatterFx(style, index, 7, radius * 0.4, radius, { scaleMin: 0.6, scaleMax: 1.3 }));
+  shakeArena("light");
 }
 
 function swingBlade(directionX, directionY, weapon) {
@@ -5219,6 +6029,20 @@ function swingBlade(directionX, directionY, weapon) {
     for (const enemy of bladeHitsInArc(center, angle, reach * effect.wave, halfArc, reach)) {
       if (!hits.includes(enemy)) applyBladeHit(enemy, effect, damage * effect.waveRatio, center, angle);
     }
+  }
+  if (effect.shock) {
+    const impact = { x: center.x + Math.cos(angle) * reach * 0.7, y: center.y + Math.sin(angle) * reach * 0.7 };
+    const shockRadius = effect.shock * scaleActor();
+    const swingRound = roundId;
+    window.setTimeout(() => {
+      if (swingRound !== roundId || !gameActive) return;
+      createHammerShock(impact.x, impact.y, shockRadius);
+      for (const enemy of enemiesWithin(impact.x, impact.y, shockRadius)) {
+        if (hits.includes(enemy)) continue;
+        damageEnemy(enemy, damage * effect.shockRatio, { knockback: false });
+        if (enemies.has(enemy)) applyEnemyKnockback(enemy, impact, isMegaBoss(enemy) ? 0 : 30 * scaleActor());
+      }
+    }, effect.motion * 0.45);
   }
   if (hits.length > 0) playSound("blade-hit", weapon.id);
   if (effect.lifesteal && hits.length > 0 && performance.now() >= bladeLifestealCooldown) {
@@ -5609,7 +6433,8 @@ function findEnemySpawnPoint(radius, minPlayerDistance, spawnFromEdge = false) {
 
 function damageEnemy(enemy, rawDamage, { knockback = true } = {}) {
   if (!enemies.has(enemy) || enemy.spawnRemaining > 0) return;
-  const damage = enemy.poisonRemaining > 0 ? rawDamage * 1.25 : rawDamage;
+  const damage = rawDamage * (enemy.poisonRemaining > 0 ? 1.25 : 1)
+    * (enemy.timeStoppedUntil > performance.now() ? 1.5 : 1);
   enemy.health = Math.max(0, enemy.health - damage);
   enemy.healthFill.style.width = `${(enemy.health / enemy.maxHealth) * 100}%`;
   enemy.element.setAttribute("aria-label", `${enemy.label}, ${Math.ceil(enemy.health)} points de vie`);
@@ -6571,7 +7396,8 @@ function damagePlayer(amount, source) {
       .filter((item) => item.path === "defense" && item.level <= progression.improvements.defense)
       .reduce((total, item) => total + item.bonus, 0);
   const shieldReduction = activeBoostId === "bouclier" && activeBoostRemaining > 0 ? 0.6 : 1;
-  const damageReduction = Math.max(0.2, (1 - equipmentReduction) * shieldReduction);
+  const boneReduction = hasPowerField("boneshield") ? 0.5 : 1;
+  const damageReduction = Math.max(0.15, (1 - equipmentReduction) * shieldReduction * boneReduction);
   playerHealth = Math.max(0, playerHealth - Math.max(1, Math.ceil(amount * damageReduction)));
   playerDamageCooldown = 0.5;
   if (source) {
@@ -7453,6 +8279,7 @@ function handleShopClick(event) {
   if (button.dataset.action === "equip") equipShopItem(button.dataset.itemId, button.dataset.category);
   else if (button.dataset.action === "buy") purchaseShopItem(button.dataset.itemId, button.dataset.category);
   else if (button.dataset.action === "open-crate") openCrate(button.dataset.crateId);
+  else if (button.dataset.action === "buy-pack") purchasePack(button.dataset.packId);
 }
 shopItems.addEventListener("click", handleShopClick);
 shopCatalogItems.addEventListener("click", handleShopClick);
