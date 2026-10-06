@@ -730,6 +730,7 @@ const bossMapNames = {
 };
 bossMapObstacles[5] = bossMapObstacles[3];
 const vortexPosition = { x: 0.515, y: 0.72 };
+const thronePortalPosition = { x: 0.5, y: 0.86 };
 const bossSpawnDuration = 1.6;
 const bossSpawnPoints = {
   "fossoyeur-maudit": { x: 0.76, y: 0.68, style: "grave" },
@@ -1204,6 +1205,7 @@ function loadProgression() {
 function saveProgression(message = "") {
   try {
     window.localStorage.setItem(progressionStorageKey, JSON.stringify(progression));
+    if (activeAccount) storeActiveAccountProgression();
     progressionFeedback.textContent = message;
     return true;
   } catch {
@@ -2282,6 +2284,254 @@ function renderShop() {
   const seconds = Math.floor((remaining % 60000) / 1000);
   shopRotationCountdown.textContent = `Nouvelles promos dans ${minutes} min ${String(seconds).padStart(2, "0")} s`;
   updateMenuBalance();
+}
+
+const accountsStorageKey = "blackwood-survivor-accounts";
+const accountGate = document.querySelector("#account-gate");
+const accountForm = document.querySelector("#account-form");
+const accountUsername = document.querySelector("#account-username");
+const accountPassword = document.querySelector("#account-password");
+const accountConfirm = document.querySelector("#account-confirm");
+const accountConfirmLabel = document.querySelector("#account-confirm-label");
+const accountFeedback = document.querySelector("#account-feedback");
+const accountSubmit = document.querySelector("#account-submit");
+const accountModeLogin = document.querySelector("#account-mode-login");
+const accountModeCreate = document.querySelector("#account-mode-create");
+const devicePcButton = document.querySelector("#device-pc");
+const devicePhoneButton = document.querySelector("#device-phone");
+const accountDeviceStep = document.querySelector("#account-device-step");
+const settingsLogout = document.querySelector("#settings-logout");
+const settingsAccountName = document.querySelector("#settings-account-name");
+const editTouchControlsButton = document.querySelector("#edit-touch-controls");
+const controlEditor = document.querySelector("#control-editor");
+const controlSizeInput = document.querySelector("#control-size");
+const sessionStorageKey = "blackwood-survivor-session";
+let activeAccount = "";
+let accountMode = "login";
+let chosenDevice = "";
+let pendingEntry = null;
+const defaultTouchLayout = {
+  stick: { x: 4, y: 68, s: 1 },
+  dodge: { x: 78, y: 52, s: 1 },
+  pickup: { x: 78, y: 70, s: 1 },
+  ranged: { x: 2, y: 4, s: 1 },
+  melee: { x: 2, y: 18, s: 1 },
+  power: { x: 2, y: 32, s: 1 },
+  boost: { x: 2, y: 46, s: 1 },
+};
+const touchControlBaseSize = { stick: 112, dodge: 64, pickup: 64, ranged: 60, melee: 60, power: 60, boost: 60 };
+let touchLayout = structuredClone(defaultTouchLayout);
+let draftTouchLayout = null;
+let selectedControl = "stick";
+let controlDrag = null;
+
+function loadAccountRecords() {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(accountsStorageKey) ?? "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((account) => account
+      && typeof account.username === "string"
+      && typeof account.salt === "string"
+      && typeof account.hash === "string");
+  } catch {
+    return [];
+  }
+}
+
+function saveAccountRecords(accounts) {
+  window.localStorage.setItem(accountsStorageKey, JSON.stringify(accounts));
+}
+
+function storeActiveAccountProgression() {
+  const accounts = loadAccountRecords();
+  const account = accounts.find((item) => item.username.toLowerCase() === activeAccount.toLowerCase());
+  if (!account) return;
+  account.progression = structuredClone(progression);
+  account.device = chosenDevice || account.device;
+  account.touchLayout = touchLayout;
+  saveAccountRecords(accounts);
+}
+
+async function hashAccountPassword(password, salt) {
+  const encoded = new TextEncoder().encode(`${salt}:${password}`);
+  const digest = await crypto.subtle.digest("SHA-256", encoded);
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function randomAccountSalt() {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function adoptAccountProgression(saved) {
+  const previous = window.localStorage.getItem(progressionStorageKey);
+  window.localStorage.setItem(progressionStorageKey, JSON.stringify(saved ?? defaultProgression));
+  const loaded = loadProgression();
+  if (previous === null) window.localStorage.removeItem(progressionStorageKey);
+  else window.localStorage.setItem(progressionStorageKey, previous);
+  for (const key of Object.keys(progression)) delete progression[key];
+  Object.assign(progression, loaded);
+}
+
+function applyPlayDevice(device) {
+  chosenDevice = device;
+  document.documentElement.dataset.device = device;
+  devicePcButton.setAttribute("aria-pressed", String(device === "pc"));
+  devicePhoneButton.setAttribute("aria-pressed", String(device === "phone"));
+  devicePcButton.classList.toggle("is-active", device === "pc");
+  devicePhoneButton.classList.toggle("is-active", device === "phone");
+  editTouchControlsButton.hidden = device !== "phone";
+}
+
+function clampControlSpot(id, spot) {
+  const scale = Math.max(0.7, Math.min(1.5, Number(spot?.s) || 1));
+  return {
+    x: Math.max(0, Math.min(86, Number(spot?.x) || defaultTouchLayout[id].x)),
+    y: Math.max(0, Math.min(86, Number(spot?.y) || defaultTouchLayout[id].y)),
+    s: scale,
+  };
+}
+
+function readTouchLayout(saved) {
+  const next = structuredClone(defaultTouchLayout);
+  if (!saved || typeof saved !== "object") return next;
+  for (const id of Object.keys(defaultTouchLayout)) next[id] = clampControlSpot(id, saved[id]);
+  return next;
+}
+
+function applyTouchLayout(layout = touchLayout) {
+  const placed = chosenDevice === "phone" || isEditingControls();
+  for (const [id, spot] of Object.entries(layout)) {
+    const element = document.querySelector(`[data-control="${id}"]`);
+    if (!element) continue;
+    if (!placed) {
+      element.style.left = "";
+      element.style.top = "";
+      element.style.right = "";
+      element.style.bottom = "";
+      element.style.width = "";
+      element.style.height = "";
+      element.classList.remove("is-selected");
+      continue;
+    }
+    const size = Math.round(touchControlBaseSize[id] * spot.s);
+    element.style.left = `${spot.x}%`;
+    element.style.top = `${spot.y}%`;
+    element.style.right = "auto";
+    element.style.bottom = "auto";
+    element.style.width = `${size}px`;
+    element.style.height = `${size}px`;
+    element.classList.toggle("is-selected", id === selectedControl && isEditingControls());
+  }
+}
+
+function persistAccountExtras() {
+  if (!activeAccount) return;
+  const accounts = loadAccountRecords();
+  const account = accounts.find((item) => item.username.toLowerCase() === activeAccount.toLowerCase());
+  if (!account) return;
+  account.device = chosenDevice;
+  account.touchLayout = touchLayout;
+  account.progression = structuredClone(progression);
+  saveAccountRecords(accounts);
+  window.localStorage.setItem(sessionStorageKey, JSON.stringify({ username: activeAccount, device: chosenDevice }));
+}
+
+function isEditingControls() {
+  return document.documentElement.hasAttribute("data-editing-controls");
+}
+
+function setAccountMode(mode) {
+  accountMode = mode;
+  const creating = mode === "create";
+  accountModeLogin.setAttribute("aria-pressed", String(!creating));
+  accountModeCreate.setAttribute("aria-pressed", String(creating));
+  accountModeLogin.classList.toggle("is-active", !creating);
+  accountModeCreate.classList.toggle("is-active", creating);
+  accountConfirmLabel.hidden = !creating;
+  accountConfirm.required = creating;
+  accountPassword.autocomplete = creating ? "new-password" : "current-password";
+  accountSubmit.textContent = creating ? "Créer et entrer" : "Entrer";
+  accountFeedback.textContent = "";
+}
+
+function showDeviceStep() {
+  accountForm.hidden = true;
+  accountDeviceStep.hidden = false;
+  devicePcButton.setAttribute("aria-pressed", "false");
+  devicePhoneButton.setAttribute("aria-pressed", "false");
+  devicePcButton.classList.remove("is-active");
+  devicePhoneButton.classList.remove("is-active");
+}
+
+function showAccountGate() {
+  activeAccount = "";
+  chosenDevice = "";
+  pendingEntry = null;
+  window.localStorage.removeItem(sessionStorageKey);
+  document.documentElement.dataset.device = "pc";
+  editTouchControlsButton.hidden = true;
+  settingsAccountName.textContent = "Aucun compte connecté.";
+  accountForm.hidden = false;
+  accountDeviceStep.hidden = true;
+  devicePcButton.setAttribute("aria-pressed", "false");
+  devicePhoneButton.setAttribute("aria-pressed", "false");
+  devicePcButton.classList.remove("is-active");
+  devicePhoneButton.classList.remove("is-active");
+  accountGate.hidden = false;
+  frontMenu.hidden = true;
+  accountFeedback.textContent = "";
+}
+
+function enterAccount(username, savedProgression) {
+  pendingEntry = null;
+  accountDeviceStep.hidden = true;
+  accountForm.hidden = false;
+  adoptAccountProgression(savedProgression);
+  activeAccount = username;
+  if (!progression.playerName) progression.playerName = username.slice(0, 16);
+  accountGate.hidden = true;
+  playerNameInput.value = progression.playerName;
+  updatePlayerNameDisplay();
+  updateMenuBalance();
+  updatePlayerNameCooldown();
+  saveProgression();
+  persistAccountExtras();
+  settingsAccountName.textContent = `Connecté : ${activeAccount}`;
+  applyTouchLayout();
+  showPreparationMenu();
+}
+
+function restoreSession() {
+  try {
+    const session = JSON.parse(window.localStorage.getItem(sessionStorageKey) ?? "null");
+    if (!session || typeof session.username !== "string") return false;
+    const account = loadAccountRecords().find((item) => item.username.toLowerCase() === session.username.toLowerCase());
+    if (!account) return false;
+    touchLayout = readTouchLayout(account.touchLayout);
+    applyPlayDevice(session.device === "phone" || account.device === "phone" ? "phone" : "pc");
+    enterAccount(account.username, account.progression);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function logoutAccount() {
+  if (activeAccount) saveProgression();
+  if (isEditingControls()) closeControlEditor(false);
+  if (gameActive) {
+    gameActive = false;
+    arena.classList.remove("is-live");
+    stopShooting();
+    keys.clear();
+    releaseTouchStick();
+  }
+  closeSettings();
+  accountForm.reset();
+  setAccountMode("login");
+  showAccountGate();
 }
 
 function showPreparationMenu() {
@@ -5078,7 +5328,16 @@ function getBossArrivalTime() {
 }
 
 function getEnemyCap() {
-  return stage === "portal" || stage === "ultimate" ? finalWaveMaxEnemies : maxEnemiesOnField;
+  if (stage === "portal" || stage === "ultimate") return finalWaveMaxEnemies;
+  if (stage === "boss-wave" || waveNumber >= 3) return maxEnemiesOnField + 8;
+  return maxEnemiesOnField;
+}
+
+function getMinionSpawnPlan() {
+  if (stage === "portal" || stage === "ultimate") return { interval: 1.5, count: 4 };
+  if (stage === "boss-wave") return { interval: 1.3, count: 5 };
+  if (waveNumber >= 3) return { interval: 1.6, count: 4 };
+  return { interval: 2.5, count: 3 };
 }
 
 function updateTimer() {
@@ -5647,13 +5906,21 @@ function aimWeaponToward(directionX, directionY) {
 }
 
 function animateShot() {
+  const motionKind = player.dataset.weaponMotion;
+  const motion = weaponEffects[runWeaponId]?.motion ?? 240;
+  const duration = motionKind === "melee"
+    ? Math.round(Math.min(shootInterval * 1000 * 0.92, Math.max(300, motion)))
+    : motionKind === "gun"
+      ? Math.round(Math.min(170, Math.max(90, shootInterval * 1000 * 0.42)))
+      : motion;
+  player.style.setProperty("--shot-time", `${duration}ms`);
   player.classList.remove("is-shooting");
   void player.offsetWidth;
   player.classList.add("is-shooting");
   window.clearTimeout(shootingReset);
   shootingReset = window.setTimeout(() => {
     player.classList.remove("is-shooting");
-  }, weaponEffects[runWeaponId]?.motion ?? 240);
+  }, duration);
 }
 
 function playWeaponDraw() {
@@ -6140,14 +6407,15 @@ function spawnBossMinion(bossName, count = 1) {
 function createEnemy(typeName, isMinion = false, spawnFromEdge = false) {
   const base = enemyTypes[typeName];
   const waveProgress = Math.max(0, Math.min(4, waveNumber - 1));
-  const healthScaling = 1 + waveProgress * 0.32;
-  const damageScaling = 1 + waveProgress * 0.22;
+  const lateWave = waveNumber >= 3 && stage !== "ultimate";
+  const healthScaling = (1 + waveProgress * 0.32) * (lateWave ? 1.2 : 1);
+  const damageScaling = (1 + waveProgress * 0.22) * (lateWave ? 1.12 : 1);
   const minionScale = isMinion ? 0.72 : 1;
   const enemy = createCharacter(typeName, {
     ...base,
     health: Math.ceil(base.health * healthScaling * minionScale),
     damage: Math.ceil(base.damage * damageScaling * minionScale),
-    speed: base.speed + Math.min(18, waveProgress * 3),
+    speed: base.speed + Math.min(22, waveProgress * 3) + (lateWave ? 5 : 0),
     size: Math.round(base.size * minionScale),
   }, isMinion ? "enemy-minion" : "", spawnFromEdge);
   enemy.isMinion = isMinion;
@@ -6164,12 +6432,13 @@ function createBoss(profileName) {
   const profile = bossTypes.find((boss) => boss.name === profileName);
   if (!profile) throw new Error(`Type de boss inconnu : ${profileName}`);
   const tier = getBossTier();
+  const lateBoss = profile.name !== "mega-cauchemar" && (stage === "boss-wave" || waveNumber >= 3);
   const type = {
     ...profile,
     label: `${profile.label} ${"★".repeat(tier + 1)}`,
-    health: Math.round(profile.health * (1 + tier * 0.6)),
-    damage: Math.round(profile.damage * (1 + tier * 0.25)),
-    speed: profile.speed + tier * 4,
+    health: Math.round(profile.health * (1 + tier * 0.6) * (lateBoss ? 1.22 : 1)),
+    damage: Math.round(profile.damage * (1 + tier * 0.25) * (lateBoss ? 1.15 : 1)),
+    speed: profile.speed + tier * 4 + (lateBoss ? 5 : 0),
     size: profile.size + tier * 3,
     color: "boss",
     equipment: profile.name,
@@ -6346,6 +6615,9 @@ function createCharacter(typeName, type, extraClass = "", spawnFromEdge = false)
     attackWindup: 0,
     healthFill,
     label: type.label,
+    alerted: false,
+    patrolIndex: 0,
+    patrolPoints: createPatrolPoints(x, y),
   };
   enemies.add(character);
   if (typeName !== "boss") {
@@ -6357,6 +6629,18 @@ function createCharacter(typeName, type, extraClass = "", spawnFromEdge = false)
   }
   playSound("enemy-spawn", typeName);
   return character;
+}
+
+function createPatrolPoints(x, y) {
+  const start = Math.random() * Math.PI * 2;
+  return [0, 1, 2].map((index) => {
+    const angle = start + index * (Math.PI * 2 / 3);
+    const reach = 78 + Math.random() * 64;
+    return {
+      x: Math.max(36, Math.min(arena.clientWidth - 36, x + Math.cos(angle) * reach)),
+      y: Math.max(36, Math.min(arena.clientHeight - 36, y + Math.sin(angle) * reach * 0.72)),
+    };
+  });
 }
 
 function findEnemySpawnPoint(radius, minPlayerDistance, spawnFromEdge = false) {
@@ -6433,6 +6717,7 @@ function findEnemySpawnPoint(radius, minPlayerDistance, spawnFromEdge = false) {
 
 function damageEnemy(enemy, rawDamage, { knockback = true } = {}) {
   if (!enemies.has(enemy) || enemy.spawnRemaining > 0) return;
+  enemy.alerted = true;
   const damage = rawDamage * (enemy.poisonRemaining > 0 ? 1.25 : 1)
     * (enemy.timeStoppedUntil > performance.now() ? 1.5 : 1);
   enemy.health = Math.max(0, enemy.health - damage);
@@ -6606,12 +6891,12 @@ function startPortalWave() {
   timeLeft = finalWaveLength;
   fogRadius = 145;
   arena.dataset.wave = "5";
-  const portalCenterX = arena.clientWidth * vortexPosition.x;
-  const portalCenterY = arena.clientHeight * vortexPosition.y;
+  const portalCenterX = arena.clientWidth * thronePortalPosition.x;
+  const portalCenterY = arena.clientHeight * thronePortalPosition.y;
   const playerStart = playerCenter();
-  if (Math.hypot(playerStart.x - portalCenterX, playerStart.y - portalCenterY) < 130) {
-    position.x = vortexPosition.x;
-    position.y = 0.92;
+  if (Math.hypot(playerStart.x - portalCenterX, playerStart.y - portalCenterY) < 160) {
+    position.x = 0.5;
+    position.y = 0.46;
   }
   settleOnCurrentMap();
   waveDisplay.textContent = "Vague 5 · Portail du trône";
@@ -6628,7 +6913,7 @@ function startPortalWave() {
 
 function spawnBossPortal() {
   if (portalElement) return;
-  spawnPortal("throne", vortexPosition);
+  spawnPortal("throne", thronePortalPosition);
   roundMessage.textContent = `Vague 5 : le portail du trône est ouvert. Le Chambellan arrive à 1:50 — entre avant (${keyLabel("portal")}) ou tu y seras aspiré !`;
   roundMessage.hidden = false;
   window.setTimeout(() => { roundMessage.hidden = true; }, 3800);
@@ -6849,7 +7134,6 @@ function createCoinPickup(x, y, value) {
   element.className = "loot-pickup loot-coin";
   element.setAttribute("role", "img");
   element.setAttribute("aria-label", `${value} pièce${value === 1 ? "" : "s"} à ramasser`);
-  element.textContent = "◉";
   element.style.left = `${x}px`;
   element.style.top = `${y}px`;
   world.append(element);
@@ -7062,7 +7346,6 @@ function createHealthPickup(x, y, amount) {
   element.className = "loot-pickup loot-health";
   element.setAttribute("role", "img");
   element.setAttribute("aria-label", `Soin de ${amount} points à ramasser`);
-  element.textContent = "+";
   element.style.left = `${x}px`;
   element.style.top = `${y}px`;
   world.append(element);
@@ -7282,8 +7565,10 @@ function advanceWave() {
 function showGameOver(message, won = false) {
   if (!gameActive) return;
   gameActive = false;
+  arena.classList.remove("is-live");
   stopShooting();
   keys.clear();
+  releaseTouchStick();
   player.classList.remove("is-moving", "is-walking", "is-running", "is-dodging");
   dodgeRemaining = 0;
   dodgeInvulnerabilityRemaining = 0;
@@ -7377,6 +7662,7 @@ function restartRound() {
   player.classList.remove("power-veil-active");
   minionSpawnElapsed = 0;
   gameActive = true;
+  arena.classList.add("is-live");
   gameOver.hidden = true;
   frontMenu.hidden = true;
   roundMessage.hidden = true;
@@ -7559,6 +7845,51 @@ function updateEnemies(delta) {
       }
     }
 
+    const playerDistance = Math.hypot(center.x - enemy.x, center.y - enemy.y);
+    const contactRadius = getEnemyHitRadius(enemy) + getPlayerHitRadius();
+    const attackProfile = getEnemyAttackProfile(enemy);
+    const attackRange = Math.max(attackProfile.range * scaleActor(), contactRadius + 12);
+    const detection = Math.max(attackRange * 1.25, 340 * scaleActor());
+    if (enemy.typeName === "boss" || playerDistance <= detection) enemy.alerted = true;
+    else if (playerDistance > detection * 1.45) enemy.alerted = false;
+
+    if (!enemy.alerted) {
+      enemy.element.dataset.ai = "patrol";
+      const points = enemy.patrolPoints;
+      if (points?.length) {
+        let point = points[enemy.patrolIndex] ?? points[0];
+        if (Math.hypot(point.x - enemy.x, point.y - enemy.y) < 22) {
+          enemy.patrolIndex = (enemy.patrolIndex + 1) % points.length;
+          const drift = 72;
+          const span = playerDistance || 1;
+          point = {
+            x: Math.max(36, Math.min(arena.clientWidth - 36, enemy.x + ((center.x - enemy.x) / span) * drift)),
+            y: Math.max(36, Math.min(arena.clientHeight - 36, enemy.y + ((center.y - enemy.y) / span) * drift)),
+          };
+          points[enemy.patrolIndex] = point;
+        }
+        movementSpeed *= 0.5;
+        moveEnemyToward(
+          enemy,
+          point.x,
+          point.y,
+          Math.hypot(point.x - enemy.x, point.y - enemy.y) || 1,
+          delta * movementSpeed / enemy.speed,
+        );
+      }
+      continue;
+    }
+
+    if (playerDistance <= attackRange) {
+      enemy.element.dataset.ai = "attack";
+      if (Math.abs(center.x - enemy.x) > 6) {
+        enemy.element.classList.toggle("enemy-facing-left", center.x < enemy.x);
+      }
+      if (!(enemy.frozenRemaining > 0) && enemy.attackCooldown === 0) beginEnemyAttack(enemy, attackProfile);
+      continue;
+    }
+
+    enemy.element.dataset.ai = "chase";
     const waypoint = getNavWaypoint(enemy, center.x, center.y);
     if (waypoint) {
       targetX = waypoint.x;
@@ -7570,12 +7901,8 @@ function updateEnemies(delta) {
     moveEnemyToward(enemy, targetX, targetY, distance, delta * movementSpeed / enemy.speed);
 
     const contactDistance = Math.hypot(center.x - enemy.x, center.y - enemy.y);
-    const contactRadius = getEnemyHitRadius(enemy) + getPlayerHitRadius();
-    if (!(enemy.frozenRemaining > 0) && enemy.attackCooldown === 0) {
-      const attack = getEnemyAttackProfile(enemy);
-      if (contactDistance <= Math.max(attack.range * scaleActor(), contactRadius + 12)) {
-        beginEnemyAttack(enemy, attack);
-      }
+    if (!(enemy.frozenRemaining > 0) && enemy.attackCooldown === 0 && contactDistance <= attackRange) {
+      beginEnemyAttack(enemy, attackProfile);
     }
   }
 }
@@ -8071,10 +8398,10 @@ function updateGame(delta) {
   const minionsCanSpawn = isFinalWave || ((stage === "waves" || stage === "boss-wave") && !waveCleared);
   if (minionsCanSpawn && enemies.size < getEnemyCap()) {
     minionSpawnElapsed += delta;
-    const minionSpawnInterval = isFinalWave ? 1.5 : 2.5;
-    if (minionSpawnElapsed >= minionSpawnInterval) {
+    const minionSpawn = getMinionSpawnPlan();
+    if (minionSpawnElapsed >= minionSpawn.interval) {
       minionSpawnElapsed = 0;
-      spawnBossMinion(undefined, isFinalWave ? 4 : 3);
+      spawnBossMinion(undefined, minionSpawn.count);
     }
   } else {
     minionSpawnElapsed = 0;
@@ -8111,7 +8438,7 @@ function updateGame(delta) {
 
 arena.addEventListener("pointerdown", (event) => {
   if (event.target instanceof Element
-    && event.target.closest(".game-hud, .combat-loadout, .hud-timer, .hud-hearts, .hud-sound, .game-over, .boss-portal, .weapon-pickup, .front-menu, .settings-panel")) return;
+    && event.target.closest(".game-hud, .combat-loadout, .hud-timer, .hud-hearts, .hud-sound, .game-over, .boss-portal, .weapon-pickup, .front-menu, .settings-panel, .touch-hud, .account-gate, .control-editor")) return;
   if (event.button !== 0) return;
   event.preventDefault();
   initializeAudio();
@@ -8336,6 +8663,172 @@ lockerCraftingItems.addEventListener("click", (event) => {
   if (!(button instanceof HTMLButtonElement) || button.disabled) return;
   craftItem(button.dataset.recipeId);
 });
+const touchStick = document.querySelector("#touch-stick");
+const touchKnob = document.querySelector("#touch-stick-knob");
+const touchDodge = document.querySelector("#touch-dodge");
+const touchPickup = document.querySelector("#touch-pickup");
+const touchMove = { x: 0, y: 0 };
+let touchPointerId = null;
+
+function placeTouchKnob(clientX, clientY) {
+  const rect = touchStick.getBoundingClientRect();
+  const dx = clientX - (rect.left + rect.width / 2);
+  const dy = clientY - (rect.top + rect.height / 2);
+  const max = rect.width * 0.32;
+  const length = Math.hypot(dx, dy) || 1;
+  const clamped = Math.min(max, length);
+  const nx = dx / length;
+  const ny = dy / length;
+  touchKnob.style.transform = `translate(${nx * clamped}px, ${ny * clamped}px)`;
+  const power = clamped / max;
+  touchMove.x = power < 0.16 ? 0 : nx * Math.min(1, power);
+  touchMove.y = power < 0.16 ? 0 : ny * Math.min(1, power);
+}
+
+function releaseTouchStick() {
+  touchPointerId = null;
+  touchMove.x = 0;
+  touchMove.y = 0;
+  touchKnob.style.transform = "translate(0, 0)";
+}
+
+touchStick.addEventListener("pointerdown", (event) => {
+  if (isEditingControls()) return;
+  event.preventDefault();
+  event.stopPropagation();
+  initializeAudio();
+  touchPointerId = event.pointerId;
+  touchStick.setPointerCapture(event.pointerId);
+  placeTouchKnob(event.clientX, event.clientY);
+});
+touchStick.addEventListener("pointermove", (event) => {
+  if (event.pointerId !== touchPointerId) return;
+  event.preventDefault();
+  placeTouchKnob(event.clientX, event.clientY);
+});
+touchStick.addEventListener("pointerup", (event) => {
+  if (event.pointerId !== touchPointerId) return;
+  releaseTouchStick();
+});
+touchStick.addEventListener("pointercancel", releaseTouchStick);
+touchDodge.addEventListener("pointerdown", (event) => {
+  if (isEditingControls()) return;
+  event.preventDefault();
+  event.stopPropagation();
+  initializeAudio();
+  startDodge();
+});
+touchPickup.addEventListener("pointerdown", (event) => {
+  if (isEditingControls()) return;
+  event.preventDefault();
+  event.stopPropagation();
+  initializeAudio();
+  pickUpNearbyWeapon();
+});
+
+function selectEditedControl(id) {
+  selectedControl = id;
+  const spot = (draftTouchLayout ?? touchLayout)[id];
+  controlSizeInput.value = String(Math.round(spot.s * 100));
+  applyTouchLayout(draftTouchLayout ?? touchLayout);
+}
+
+function openControlEditor() {
+  if (chosenDevice !== "phone") return;
+  closeSettings();
+  draftTouchLayout = structuredClone(touchLayout);
+  controlEditor.dataset.returnMenu = String(!gameActive && !frontMenu.hidden);
+  if (!gameActive) frontMenu.hidden = true;
+  document.documentElement.setAttribute("data-editing-controls", "");
+  arena.classList.add("is-editing-controls");
+  usePowerButton.disabled = false;
+  useBoostButton.disabled = false;
+  controlEditor.hidden = false;
+  selectEditedControl(selectedControl);
+}
+
+function closeControlEditor(save) {
+  if (!isEditingControls()) return;
+  if (save && draftTouchLayout) {
+    touchLayout = draftTouchLayout;
+    persistAccountExtras();
+  }
+  draftTouchLayout = null;
+  document.documentElement.removeAttribute("data-editing-controls");
+  arena.classList.remove("is-editing-controls");
+  controlEditor.hidden = true;
+  applyTouchLayout();
+  updateCombatLoadout();
+  if (controlEditor.dataset.returnMenu === "true" && !gameActive) frontMenu.hidden = false;
+}
+
+function beginControlDrag(event) {
+  const element = event.currentTarget;
+  if (!(element instanceof HTMLElement) || !element.dataset.control || !draftTouchLayout) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const id = element.dataset.control;
+  selectEditedControl(id);
+  const bounds = arena.getBoundingClientRect();
+  const rect = element.getBoundingClientRect();
+  controlDrag = {
+    id,
+    pointerId: event.pointerId,
+    offsetX: event.clientX - rect.left,
+    offsetY: event.clientY - rect.top,
+    bounds,
+  };
+  element.setPointerCapture(event.pointerId);
+}
+
+function moveControlDrag(event) {
+  if (!controlDrag || event.pointerId !== controlDrag.pointerId || !draftTouchLayout) return;
+  const { bounds, offsetX, offsetY, id } = controlDrag;
+  const element = document.querySelector(`[data-control="${id}"]`);
+  const width = element.getBoundingClientRect().width;
+  const height = element.getBoundingClientRect().height;
+  const x = (event.clientX - offsetX - bounds.left) / bounds.width * 100;
+  const y = (event.clientY - offsetY - bounds.top) / bounds.height * 100;
+  draftTouchLayout[id] = clampControlSpot(id, {
+    x: Math.min(x, 100 - width / bounds.width * 100),
+    y: Math.min(y, 100 - height / bounds.height * 100),
+    s: draftTouchLayout[id].s,
+  });
+  applyTouchLayout(draftTouchLayout);
+}
+
+function endControlDrag(event) {
+  if (!controlDrag || event.pointerId !== controlDrag.pointerId) return;
+  controlDrag = null;
+}
+
+for (const element of document.querySelectorAll("[data-control]")) {
+  element.addEventListener("pointerdown", (event) => {
+    if (!isEditingControls()) return;
+    beginControlDrag(event);
+  });
+  element.addEventListener("pointermove", moveControlDrag);
+  element.addEventListener("pointerup", endControlDrag);
+  element.addEventListener("pointercancel", endControlDrag);
+  element.addEventListener("click", (event) => {
+    if (!isEditingControls()) return;
+    event.preventDefault();
+    event.stopPropagation();
+  }, true);
+}
+editTouchControlsButton.addEventListener("click", openControlEditor);
+controlSizeInput.addEventListener("input", () => {
+  if (!draftTouchLayout || !draftTouchLayout[selectedControl]) return;
+  draftTouchLayout[selectedControl].s = Number(controlSizeInput.value) / 100;
+  applyTouchLayout(draftTouchLayout);
+});
+document.querySelector("#control-save").addEventListener("click", () => closeControlEditor(true));
+document.querySelector("#control-cancel").addEventListener("click", () => closeControlEditor(false));
+document.querySelector("#control-reset").addEventListener("click", () => {
+  draftTouchLayout = structuredClone(defaultTouchLayout);
+  selectEditedControl("stick");
+});
+
 function gameLoop(time) {
   const delta = previousTime ? Math.min((time - previousTime) / 1000, 0.05) : 0;
   previousTime = time;
@@ -8352,6 +8845,8 @@ function gameLoop(time) {
     if (isActionHeld("right")) dx += 1;
     if (isActionHeld("up")) dy -= 1;
     if (isActionHeld("down")) dy += 1;
+    dx += touchMove.x;
+    dy += touchMove.y;
 
     if (dodgeRemaining > 0) {
       const dashTime = Math.min(delta, dodgeRemaining);
@@ -8367,8 +8862,13 @@ function gameLoop(time) {
       const length = Math.hypot(dx, dy);
       facing.x = dx / length;
       facing.y = dy / length;
+      const motionKind = player.dataset.weaponMotion;
+      const attackSlow = player.classList.contains("is-shooting")
+        ? motionKind === "melee" ? 0.55 : motionKind === "gun" ? 0.88 : 1
+        : 1;
       const boostSpeed = (activeBoostId === "vitesse" && activeBoostRemaining > 0 ? 1.35 : 1)
-        * (activePowerInvulnerabilityRemaining > 0 ? 1.3 : 1);
+        * (activePowerInvulnerabilityRemaining > 0 ? 1.3 : 1)
+        * attackSlow;
       const gaitSpeed = speed * boostSpeed * (walkSpeedRatio + (1 - walkSpeedRatio) * moveMomentum);
       movePlayerBy((dx / length) * gaitSpeed * delta, (dy / length) * gaitSpeed * delta);
       playFootsteps(delta, running);
@@ -8408,5 +8908,69 @@ if (shouldSaveProgression) {
   saveProgression();
   renderShop();
 }
-showPreparationMenu();
+accountModeLogin.addEventListener("click", () => setAccountMode("login"));
+accountModeCreate.addEventListener("click", () => setAccountMode("create"));
+function choosePlayDevice(device) {
+  if (!pendingEntry) return;
+  applyPlayDevice(device);
+  enterAccount(pendingEntry.username, pendingEntry.progression);
+}
+
+devicePcButton.addEventListener("click", () => choosePlayDevice("pc"));
+devicePhoneButton.addEventListener("click", () => choosePlayDevice("phone"));
+settingsLogout.addEventListener("click", logoutAccount);
+accountForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const username = accountUsername.value.trim();
+  const password = accountPassword.value;
+  if (!/^[A-Za-z0-9À-ÿ_-]{3,16}$/.test(username)) {
+    accountFeedback.textContent = "L'identifiant doit faire 3 à 16 caractères, sans espace.";
+    return;
+  }
+  if (password.length < 4) {
+    accountFeedback.textContent = "Le mot de passe doit faire au moins 4 caractères.";
+    return;
+  }
+  const accounts = loadAccountRecords();
+  const existing = accounts.find((account) => account.username.toLowerCase() === username.toLowerCase());
+  try {
+    if (accountMode === "create") {
+      if (accountConfirm.value !== password) {
+        accountFeedback.textContent = "Les deux mots de passe ne correspondent pas.";
+        return;
+      }
+      if (existing) {
+        accountFeedback.textContent = "Ce compte existe déjà. Connecte-toi.";
+        return;
+      }
+      const salt = randomAccountSalt();
+      const hash = await hashAccountPassword(password, salt);
+      const progressionSeed = accounts.length === 0
+        ? structuredClone(progression)
+        : structuredClone(defaultProgression);
+      if (!progressionSeed.playerName) progressionSeed.playerName = username.slice(0, 16);
+      accounts.push({ username, salt, hash, progression: progressionSeed });
+      saveAccountRecords(accounts);
+      pendingEntry = { username, progression: progressionSeed };
+      showDeviceStep();
+      return;
+    }
+    if (!existing) {
+      accountFeedback.textContent = "Identifiant ou mot de passe incorrect.";
+      return;
+    }
+    const hash = await hashAccountPassword(password, existing.salt);
+    if (hash !== existing.hash) {
+      accountFeedback.textContent = "Identifiant ou mot de passe incorrect.";
+      return;
+    }
+    pendingEntry = { username: existing.username, progression: existing.progression };
+    showDeviceStep();
+  } catch {
+    accountFeedback.textContent = "La connexion n'a pas pu être vérifiée sur cet appareil.";
+  }
+});
+
+setAccountMode("login");
+if (!restoreSession()) showAccountGate();
 requestAnimationFrame(gameLoop);

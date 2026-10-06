@@ -2,11 +2,11 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#101b2b" />
     <title>Mon petit jeu</title>
-    <link rel="stylesheet" href="style.css?v=37" />
-    <script src="script.js?v=38" defer></script>
+    <link rel="stylesheet" href="style.css?v=51" />
+    <script src="script.js?v=45" defer></script>
   </head>
   <body>
     <main class="arena" aria-label="Terrain de jeu">
@@ -41,7 +41,7 @@
       </div>
       <p class="controls-hint" id="controls-hint">ZQSD / flèches · Maj pour esquiver · Tir auto activé</p>
       <section class="combat-loadout" aria-label="Arme, pouvoir et boost équipés">
-        <button class="combat-slot combat-weapon-slot is-active" id="combat-ranged-slot" type="button" data-weapon-slot="ranged" aria-keyshortcuts="1" aria-pressed="true">
+        <button class="combat-slot combat-weapon-slot is-active" id="combat-ranged-slot" type="button" data-weapon-slot="ranged" data-control="ranged" aria-keyshortcuts="1" aria-pressed="true">
           <span class="combat-slot-icon" id="combat-weapon-icon" aria-hidden="true">🪨</span>
           <img class="combat-slot-art" id="combat-weapon-art" src="./assets/real/armes/fronde.png" alt="" draggable="false" />
           <span class="combat-slot-key" aria-hidden="true">1</span>
@@ -52,7 +52,7 @@
             <span class="combat-slot-detail" id="combat-weapon-detail">1 projectile · dégâts 1</span>
           </span>
         </button>
-        <button class="combat-slot combat-weapon-slot combat-melee-slot" id="combat-melee-slot" type="button" data-weapon-slot="melee" aria-keyshortcuts="2" aria-pressed="false">
+        <button class="combat-slot combat-weapon-slot combat-melee-slot" id="combat-melee-slot" type="button" data-weapon-slot="melee" data-control="melee" aria-keyshortcuts="2" aria-pressed="false">
           <img class="combat-slot-art" id="combat-melee-art" src="./assets/real/armes/epee-rouillee.png" alt="" draggable="false" />
           <span class="combat-slot-key" aria-hidden="true">2</span>
           <span class="combat-slot-badge" id="combat-melee-badge">Nv 1</span>
@@ -62,7 +62,7 @@
             <span class="combat-slot-detail" id="combat-melee-detail">Mêlée · dégâts 3</span>
           </span>
         </button>
-        <button class="combat-slot combat-power-slot" id="use-power-button" type="button" aria-keyshortcuts="O">
+        <button class="combat-slot combat-power-slot" id="use-power-button" type="button" data-control="power" aria-keyshortcuts="O">
           <span class="combat-slot-icon" id="combat-power-icon" aria-hidden="true">❄️</span>
           <span class="combat-slot-key" aria-hidden="true">O</span>
           <span class="combat-slot-timer" id="combat-power-timer" aria-hidden="true"></span>
@@ -72,7 +72,7 @@
             <span class="combat-slot-detail" id="combat-power-detail">Disponible</span>
           </span>
         </button>
-        <button class="combat-slot combat-boost-slot" id="use-boost-button" type="button" disabled aria-keyshortcuts="P">
+        <button class="combat-slot combat-boost-slot" id="use-boost-button" type="button" data-control="boost" disabled aria-keyshortcuts="P">
           <span class="combat-slot-icon" id="combat-boost-icon" aria-hidden="true">＋</span>
           <span class="combat-slot-key" aria-hidden="true">P</span>
           <span class="combat-slot-badge" id="combat-boost-badge"></span>
@@ -84,6 +84,15 @@
           </span>
         </button>
       </section>
+      <div class="touch-hud" id="touch-hud">
+        <div class="touch-stick" id="touch-stick" data-control="stick" role="application" aria-label="Déplacement">
+          <span class="touch-stick-knob" id="touch-stick-knob"></span>
+        </div>
+        <div class="touch-actions">
+          <button class="touch-action" id="touch-dodge" data-control="dodge" type="button">Esquive</button>
+          <button class="touch-action" id="touch-pickup" data-control="pickup" type="button">Ramasser</button>
+        </div>
+      </div>
       <div class="round-message" id="round-message" aria-live="assertive" hidden></div>
       <div class="wave-countdown" id="wave-countdown" role="status" aria-live="assertive" aria-atomic="true" hidden>
         <span class="wave-countdown-number" id="wave-countdown-number"></span>
@@ -116,7 +125,54 @@
           <button class="restart-button restart-button-secondary" id="shop-button" type="button">Retour au menu</button>
         </div>
       </div>
-      <section class="front-menu" id="front-menu" aria-label="Préparation de partie">
+      <section class="account-gate" id="account-gate" aria-label="Connexion au jeu">
+        <div class="account-panel">
+          <form id="account-form">
+            <p class="account-kicker">NUIT D'HALLOWEEN · ZONE MAUDITE</p>
+            <h1>Entre dans la nuit</h1>
+            <p class="account-lead">Connecte-toi ou crée un compte pour ouvrir le menu.</p>
+            <div class="account-modes" role="group" aria-label="Connexion ou création">
+              <button class="account-mode is-active" id="account-mode-login" type="button" aria-pressed="true">Se connecter</button>
+              <button class="account-mode" id="account-mode-create" type="button" aria-pressed="false">Créer un compte</button>
+            </div>
+            <label class="account-field">Identifiant
+              <input id="account-username" name="username" type="text" maxlength="16" autocomplete="username" required placeholder="3 à 16 caractères" />
+            </label>
+            <label class="account-field">Mot de passe
+              <input id="account-password" name="password" type="password" maxlength="32" autocomplete="current-password" required placeholder="4 caractères minimum" />
+            </label>
+            <label class="account-field" id="account-confirm-label" hidden>Confirme le mot de passe
+              <input id="account-confirm" name="confirm" type="password" maxlength="32" autocomplete="new-password" placeholder="Le même mot de passe" />
+            </label>
+            <p class="account-feedback" id="account-feedback" role="status"></p>
+            <button class="account-submit" id="account-submit" type="submit">Entrer</button>
+          </form>
+          <div class="account-device-step" id="account-device-step" hidden>
+            <p class="account-kicker">CONNEXION RÉUSSIE</p>
+            <h1>Sur quoi joues-tu ?</h1>
+            <p class="account-lead" id="account-device-label">Choisis l'écran. Le jeu s'adapte ensuite.</p>
+            <div class="account-devices" role="group" aria-labelledby="account-device-label">
+              <button class="account-device" id="device-pc" type="button" aria-pressed="false">
+                <svg class="account-device-icon" viewBox="0 0 64 64" aria-hidden="true">
+                  <rect x="6" y="8" width="52" height="34" rx="3" fill="none" stroke="currentColor" stroke-width="3" />
+                  <path d="M24 42h16M32 42v8M20 54h24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
+                </svg>
+                <strong>PC</strong>
+                <span>Clavier et souris</span>
+              </button>
+              <button class="account-device" id="device-phone" type="button" aria-pressed="false">
+                <svg class="account-device-icon" viewBox="0 0 64 64" aria-hidden="true">
+                  <rect x="18" y="6" width="28" height="52" rx="5" fill="none" stroke="currentColor" stroke-width="3" />
+                  <circle cx="32" cy="50" r="2.5" fill="currentColor" />
+                </svg>
+                <strong>Téléphone</strong>
+                <span>Stick et boutons tactiles</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section class="front-menu" id="front-menu" aria-label="Préparation de partie" hidden>
         <div class="menu-panel">
           <div class="menu-decorations" aria-hidden="true">
             <span class="menu-bat menu-bat-left">🦇</span>
@@ -286,6 +342,7 @@
           <div class="settings-tabs" role="tablist" aria-label="Rubriques des paramètres">
             <button class="settings-tab is-active" type="button" role="tab" aria-selected="true" data-settings-tab="sound">🔊 Son</button>
             <button class="settings-tab" type="button" role="tab" aria-selected="false" data-settings-tab="keys">⌨️ Touches</button>
+            <button class="settings-tab" type="button" role="tab" aria-selected="false" data-settings-tab="account">Compte</button>
           </div>
           <div class="settings-section" data-settings-section="sound" role="tabpanel">
             <div class="settings-row">
@@ -308,6 +365,11 @@
           <div class="settings-section" data-settings-section="keys" role="tabpanel" hidden>
             <p class="settings-note">Clique sur une touche puis appuie sur la nouvelle. Échap annule. Les flèches déplacent toujours le personnage.</p>
             <div class="settings-keys" id="settings-keys"></div>
+            <button class="settings-edit-controls" id="edit-touch-controls" type="button" hidden>Modifier les touches du téléphone</button>
+          </div>
+          <div class="settings-section" data-settings-section="account" role="tabpanel" hidden>
+            <p class="settings-note" id="settings-account-name">Aucun compte connecté.</p>
+            <button class="settings-logout" id="settings-logout" type="button">Déconnexion</button>
           </div>
           <footer class="settings-footer">
             <button class="settings-reset" id="settings-reset" type="button">Réinitialiser</button>
@@ -315,6 +377,17 @@
           </footer>
         </div>
       </section>
+      <div class="control-editor" id="control-editor" hidden>
+        <p class="control-editor-title">Glisse chaque bouton, puis règle sa taille.</p>
+        <label class="control-editor-size">Taille
+          <input id="control-size" type="range" min="70" max="150" step="5" value="100" aria-label="Taille du bouton sélectionné" />
+        </label>
+        <div class="control-editor-actions">
+          <button id="control-reset" type="button">Réinitialiser</button>
+          <button id="control-cancel" type="button">Annuler</button>
+          <button id="control-save" type="button">Enregistrer</button>
+        </div>
+      </div>
       <div class="player" id="player" role="img" aria-label="Survivant vu de dessus, avec sac à dos et lance-pierre. Tire automatiquement sur l’ennemi le plus proche. Vie pleine.">
         <span class="player-art">
           <span class="player-name-tag" id="player-name-tag">Survivant</span>
