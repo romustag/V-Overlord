@@ -1,3 +1,4 @@
+const db = firebase.firestore();
 const player = document.querySelector("#player");
 const arena = document.querySelector(".arena");
 const world = document.createElement("div");
@@ -97,6 +98,17 @@ const settingsGiftKind = document.querySelector("#settings-gift-kind");
 const settingsGiftItem = document.querySelector("#settings-gift-item");
 const settingsGiftCount = document.querySelector("#settings-gift-count");
 const settingsGiftStatus = document.querySelector("#settings-gift-status");
+const adminPanel = document.querySelector("#admin-panel");
+const adminPanelClose = document.querySelector("#admin-panel-close");
+const adminGiftForm = document.querySelector("#admin-gift-form");
+const adminPlayer = document.querySelector("#admin-player");
+const adminCoins = document.querySelector("#admin-coins");
+const adminItemId = document.querySelector("#admin-item-id");
+const adminItemName = document.querySelector("#admin-item-name");
+const adminCount = document.querySelector("#admin-count");
+const adminStatus = document.querySelector("#admin-status");
+const adminGiveCoins = document.querySelector("#admin-give-coins");
+const adminGiveItem = document.querySelector("#admin-give-item");
 const giftCountableKinds = new Set(["boosts", "relics"]);
 let hostGiftCatalog = null;
 const settingsKeysList = document.querySelector("#settings-keys");
@@ -2307,6 +2319,7 @@ function renderShop() {
 const accountsStorageKey = "blackwood-survivor-accounts";
 const accountGate = document.querySelector("#account-gate");
 const accountForm = document.querySelector("#account-form");
+const accountEmail = document.querySelector("#account-email");
 const accountUsername = document.querySelector("#account-username");
 const accountPassword = document.querySelector("#account-password");
 const accountConfirm = document.querySelector("#account-confirm");
@@ -2325,6 +2338,7 @@ const controlEditor = document.querySelector("#control-editor");
 const controlSizeInput = document.querySelector("#control-size");
 const sessionStorageKey = "blackwood-survivor-session";
 let activeAccount = "";
+let firebaseUserId = "";
 let accountMode = "login";
 let chosenDevice = "";
 let pendingEntry = null;
@@ -2404,8 +2418,8 @@ async function detectGameServer() {
   const lead = document.querySelector("#account-form .account-lead");
   if (lead) {
     lead.textContent = serverOnline
-      ? "Les comptes sont enregistrés sur ce PC. Le même identifiant marche sur les autres appareils qui ouvrent cette adresse."
-      : "Connecte-toi ou crée un compte pour ouvrir le menu.";
+      ? "L'e-mail retrouve les pièces et l'inventaire Firebase sur chaque appareil. Sans e-mail, l'identifiant ouvre le compte de ce PC."
+      : "L'e-mail ouvre Firebase. Sans e-mail, l'identifiant ouvre le compte de cet appareil.";
   }
   return serverOnline;
 }
@@ -2662,7 +2676,7 @@ function setAccountMode(mode) {
   accountConfirmLabel.hidden = !creating;
   accountConfirm.required = creating;
   accountPassword.autocomplete = creating ? "new-password" : "current-password";
-  accountSubmit.textContent = creating ? "Créer et entrer" : "Entrer";
+  accountSubmit.textContent = creating ? "S'inscrire" : "Se connecter";
   accountFeedback.textContent = "";
 }
 
@@ -2733,6 +2747,10 @@ function restoreSession() {
 }
 
 function logoutAccount() {
+  firebaseUserId = "";
+  if (typeof firebase !== "undefined" && typeof firebase.auth === "function" && firebase.auth().currentUser) {
+    firebase.auth().signOut().catch(() => {});
+  }
   if (activeAccount) {
     try {
       window.localStorage.setItem(progressionStorageKey, JSON.stringify(progression));
@@ -5688,30 +5706,77 @@ function isHostAccount() {
   return activeAccount.toLowerCase() === "admin";
 }
 
-function fillHostGiftItems() {
-  const items = hostGiftCatalog?.[settingsGiftKind.value] || [];
-  settingsGiftItem.replaceChildren();
+function fillGiftChoices(kindSelect, itemSelect, countInput) {
+  const items = hostGiftCatalog?.[kindSelect.value] || [];
+  itemSelect.replaceChildren();
   for (const item of items) {
     const option = document.createElement("option");
     option.value = item.id;
     option.textContent = `${item.icon} ${item.label}`;
-    settingsGiftItem.append(option);
+    itemSelect.append(option);
   }
-  const locked = !settingsGiftKind.value;
-  settingsGiftItem.disabled = locked;
-  settingsGiftCount.disabled = locked || !giftCountableKinds.has(settingsGiftKind.value);
-  if (settingsGiftCount.disabled) settingsGiftCount.value = "1";
+  const locked = !kindSelect.value;
+  itemSelect.disabled = locked;
+  countInput.disabled = locked || !giftCountableKinds.has(kindSelect.value);
+  if (countInput.disabled) countInput.value = "1";
+}
+
+function fillHostGiftItems() {
+  fillGiftChoices(settingsGiftKind, settingsGiftItem, settingsGiftCount);
 }
 
 async function loadHostGiftCatalog() {
-  if (hostGiftCatalog) {
-    fillHostGiftItems();
-    return;
+  if (!hostGiftCatalog) {
+    const response = await fetch("/api/catalog", { cache: "no-store" });
+    if (!response.ok) throw new Error("La liste des objets n'a pas pu être lue.");
+    hostGiftCatalog = await response.json();
   }
-  const response = await fetch("/api/catalog", { cache: "no-store" });
-  if (!response.ok) throw new Error("La liste des objets n'a pas pu être lue.");
-  hostGiftCatalog = await response.json();
   fillHostGiftItems();
+}
+
+async function giveToPlayer({ pseudo, coins = 0, kind = "", itemId = "", count = 1, status }) {
+  if (!isHostAccount()) return false;
+  if (!serverToken) {
+    status.textContent = "Reconnecte-toi pour donner des objets.";
+    return false;
+  }
+  status.textContent = "Enregistrement…";
+  try {
+    const data = await serverRequest("/api/give", { pseudo, coins, kind, itemId, count });
+    status.textContent = `Don enregistré pour ${data.username}. Ce sac a ${data.coins} pièces.`;
+    if (data.username.toLowerCase() === activeAccount.toLowerCase()) pullServerAccount();
+    return true;
+  } catch (error) {
+    status.textContent = error.message || "Le don n'a pas pu être enregistré.";
+    return false;
+  }
+}
+
+function showAdminStatus(message, ok) {
+  adminStatus.textContent = message;
+  adminStatus.classList.toggle("is-ok", ok === true);
+  adminStatus.classList.toggle("is-error", ok === false);
+}
+
+function firestoreGiftMessage(error) {
+  if (error?.code === "permission-denied") return "Firebase a refusé l'écriture. Publie des règles qui autorisent players et inventory.";
+  if (error?.code === "not-found") return "Ce joueur n'existe pas encore dans Firebase.";
+  return error?.message || "Le don n'a pas pu être enregistré sur Firebase.";
+}
+
+function openAdminPanel() {
+  if (!isHostAccount()) return;
+  adminPanel.hidden = false;
+  adminPlayer.focus();
+}
+
+function closeAdminPanel() {
+  adminPanel.hidden = true;
+}
+
+function toggleAdminPanel() {
+  if (adminPanel.hidden) openAdminPanel();
+  else closeAdminPanel();
 }
 
 function syncHostGiftAccess() {
@@ -5765,27 +5830,74 @@ for (const button of settingsOpenButtons) {
 settingsGiftKind.addEventListener("change", fillHostGiftItems);
 settingsGiftForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+  const given = await giveToPlayer({
+    pseudo: settingsGiftPseudo.value.trim(),
+    coins: Number(settingsGiftCoins.value) || 0,
+    kind: settingsGiftKind.value,
+    itemId: settingsGiftKind.value ? settingsGiftItem.value : "",
+    count: Number(settingsGiftCount.value) || 1,
+    status: settingsGiftStatus,
+  });
+  if (given) settingsGiftCoins.value = "0";
+});
+adminGiftForm.addEventListener("submit", (event) => event.preventDefault());
+adminPanelClose.addEventListener("click", closeAdminPanel);
+adminPanel.addEventListener("click", (event) => {
+  if (event.target === adminPanel) closeAdminPanel();
+});
+adminGiveCoins.addEventListener("click", async () => {
   if (!isHostAccount()) return;
-  if (!serverToken) {
-    settingsGiftStatus.textContent = "Reconnecte-toi pour donner des objets.";
+  const joueurId = adminPlayer.value.trim();
+  const nouvellesPieces = Number(adminCoins.value);
+  if (!joueurId) {
+    showAdminStatus("Écris l'identifiant du joueur.", false);
     return;
   }
-  settingsGiftStatus.textContent = "Enregistrement…";
+  if (!Number.isFinite(nouvellesPieces) || nouvellesPieces < 0) {
+    showAdminStatus("Indique un nombre de pièces.", false);
+    return;
+  }
+  showAdminStatus("Enregistrement sur Firebase…", undefined);
   try {
-    const data = await serverRequest("/api/give", {
-      pseudo: settingsGiftPseudo.value.trim(),
-      coins: Number(settingsGiftCoins.value) || 0,
-      kind: settingsGiftKind.value,
-      itemId: settingsGiftKind.value ? settingsGiftItem.value : "",
-      count: Number(settingsGiftCount.value) || 1,
-    });
-    settingsGiftStatus.textContent = `Don enregistré pour ${data.username}. Ce sac a ${data.coins} pièces.`;
-    settingsGiftCoins.value = "0";
-    if (data.username.toLowerCase() === activeAccount.toLowerCase()) pullServerAccount();
+    await donnerPieces(joueurId, nouvellesPieces);
+    showAdminStatus(`Pièces mises à jour : ${joueurId} a ${nouvellesPieces} pièces.`, true);
   } catch (error) {
-    settingsGiftStatus.textContent = error.message || "Le don n'a pas pu être enregistré.";
+    showAdminStatus(firestoreGiftMessage(error), false);
   }
 });
+adminGiveItem.addEventListener("click", async () => {
+  if (!isHostAccount()) return;
+  const joueurId = adminPlayer.value.trim();
+  const idObjet = adminItemId.value.trim();
+  const nomObjet = adminItemName.value.trim();
+  const quantite = Number(adminCount.value);
+  if (!joueurId) {
+    showAdminStatus("Écris l'identifiant du joueur.", false);
+    return;
+  }
+  if (!idObjet || !nomObjet) {
+    showAdminStatus("Écris l'identifiant et le nom de l'objet.", false);
+    return;
+  }
+  if (!Number.isInteger(quantite) || quantite < 1) {
+    showAdminStatus("La quantité doit être au moins 1.", false);
+    return;
+  }
+  showAdminStatus("Enregistrement sur Firebase…", undefined);
+  try {
+    await donnerObjet(joueurId, idObjet, nomObjet, quantite);
+    showAdminStatus(`Objet ajouté : ${nomObjet} ×${quantite} pour ${joueurId}.`, true);
+  } catch (error) {
+    showAdminStatus(firestoreGiftMessage(error), false);
+  }
+});
+window.addEventListener("keydown", (event) => {
+  if (!event.ctrlKey || !event.shiftKey || event.key.toLowerCase() !== "a") return;
+  if (!isHostAccount()) return;
+  event.preventDefault();
+  event.stopPropagation();
+  toggleAdminPanel();
+}, true);
 settingsCloseButton.addEventListener("click", closeSettings);
 settingsDoneButton.addEventListener("click", closeSettings);
 settingsResetButton.addEventListener("click", () => {
@@ -9135,6 +9247,11 @@ window.addEventListener("keydown", (event) => {
     return;
   }
   if (key === "escape" && !event.repeat) {
+    if (!adminPanel.hidden) {
+      event.preventDefault();
+      closeAdminPanel();
+      return;
+    }
     if (!settingsPanel.hidden) {
       event.preventDefault();
       closeSettings();
@@ -9146,7 +9263,7 @@ window.addEventListener("keydown", (event) => {
       return;
     }
   }
-  if (!settingsPanel.hidden) return;
+  if (!adminPanel.hidden || !settingsPanel.hidden) return;
   if (event.target instanceof HTMLElement
     && event.target.closest("input, textarea, select, [contenteditable='true']")) return;
   if (isMovementKey(key) || isActionKey("shoot", key) || isActionKey("dodge", key)) initializeAudio();
@@ -9708,23 +9825,36 @@ async function mirrorServerAccount(username, password, savedProgression) {
 
 accountForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+  const email = accountEmail.value.trim();
   const username = accountUsername.value.trim();
   const password = accountPassword.value;
-  if (!/^[A-Za-z0-9À-ÿ_-]{3,16}$/.test(username)) {
+  if (!email && !/^[A-Za-z0-9À-ÿ_-]{3,16}$/.test(username)) {
     accountFeedback.textContent = "L'identifiant doit faire 3 à 16 caractères, sans espace.";
     return;
   }
-  if (password.length < 4 || password.length > 32) {
-    accountFeedback.textContent = "Le mot de passe doit faire entre 4 et 32 caractères.";
+  if (email && username && !/^[A-Za-z0-9À-ÿ_-]{3,16}$/.test(username)) {
+    accountFeedback.textContent = "L'identifiant doit faire 3 à 16 caractères, sans espace.";
+    return;
+  }
+  if (password.length < (email ? 6 : 4) || password.length > 32) {
+    accountFeedback.textContent = email
+      ? "Le mot de passe Firebase doit faire au moins 6 caractères."
+      : "Le mot de passe doit faire entre 4 et 32 caractères.";
     return;
   }
   accountFeedback.textContent = "Vérification…";
   try {
+    if (email) {
+      await submitAccountOnFirebase(email, password, username);
+      return;
+    }
     if (!serverOnline) await detectGameServer();
     if (serverOnline) await submitAccountOnServer(username, password);
     else await submitAccountLocally(username, password);
   } catch (error) {
-    accountFeedback.textContent = error.message || "La connexion n'a pas pu être vérifiée.";
+    accountFeedback.textContent = email
+      ? firebaseAuthMessage(error)
+      : (error.message || "La connexion n'a pas pu être vérifiée.");
   }
 });
 
@@ -9742,3 +9872,141 @@ setAccountMode("login");
 if (!restoreSession()) showAccountGate();
 attachServerWhenReady();
 requestAnimationFrame(gameLoop);
+
+function firebaseUsername(email, username) {
+  const raw = (username || email.split("@")[0] || "joueur").trim();
+  const cleaned = raw.replace(/[^A-Za-z0-9À-ÿ_-]/g, "").slice(0, 16);
+  return cleaned.length >= 3 ? cleaned : "joueur";
+}
+
+function firebaseAuthMessage(error) {
+  const code = error?.code || "";
+  if (code === "auth/email-already-in-use") return "Cet e-mail a déjà un compte. Connecte-toi.";
+  if (code === "auth/invalid-email") return "Cet e-mail n'est pas valide.";
+  if (code === "auth/weak-password" || code === "auth/password-does-not-meet-requirements") return "Le mot de passe Firebase doit faire au moins 6 caractères.";
+  if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found") return "E-mail ou mot de passe incorrect.";
+  if (code === "auth/operation-not-allowed") return "Active E-mail/Mot de passe dans Firebase Authentication.";
+  if (code === "permission-denied") return "Firebase a refusé l'enregistrement du profil.";
+  return error?.message || "La connexion Firebase n'a pas abouti.";
+}
+
+function applyInventoryCounts(target, inventory) {
+  for (const [id, item] of Object.entries(inventory)) {
+    const quantity = Number(item?.quantity);
+    if (!Number.isFinite(quantity) || quantity < 0) continue;
+    if (target.boostInventory && Object.prototype.hasOwnProperty.call(target.boostInventory, id)) {
+      target.boostInventory[id] = Math.floor(quantity);
+    }
+  }
+}
+
+function applyFirestoreProfile(joueurId, data, inventory) {
+  const username = firebaseUsername(data.email || "", data.username || "");
+  const coins = Number(data.coins);
+  firebaseUserId = joueurId;
+  if (!activeAccount) {
+    const saved = structuredClone(defaultProgression);
+    if (Number.isFinite(coins)) saved.coins = coins;
+    saved.playerName = username;
+    saved.firebaseInventory = inventory;
+    applyInventoryCounts(saved, inventory);
+    openPendingAccount(username, saved);
+    accountFeedback.textContent = `Profil Firebase chargé : ${Number.isFinite(coins) ? coins : 0} pièces.`;
+    return;
+  }
+  if (activeAccount.toLowerCase() !== username.toLowerCase()) return;
+  if (Number.isFinite(coins)) progression.coins = coins;
+  progression.firebaseInventory = inventory;
+  applyInventoryCounts(progression, inventory);
+  updateMenuBalance();
+  saveProgression();
+  persistAccountExtras();
+}
+
+async function submitAccountOnFirebase(email, password, username) {
+  if (!email.includes("@")) {
+    accountFeedback.textContent = "Écris un e-mail valide.";
+    return;
+  }
+  if (password.length < 6) {
+    accountFeedback.textContent = "Le mot de passe Firebase doit faire au moins 6 caractères.";
+    return;
+  }
+  if (accountMode === "create" && accountConfirm.value !== password) {
+    accountFeedback.textContent = "Les deux mots de passe ne correspondent pas.";
+    return;
+  }
+  accountFeedback.textContent = "Connexion Firebase…";
+  const displayName = firebaseUsername(email, username);
+  if (accountMode === "create") {
+    const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
+    await db.collection("players").doc(userCredential.user.uid).set({
+      username: displayName,
+      email,
+      coins: 0,
+    });
+    accountFeedback.textContent = "Compte créé. Chargement du profil…";
+    return;
+  }
+  await firebase.auth().signInWithEmailAndPassword(email, password);
+  accountFeedback.textContent = "Connecté. Chargement du profil…";
+}
+
+// Fonction pour charger les données du joueur depuis Firebase
+function chargerJoueur(joueurId) {
+  return db.collection("players").doc(joueurId).get().then((doc) => {
+    if (!doc.exists) {
+      console.log("Joueur introuvable !");
+      return null;
+    }
+    const data = doc.data();
+    console.log("Joueur trouvé :", data.username);
+    console.log("Pièces :", data.coins);
+    return db.collection("players").doc(joueurId).collection("inventory").get().then((snapshot) => {
+      const inventory = {};
+      snapshot.forEach((item) => {
+        inventory[item.id] = item.data();
+      });
+      applyFirestoreProfile(joueurId, data, inventory);
+      return data;
+    });
+  }).catch((error) => {
+    console.error("Erreur lors de la récupération :", error);
+    if (!accountGate.hidden) accountFeedback.textContent = firebaseAuthMessage(error);
+  });
+}
+
+// Fonction pour modifier les pièces du joueur sur Firebase
+function donnerPieces(joueurId, nouvellesPieces) {
+  return db.collection("players").doc(joueurId).update({
+    coins: nouvellesPieces
+  })
+  .then(() => {
+    console.log("Pièces mises à jour sur Firebase !");
+  });
+}
+
+// Fonction pour ajouter un objet dans l'inventaire du joueur
+function donnerObjet(joueurId, idObjet, nomObjet, quantite) {
+  return db.collection("players").doc(joueurId).collection("inventory").doc(idObjet).set({
+    name: nomObjet,
+    quantity: quantite
+  })
+  .then(() => {
+    console.log("Objet ajouté à l'inventaire !");
+  });
+}
+
+function creerCompteFirebase(email, motDePasse) {
+  return firebase.auth().createUserWithEmailAndPassword(email, motDePasse);
+}
+
+if (typeof firebase !== "undefined" && typeof firebase.auth === "function") {
+  firebase.auth().onAuthStateChanged((user) => {
+    if (user) {
+      chargerJoueur(user.uid);
+      return;
+    }
+    if (!activeAccount) showAccountGate();
+  });
+}

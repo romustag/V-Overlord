@@ -12200,6 +12200,39 @@ body {
   font-weight: 800;
 }
 
+.admin-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow: auto;
+  background: radial-gradient(circle at 50% 40%, rgb(40 10 50 / 0.6), rgb(6 2 10 / 0.86));
+  backdrop-filter: blur(4px);
+  pointer-events: auto;
+}
+
+.admin-panel[hidden] {
+  display: none;
+}
+
+.admin-card {
+  width: min(420px, 100%);
+  min-height: 0;
+  max-height: 100%;
+  overflow: auto;
+}
+
+#admin-status.is-ok {
+  color: #9dffb0;
+}
+
+#admin-status.is-error {
+  color: #ffb0b0;
+}
+
 /* Nouveaux pouvoirs : nuée toxique, tempête de foudre, onde sismique, vortex d'ombre et pacte vampirique. */
 .player.power-cast-generic {
   animation: player-power-cast 0.6s ease-out;

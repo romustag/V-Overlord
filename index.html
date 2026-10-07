@@ -6,8 +6,23 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta name="theme-color" content="#101b2b" />
     <title>Mon petit jeu</title>
-    <link rel="stylesheet" href="style.css?v=59" />
-    <script src="script.js?v=58" defer></script>
+    <link rel="stylesheet" href="style.css?v=63" />
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script>
+      firebase.initializeApp({
+        apiKey: "AIzaSyDjjSkFbAMv3DDQyF7FcNvnG2wsUEFIyiY",
+        authDomain: "v-overlord.firebaseapp.com",
+        databaseURL: "https://v-overlord-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "v-overlord",
+        storageBucket: "v-overlord.firebasestorage.app",
+        messagingSenderId: "435706193039",
+        appId: "1:435706193039:web:edc590aa9831c6992cbcfa",
+        measurementId: "G-2T6S7JB2Y1"
+      });
+    </script>
+    <script src="script.js?v=67" defer></script>
   </head>
   <body>
     <main class="arena" aria-label="Terrain de jeu">
@@ -131,11 +146,14 @@
           <form id="account-form">
             <p class="account-kicker">NUIT D'HALLOWEEN · ZONE MAUDITE</p>
             <h1>Entre dans la nuit</h1>
-            <p class="account-lead">Connecte-toi ou crée un compte pour ouvrir le menu.</p>
+            <p class="account-lead">L'e-mail retrouve les pièces et l'inventaire Firebase sur chaque appareil. L'identifiant ouvre le compte enregistré sur ce PC.</p>
             <div class="account-modes" role="group" aria-label="Connexion ou création">
               <button class="account-mode is-active" id="account-mode-login" type="button" aria-pressed="true">Se connecter</button>
-              <button class="account-mode" id="account-mode-create" type="button" aria-pressed="false">Créer un compte</button>
+              <button class="account-mode" id="account-mode-create" type="button" aria-pressed="false">S'inscrire</button>
             </div>
+            <label class="account-field">E-mail
+              <input id="account-email" name="email" type="email" maxlength="80" autocomplete="email" placeholder="joueur@mail.com" />
+            </label>
             <label class="account-field">Identifiant
               <input id="account-username" name="username" type="text" maxlength="16" autocomplete="username" required placeholder="3 à 16 caractères" />
             </label>
@@ -409,6 +427,34 @@
             <button class="settings-reset" id="settings-reset" type="button">Réinitialiser</button>
             <button class="settings-done" id="settings-done" type="button">Fermer</button>
           </footer>
+        </div>
+      </section>
+      <section class="admin-panel" id="admin-panel" role="dialog" aria-modal="true" aria-labelledby="admin-panel-title" hidden>
+        <div class="settings-card admin-card">
+          <header class="settings-header">
+            <h2 id="admin-panel-title">Admin</h2>
+            <button class="settings-close" id="admin-panel-close" type="button" aria-label="Fermer le panneau admin">✕</button>
+          </header>
+          <form class="settings-gift" id="admin-gift-form">
+            <label>ID ou pseudo du joueur
+              <input id="admin-player" type="text" maxlength="128" autocomplete="off" placeholder="joueur_01" />
+            </label>
+            <label>Pièces
+              <input id="admin-coins" type="number" min="0" max="1000000" value="500" />
+            </label>
+            <button id="admin-give-coins" type="button">Donner pièces</button>
+            <label>ID de l'objet
+              <input id="admin-item-id" type="text" maxlength="128" autocomplete="off" placeholder="item_003" />
+            </label>
+            <label>Nom de l'objet
+              <input id="admin-item-name" type="text" maxlength="80" autocomplete="off" placeholder="Épée de légende" />
+            </label>
+            <label>Quantité
+              <input id="admin-count" type="number" min="1" max="99" value="1" />
+            </label>
+            <button id="admin-give-item" type="button">Ajouter objet</button>
+            <p class="settings-note" id="admin-status" role="status"></p>
+          </form>
         </div>
       </section>
       <div class="control-editor" id="control-editor" hidden>
