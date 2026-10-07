@@ -9872,6 +9872,7 @@ setAccountMode("login");
 if (!restoreSession()) showAccountGate();
 attachServerWhenReady();
 requestAnimationFrame(gameLoop);
+<<<<<<< HEAD
 
 function firebaseUsername(email, username) {
   const raw = (username || email.split("@")[0] || "joueur").trim();
@@ -9973,12 +9974,30 @@ function chargerJoueur(joueurId) {
   }).catch((error) => {
     console.error("Erreur lors de la récupération :", error);
     if (!accountGate.hidden) accountFeedback.textContent = firebaseAuthMessage(error);
+=======
+// Fonction pour charger les données du joueur depuis Firebase
+function chargerJoueur(joueurId) {
+  db.collection("players").doc(joueurId).get().then((doc) => {
+    if (doc.exists) {
+      const data = doc.data();
+      console.log("Joueur trouvé :", data.username);
+      console.log("Pièces :", data.coins);
+    } else {
+      console.log("Joueur introuvable !");
+    }
+  }).catch((error) => {
+    console.error("Erreur lors de la récupération :", error);
+>>>>>>> 8b111682398ac08b291eb5f2ac40e138866f38cc
   });
 }
 
 // Fonction pour modifier les pièces du joueur sur Firebase
 function donnerPieces(joueurId, nouvellesPieces) {
+<<<<<<< HEAD
   return db.collection("players").doc(joueurId).update({
+=======
+  db.collection("players").doc(joueurId).update({
+>>>>>>> 8b111682398ac08b291eb5f2ac40e138866f38cc
     coins: nouvellesPieces
   })
   .then(() => {
@@ -9988,7 +10007,11 @@ function donnerPieces(joueurId, nouvellesPieces) {
 
 // Fonction pour ajouter un objet dans l'inventaire du joueur
 function donnerObjet(joueurId, idObjet, nomObjet, quantite) {
+<<<<<<< HEAD
   return db.collection("players").doc(joueurId).collection("inventory").doc(idObjet).set({
+=======
+  db.collection("players").doc(joueurId).collection("inventory").doc(idObjet).set({
+>>>>>>> 8b111682398ac08b291eb5f2ac40e138866f38cc
     name: nomObjet,
     quantity: quantite
   })
@@ -9996,6 +10019,7 @@ function donnerObjet(joueurId, idObjet, nomObjet, quantite) {
     console.log("Objet ajouté à l'inventaire !");
   });
 }
+<<<<<<< HEAD
 
 function creerCompteFirebase(email, motDePasse) {
   return firebase.auth().createUserWithEmailAndPassword(email, motDePasse);
@@ -10010,3 +10034,5 @@ if (typeof firebase !== "undefined" && typeof firebase.auth === "function") {
     if (!activeAccount) showAccountGate();
   });
 }
+=======
+>>>>>>> 8b111682398ac08b291eb5f2ac40e138866f38cc
