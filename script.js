@@ -2390,7 +2390,7 @@ let applyingServerState = false;
 
 async function serverRequest(path, body) {
   const headers = { "Content-Type": "application/json" };
-  if (serverToken) headers.Authorization = `Bearer ${serverToken}`;
+  if (serverToken && serverToken !== "firebase") headers.Authorization = `Bearer ${serverToken}`;
   let response;
   try {
     response = await fetch(path, {
@@ -2414,6 +2414,10 @@ async function serverRequest(path, body) {
 }
 
 async function detectGameServer() {
+  if (serverToken === "firebase") {
+    serverToken = "";
+    window.localStorage.removeItem(serverSessionKey);
+  }
   try {
     const response = await fetch("/api/health", { cache: "no-store" });
     serverOnline = response.ok;
@@ -2423,8 +2427,8 @@ async function detectGameServer() {
   const lead = document.querySelector("#account-form .account-lead");
   if (lead) {
     lead.textContent = serverOnline
-      ? "L'e-mail retrouve les pièces et l'inventaire Firebase sur chaque appareil. Sans e-mail, l'identifiant ouvre le compte de ce PC."
-      : "L'e-mail ouvre Firebase. Sans e-mail, l'identifiant ouvre le compte de cet appareil.";
+      ? "Le compte admin se connecte avec son identifiant et son mot de passe. Aucun réglage Firebase n'est nécessaire."
+      : "Le compte de cet appareil s'ouvre avec l'identifiant et le mot de passe.";
   }
   return serverOnline;
 }
@@ -2454,7 +2458,7 @@ function showServerProgression(saved) {
 }
 
 async function flushServerAccountSave() {
-  if (!serverToken || !activeAccount) return;
+  if (!serverToken || serverToken === "firebase" || !activeAccount) return;
   if (serverSaveInFlight) {
     serverSaveQueued = true;
     return;
@@ -2482,7 +2486,7 @@ async function flushServerAccountSave() {
 }
 
 async function pullServerAccount() {
-  if (!serverToken || !activeAccount || gameActive || serverSaveInFlight || serverSaveTimer) return;
+  if (!serverToken || serverToken === "firebase" || !activeAccount || gameActive || serverSaveInFlight || serverSaveTimer) return;
   try {
     const data = await serverRequest("/api/me");
     const cursor = Number(data.giftCursor) || 0;
@@ -2539,7 +2543,7 @@ async function attachServerWhenReady() {
 
 async function restoreServerSession() {
   serverToken = window.localStorage.getItem(serverSessionKey) || "";
-  if (!serverToken) return false;
+  if (!serverToken || serverToken === "firebase") return false;
   try {
     const data = await serverRequest("/api/me");
     rememberServerSession(data);
@@ -2770,7 +2774,7 @@ function logoutAccount() {
       // La déconnexion continue même si la copie locale est pleine.
     }
   }
-  const token = serverToken;
+  const token = serverToken && serverToken !== "firebase" ? serverToken : "";
   const body = token && activeAccount
     ? JSON.stringify({ progression, device: chosenDevice, touchLayout, giftCursor: serverGiftCursor })
     : "";
@@ -5754,7 +5758,7 @@ async function loadHostGiftCatalog() {
 
 async function giveToPlayer({ pseudo, coins = 0, kind = "", itemId = "", count = 1, status }) {
   if (!isHostAccount()) return false;
-  if (!serverToken) {
+  if (!serverToken || serverToken === "firebase") {
     status.textContent = "Reconnecte-toi pour donner des objets.";
     return false;
   }
@@ -9854,6 +9858,7 @@ async function mirrorServerAccount(username, password, savedProgression) {
     accounts.push(account);
   } else {
     account.username = username;
+    account.hash = await hashAccountPassword(password, account.salt);
     account.progression = savedProgression;
   }
   saveAccountRecords(accounts);
@@ -9896,7 +9901,7 @@ accountForm.addEventListener("submit", async (event) => {
 });
 
 window.addEventListener("pagehide", () => {
-  if (!serverToken || !activeAccount) return;
+  if (!serverToken || serverToken === "firebase" || !activeAccount) return;
   fetch("/api/save", {
     method: "POST",
     keepalive: true,
