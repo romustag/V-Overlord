@@ -14670,6 +14670,10 @@ html[data-editing-controls] [data-control].is-selected {
   gap: 8px;
 }
 
+#account-mode-email {
+  grid-column: 1 / -1;
+}
+
 .account-mode,
 .account-device,
 .account-submit {

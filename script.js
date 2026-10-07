@@ -1058,7 +1058,7 @@ const menuMusicTempo = 390;
 const gameMusicTempo = 310;
 const playerAttackRange = 420;
 const autoShootRange = 250;
-const autoShootRateMultiplier = 1.25;
+const rangedFireInterval = 0.46;
 const dodgeSpeed = 650;
 const dodgeDirection = { x: 0, y: 0 };
 let waveNumber = 1;
@@ -1592,9 +1592,11 @@ function getWeaponLevel(weaponId) {
 
 function getWeaponStats(weapon, level = getWeaponLevel(weapon.id)) {
   const steps = level - 1;
+  const melee = Boolean(weapon.melee);
+  const leveledInterval = weapon.interval * (1 - steps * 0.035);
   return {
     damage: weapon.damage + steps * Math.max(1, Math.round(weapon.damage * 0.25)),
-    interval: weapon.interval * (1 - steps * 0.06),
+    interval: melee ? Math.max(weapon.interval * 0.78, leveledInterval) : rangedFireInterval,
   };
 }
 
@@ -2320,13 +2322,16 @@ const accountsStorageKey = "blackwood-survivor-accounts";
 const accountGate = document.querySelector("#account-gate");
 const accountForm = document.querySelector("#account-form");
 const accountEmail = document.querySelector("#account-email");
+const accountEmailLabel = document.querySelector("#account-email-label");
 const accountUsername = document.querySelector("#account-username");
+const accountUsernameLabel = document.querySelector("#account-username-label");
 const accountPassword = document.querySelector("#account-password");
 const accountConfirm = document.querySelector("#account-confirm");
 const accountConfirmLabel = document.querySelector("#account-confirm-label");
 const accountFeedback = document.querySelector("#account-feedback");
 const accountSubmit = document.querySelector("#account-submit");
 const accountModeLogin = document.querySelector("#account-mode-login");
+const accountModeEmail = document.querySelector("#account-mode-email");
 const accountModeCreate = document.querySelector("#account-mode-create");
 const devicePcButton = document.querySelector("#device-pc");
 const devicePhoneButton = document.querySelector("#device-phone");
@@ -2669,14 +2674,20 @@ function isEditingControls() {
 function setAccountMode(mode) {
   accountMode = mode;
   const creating = mode === "create";
-  accountModeLogin.setAttribute("aria-pressed", String(!creating));
-  accountModeCreate.setAttribute("aria-pressed", String(creating));
-  accountModeLogin.classList.toggle("is-active", !creating);
-  accountModeCreate.classList.toggle("is-active", creating);
+  const emailLogin = mode === "email";
+  for (const button of [accountModeLogin, accountModeEmail, accountModeCreate]) {
+    const active = button.dataset.accountMode === mode || button.id === `account-mode-${mode}`;
+    button.setAttribute("aria-pressed", String(active));
+    button.classList.toggle("is-active", active);
+  }
+  accountEmailLabel.hidden = mode === "login";
+  accountEmail.required = mode !== "login";
+  accountUsernameLabel.hidden = emailLogin;
+  accountUsername.required = !emailLogin;
   accountConfirmLabel.hidden = !creating;
   accountConfirm.required = creating;
   accountPassword.autocomplete = creating ? "new-password" : "current-password";
-  accountSubmit.textContent = creating ? "S'inscrire" : "Se connecter";
+  accountSubmit.textContent = creating ? "S'inscrire" : emailLogin ? "Se connecter avec l'e-mail" : "Se connecter";
   accountFeedback.textContent = "";
 }
 
@@ -3484,14 +3495,21 @@ function shakeArena(strength = "") {
   window.setTimeout(() => arena.classList.remove(className), 420);
 }
 
+let liveFxLayers = 0;
+
 function createFxLayer(className, x, y, lifetime, parent = world) {
+  if (liveFxLayers >= 24) return { append() {} };
   const layer = document.createElement("span");
   layer.className = `fx-layer ${className}`;
   layer.setAttribute("aria-hidden", "true");
   layer.style.left = `${x}px`;
   layer.style.top = `${y}px`;
   parent.append(layer);
-  window.setTimeout(() => layer.remove(), lifetime);
+  liveFxLayers += 1;
+  window.setTimeout(() => {
+    layer.remove();
+    liveFxLayers = Math.max(0, liveFxLayers - 1);
+  }, lifetime);
   return layer;
 }
 
@@ -7178,19 +7196,36 @@ function spawnBossMinion(bossName, count = 1) {
   }
 }
 
+function currentShotDamage() {
+  const ids = [runLoadout.ranged, runLoadout.melee, progression.equipped.weapons, progression.equipped.melee];
+  let best = 2;
+  for (const id of ids) {
+    if (!id) continue;
+    const weapon = loadoutOptions.weapons.find((item) => item.id === id);
+    if (!weapon) continue;
+    best = Math.max(best, getWeaponStats(weapon).damage + getPermanentDamageBonus());
+  }
+  return best;
+}
+
+function threatHealth(baseHealth, hits) {
+  return Math.max(Math.ceil(baseHealth), Math.round(currentShotDamage() * hits));
+}
+
 function createEnemy(typeName, isMinion = false, spawnFromEdge = false) {
   const base = enemyTypes[typeName];
   const waveProgress = Math.max(0, Math.min(4, waveNumber - 1));
   const lateWave = waveNumber >= 3 && stage !== "ultimate";
   const healthScaling = (1 + waveProgress * 0.32) * (lateWave ? 1.2 : 1);
-  const damageScaling = (1 + waveProgress * 0.22) * (lateWave ? 1.12 : 1);
-  const minionScale = isMinion ? 0.72 : 1;
+  const damageScaling = (1 + waveProgress * 0.28) * (lateWave ? 1.18 : 1);
+  const minionScale = isMinion ? 0.9 : 1;
+  const hits = isMinion ? 4 + Math.floor(waveProgress) : 5 + waveProgress * 2;
   const enemy = createCharacter(typeName, {
     ...base,
-    health: Math.ceil(base.health * healthScaling * minionScale),
-    damage: Math.ceil(base.damage * damageScaling * minionScale),
+    health: threatHealth(base.health * healthScaling * minionScale, hits),
+    damage: Math.ceil(base.damage * damageScaling * minionScale * 1.35),
     speed: base.speed + Math.min(22, waveProgress * 3) + (lateWave ? 5 : 0),
-    size: Math.round(base.size * minionScale),
+    size: Math.round(base.size * (isMinion ? 0.9 : 1)),
   }, isMinion ? "enemy-minion" : "", spawnFromEdge);
   enemy.isMinion = isMinion;
   return enemy;
@@ -7210,8 +7245,8 @@ function createBoss(profileName) {
   const type = {
     ...profile,
     label: `${profile.label} ${"★".repeat(tier + 1)}`,
-    health: Math.round(profile.health * (1 + tier * 0.6) * (lateBoss ? 1.22 : 1)),
-    damage: Math.round(profile.damage * (1 + tier * 0.25) * (lateBoss ? 1.15 : 1)),
+    health: threatHealth(profile.health * (1 + tier * 0.6) * (lateBoss ? 1.22 : 1), profile.name === "mega-cauchemar" ? 48 : 18 + tier * 8),
+    damage: Math.round(profile.damage * (1 + tier * 0.38) * (lateBoss ? 1.32 : 1.15)),
     speed: profile.speed + tier * 4 + (lateBoss ? 5 : 0),
     size: profile.size + tier * 3,
     color: "boss",
@@ -9188,7 +9223,7 @@ function updateGame(delta) {
   }
 
   shootElapsed += delta;
-  const firingInterval = shootInterval * (autoShootEnabled && !shooting ? autoShootRateMultiplier : 1);
+  const firingInterval = shootInterval;
   if ((autoShootEnabled || shooting) && shootElapsed >= firingInterval) {
     const target = shootingWithPointer ? aim : nearestEnemy();
     if (target && (shootingWithPointer || isTargetInWeaponReach(target))) {
@@ -9709,6 +9744,7 @@ if (shouldSaveProgression) {
   renderShop();
 }
 accountModeLogin.addEventListener("click", () => setAccountMode("login"));
+accountModeEmail.addEventListener("click", () => setAccountMode("email"));
 accountModeCreate.addEventListener("click", () => setAccountMode("create"));
 function choosePlayDevice(device) {
   if (!pendingEntry) return;
@@ -9828,23 +9864,24 @@ accountForm.addEventListener("submit", async (event) => {
   const email = accountEmail.value.trim();
   const username = accountUsername.value.trim();
   const password = accountPassword.value;
-  if (!email && !/^[A-Za-z0-9À-ÿ_-]{3,16}$/.test(username)) {
+  const emailAccount = accountMode === "email" || accountMode === "create";
+  if (emailAccount && !email.includes("@")) {
+    accountFeedback.textContent = "Écris un e-mail valide.";
+    return;
+  }
+  if (accountMode !== "email" && !/^[A-Za-z0-9À-ÿ_-]{3,16}$/.test(username)) {
     accountFeedback.textContent = "L'identifiant doit faire 3 à 16 caractères, sans espace.";
     return;
   }
-  if (email && username && !/^[A-Za-z0-9À-ÿ_-]{3,16}$/.test(username)) {
-    accountFeedback.textContent = "L'identifiant doit faire 3 à 16 caractères, sans espace.";
-    return;
-  }
-  if (password.length < (email ? 6 : 4) || password.length > 32) {
-    accountFeedback.textContent = email
+  if (password.length < (emailAccount ? 6 : 4) || password.length > 32) {
+    accountFeedback.textContent = emailAccount
       ? "Le mot de passe Firebase doit faire au moins 6 caractères."
       : "Le mot de passe doit faire entre 4 et 32 caractères.";
     return;
   }
   accountFeedback.textContent = "Vérification…";
   try {
-    if (email) {
+    if (emailAccount) {
       await submitAccountOnFirebase(email, password, username);
       return;
     }
@@ -9872,7 +9909,6 @@ setAccountMode("login");
 if (!restoreSession()) showAccountGate();
 attachServerWhenReady();
 requestAnimationFrame(gameLoop);
-<<<<<<< HEAD
 
 function firebaseUsername(email, username) {
   const raw = (username || email.split("@")[0] || "joueur").trim();
@@ -9974,30 +10010,12 @@ function chargerJoueur(joueurId) {
   }).catch((error) => {
     console.error("Erreur lors de la récupération :", error);
     if (!accountGate.hidden) accountFeedback.textContent = firebaseAuthMessage(error);
-=======
-// Fonction pour charger les données du joueur depuis Firebase
-function chargerJoueur(joueurId) {
-  db.collection("players").doc(joueurId).get().then((doc) => {
-    if (doc.exists) {
-      const data = doc.data();
-      console.log("Joueur trouvé :", data.username);
-      console.log("Pièces :", data.coins);
-    } else {
-      console.log("Joueur introuvable !");
-    }
-  }).catch((error) => {
-    console.error("Erreur lors de la récupération :", error);
->>>>>>> 8b111682398ac08b291eb5f2ac40e138866f38cc
   });
 }
 
 // Fonction pour modifier les pièces du joueur sur Firebase
 function donnerPieces(joueurId, nouvellesPieces) {
-<<<<<<< HEAD
   return db.collection("players").doc(joueurId).update({
-=======
-  db.collection("players").doc(joueurId).update({
->>>>>>> 8b111682398ac08b291eb5f2ac40e138866f38cc
     coins: nouvellesPieces
   })
   .then(() => {
@@ -10007,11 +10025,7 @@ function donnerPieces(joueurId, nouvellesPieces) {
 
 // Fonction pour ajouter un objet dans l'inventaire du joueur
 function donnerObjet(joueurId, idObjet, nomObjet, quantite) {
-<<<<<<< HEAD
   return db.collection("players").doc(joueurId).collection("inventory").doc(idObjet).set({
-=======
-  db.collection("players").doc(joueurId).collection("inventory").doc(idObjet).set({
->>>>>>> 8b111682398ac08b291eb5f2ac40e138866f38cc
     name: nomObjet,
     quantity: quantite
   })
@@ -10019,7 +10033,6 @@ function donnerObjet(joueurId, idObjet, nomObjet, quantite) {
     console.log("Objet ajouté à l'inventaire !");
   });
 }
-<<<<<<< HEAD
 
 function creerCompteFirebase(email, motDePasse) {
   return firebase.auth().createUserWithEmailAndPassword(email, motDePasse);
@@ -10034,5 +10047,3 @@ if (typeof firebase !== "undefined" && typeof firebase.auth === "function") {
     if (!activeAccount) showAccountGate();
   });
 }
-=======
->>>>>>> 8b111682398ac08b291eb5f2ac40e138866f38cc
