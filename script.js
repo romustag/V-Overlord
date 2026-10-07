@@ -1,3 +1,4 @@
+const db = firebase.firestore();
 const player = document.querySelector("#player");
 const arena = document.querySelector(".arena");
 const world = document.createElement("div");
@@ -9742,3 +9743,38 @@ setAccountMode("login");
 if (!restoreSession()) showAccountGate();
 attachServerWhenReady();
 requestAnimationFrame(gameLoop);
+// Fonction pour charger les données du joueur depuis Firebase
+function chargerJoueur(joueurId) {
+  db.collection("players").doc(joueurId).get().then((doc) => {
+    if (doc.exists) {
+      const data = doc.data();
+      console.log("Joueur trouvé :", data.username);
+      console.log("Pièces :", data.coins);
+    } else {
+      console.log("Joueur introuvable !");
+    }
+  }).catch((error) => {
+    console.error("Erreur lors de la récupération :", error);
+  });
+}
+
+// Fonction pour modifier les pièces du joueur sur Firebase
+function donnerPieces(joueurId, nouvellesPieces) {
+  db.collection("players").doc(joueurId).update({
+    coins: nouvellesPieces
+  })
+  .then(() => {
+    console.log("Pièces mises à jour sur Firebase !");
+  });
+}
+
+// Fonction pour ajouter un objet dans l'inventaire du joueur
+function donnerObjet(joueurId, idObjet, nomObjet, quantite) {
+  db.collection("players").doc(joueurId).collection("inventory").doc(idObjet).set({
+    name: nomObjet,
+    quantity: quantite
+  })
+  .then(() => {
+    console.log("Objet ajouté à l'inventaire !");
+  });
+}
