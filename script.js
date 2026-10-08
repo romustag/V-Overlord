@@ -1101,14 +1101,14 @@ let musicEnabled = !gameSettings.muted.music;
 let autoShootEnabled = true;
 let stepSoundElapsed = 0;
 
-function loadProgression() {
+function loadProgression(source) {
   try {
-    const saved = window.localStorage.getItem(progressionStorageKey);
+    const saved = source === undefined ? window.localStorage.getItem(progressionStorageKey) : source;
     if (!saved) {
       shouldSaveProgression = true;
       return structuredClone(defaultProgression);
     }
-    const parsed = JSON.parse(saved);
+    const parsed = typeof saved === "string" ? JSON.parse(saved) : saved;
     const validIds = Object.fromEntries(
       Object.entries(loadoutOptions).map(([category, options]) => [category, new Set(options.map((option) => option.id))]),
     );
@@ -1231,6 +1231,7 @@ function saveProgression(message = "") {
     window.localStorage.setItem(progressionStorageKey, JSON.stringify(progression));
     if (activeAccount) storeActiveAccountProgression();
     queueServerAccountSave();
+    queueFirestoreProgressionSave();
     progressionFeedback.textContent = message;
     return true;
   } catch {
@@ -2339,11 +2340,16 @@ const accountDeviceStep = document.querySelector("#account-device-step");
 const settingsLogout = document.querySelector("#settings-logout");
 const settingsAccountName = document.querySelector("#settings-account-name");
 const editTouchControlsButton = document.querySelector("#edit-touch-controls");
+const landscapeButton = document.querySelector("#landscape-button");
+const landscapeNote = document.querySelector("#landscape-note");
 const controlEditor = document.querySelector("#control-editor");
 const controlSizeInput = document.querySelector("#control-size");
 const sessionStorageKey = "blackwood-survivor-session";
 let activeAccount = "";
 let firebaseUserId = "";
+let firebaseAccountName = "";
+let applyingFirestoreState = false;
+let firebaseSyncTimer = 0;
 let accountMode = "login";
 let chosenDevice = "";
 let pendingEntry = null;
@@ -2600,6 +2606,8 @@ function applyPlayDevice(device) {
   devicePcButton.classList.toggle("is-active", device === "pc");
   devicePhoneButton.classList.toggle("is-active", device === "phone");
   editTouchControlsButton.hidden = device !== "phone";
+  landscapeButton.hidden = device !== "phone";
+  landscapeNote.hidden = true;
   syncPhoneView();
   applyTouchLayout();
   updatePlayer();
@@ -2632,6 +2640,12 @@ function readTouchLayout(saved) {
   return next;
 }
 
+// En paysage l'écran est bas : les boutons rétrécissent pour ne pas se chevaucher.
+function touchFitScale() {
+  if (chosenDevice !== "phone") return 1;
+  return Math.max(0.6, Math.min(1, phoneViewport().height / 560));
+}
+
 function applyTouchLayout(layout = touchLayout) {
   const placed = chosenDevice === "phone" || isEditingControls();
   for (const [id, spot] of Object.entries(layout)) {
@@ -2647,7 +2661,7 @@ function applyTouchLayout(layout = touchLayout) {
       element.classList.remove("is-selected");
       continue;
     }
-    const size = Math.round(touchControlBaseSize[id] * spot.s);
+    const size = Math.round(touchControlBaseSize[id] * spot.s * touchFitScale());
     element.style.left = `${spot.x}%`;
     element.style.top = `${spot.y}%`;
     element.style.right = "auto";
@@ -2712,6 +2726,8 @@ function showAccountGate() {
   document.documentElement.dataset.device = "pc";
   syncPhoneView();
   editTouchControlsButton.hidden = true;
+  landscapeButton.hidden = true;
+  landscapeNote.hidden = true;
   settingsAccountName.textContent = "Aucun compte connecté.";
   accountForm.hidden = false;
   accountDeviceStep.hidden = true;
@@ -9352,14 +9368,51 @@ window.addEventListener("blur", () => {
   keys.clear();
   stopShooting();
 });
-window.addEventListener("resize", updatePlayer);
-window.addEventListener("orientationchange", () => {
+function refreshPhoneLayout() {
   updatePlayer();
-  window.setTimeout(updatePlayer, 60);
-  window.setTimeout(updatePlayer, 180);
-  window.setTimeout(updatePlayer, 400);
+  if (chosenDevice === "phone" && !isEditingControls()) applyTouchLayout();
+}
+
+async function requestLandscapeMode() {
+  const root = document.documentElement;
+  try {
+    if (!document.fullscreenElement && root.requestFullscreen) {
+      await root.requestFullscreen({ navigationUI: "hide" });
+    }
+  } catch {
+    // Certains navigateurs refusent le plein écran : on essaie quand même le verrou.
+  }
+  try {
+    if (screen.orientation && screen.orientation.lock) {
+      await screen.orientation.lock("landscape");
+      return "locked";
+    }
+  } catch {
+    // Pas de verrouillage possible (iPhone, ou navigateur qui l'interdit).
+  }
+  return window.innerWidth > window.innerHeight ? "already" : "manual";
+}
+
+landscapeButton.addEventListener("click", async () => {
+  const result = await requestLandscapeMode();
+  landscapeNote.hidden = false;
+  landscapeNote.textContent = result === "locked"
+    ? "Mode paysage activé. Pour quitter, ferme le plein écran."
+    : result === "already"
+      ? "Ton téléphone est déjà en paysage."
+      : "Ce téléphone ne permet pas de forcer le paysage. Active la rotation automatique dans les réglages rapides, puis tourne l'appareil.";
+  refreshPhoneLayout();
+  window.setTimeout(refreshPhoneLayout, 300);
 });
-window.visualViewport?.addEventListener("resize", updatePlayer);
+
+window.addEventListener("resize", refreshPhoneLayout);
+window.addEventListener("orientationchange", () => {
+  refreshPhoneLayout();
+  window.setTimeout(refreshPhoneLayout, 60);
+  window.setTimeout(refreshPhoneLayout, 180);
+  window.setTimeout(refreshPhoneLayout, 400);
+});
+window.visualViewport?.addEventListener("resize", refreshPhoneLayout);
 startButton.addEventListener("click", () => {
   restartRound();
 });
@@ -9932,6 +9985,33 @@ function firebaseAuthMessage(error) {
   return error?.message || "La connexion Firebase n'a pas abouti.";
 }
 
+function progressionForFirestore() {
+  const copy = JSON.parse(JSON.stringify(progression));
+  delete copy.firebaseInventory;
+  return copy;
+}
+
+function queueFirestoreProgressionSave() {
+  if (applyingFirestoreState || typeof firebase === "undefined" || typeof firebase.auth !== "function") return;
+  const user = firebase.auth().currentUser;
+  if (!user || !activeAccount || firebaseUserId !== user.uid) return;
+  if (!firebaseAccountName || firebaseAccountName.toLowerCase() !== activeAccount.toLowerCase()) return;
+  window.clearTimeout(firebaseSyncTimer);
+  firebaseSyncTimer = window.setTimeout(() => {
+    const current = firebase.auth().currentUser;
+    if (!current || applyingFirestoreState) return;
+    const saved = progressionForFirestore();
+    db.collection("players").doc(current.uid).set({
+      username: saved.playerName || activeAccount,
+      email: current.email || "",
+      coins: saved.coins,
+      progression: saved,
+    }, { merge: true }).catch((error) => {
+      console.error("Synchronisation Firebase impossible :", error);
+    });
+  }, 500);
+}
+
 function applyInventoryCounts(target, inventory) {
   for (const [id, item] of Object.entries(inventory)) {
     const quantity = Number(item?.quantity);
@@ -9942,27 +10022,40 @@ function applyInventoryCounts(target, inventory) {
   }
 }
 
-function applyFirestoreProfile(joueurId, data, inventory) {
+function profileFromFirestore(data, inventory) {
   const username = firebaseUsername(data.email || "", data.username || "");
+  const source = data.progression && typeof data.progression === "object" && !Array.isArray(data.progression)
+    ? structuredClone(data.progression)
+    : structuredClone(defaultProgression);
   const coins = Number(data.coins);
-  firebaseUserId = joueurId;
+  if (!data.progression && Number.isFinite(coins)) source.coins = coins;
+  source.playerName = username;
+  applyInventoryCounts(source, inventory);
+  return { username, saved: source };
+}
+
+function applyFirestoreProfile(joueurId, data, inventory) {
+  const { username, saved } = profileFromFirestore(data, inventory);
+  applyingFirestoreState = true;
   if (!activeAccount) {
-    const saved = structuredClone(defaultProgression);
-    if (Number.isFinite(coins)) saved.coins = coins;
-    saved.playerName = username;
-    saved.firebaseInventory = inventory;
-    applyInventoryCounts(saved, inventory);
+    firebaseUserId = joueurId;
+    firebaseAccountName = username;
     openPendingAccount(username, saved);
-    accountFeedback.textContent = `Profil Firebase chargé : ${Number.isFinite(coins) ? coins : 0} pièces.`;
+    accountFeedback.textContent = `Profil Firebase chargé : ${saved.coins} pièces, niveau ${saved.level}.`;
+    applyingFirestoreState = false;
     return;
   }
-  if (activeAccount.toLowerCase() !== username.toLowerCase()) return;
-  if (Number.isFinite(coins)) progression.coins = coins;
-  progression.firebaseInventory = inventory;
-  applyInventoryCounts(progression, inventory);
+  if (activeAccount.toLowerCase() !== username.toLowerCase()) {
+    applyingFirestoreState = false;
+    return;
+  }
+  firebaseUserId = joueurId;
+  firebaseAccountName = username;
+  adoptAccountProgression(saved);
   updateMenuBalance();
   saveProgression();
   persistAccountExtras();
+  applyingFirestoreState = false;
 }
 
 async function submitAccountOnFirebase(email, password, username) {
@@ -9982,10 +10075,15 @@ async function submitAccountOnFirebase(email, password, username) {
   const displayName = firebaseUsername(email, username);
   if (accountMode === "create") {
     const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
+    const seed = structuredClone(defaultProgression);
+    seed.playerName = displayName;
+    firebaseUserId = userCredential.user.uid;
+    firebaseAccountName = displayName;
     await db.collection("players").doc(userCredential.user.uid).set({
       username: displayName,
       email,
-      coins: 0,
+      coins: seed.coins,
+      progression: JSON.parse(JSON.stringify(seed)),
     });
     accountFeedback.textContent = "Compte créé. Chargement du profil…";
     return;
@@ -9998,8 +10096,17 @@ async function submitAccountOnFirebase(email, password, username) {
 function chargerJoueur(joueurId) {
   return db.collection("players").doc(joueurId).get().then((doc) => {
     if (!doc.exists) {
-      console.log("Joueur introuvable !");
-      return null;
+      const user = firebase.auth().currentUser;
+      const email = user && user.uid === joueurId ? (user.email || "") : "";
+      const username = firebaseUsername(email, "");
+      const seed = structuredClone(defaultProgression);
+      seed.playerName = username;
+      return db.collection("players").doc(joueurId).set({
+        username,
+        email,
+        coins: seed.coins,
+        progression: JSON.parse(JSON.stringify(seed)),
+      }).then(() => chargerJoueur(joueurId));
     }
     const data = doc.data();
     console.log("Joueur trouvé :", data.username);
@@ -10049,6 +10156,8 @@ if (typeof firebase !== "undefined" && typeof firebase.auth === "function") {
       chargerJoueur(user.uid);
       return;
     }
+    firebaseUserId = "";
+    firebaseAccountName = "";
     if (!activeAccount) showAccountGate();
   });
 }

@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta name="theme-color" content="#101b2b" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
     <title>Mon petit jeu</title>
     <link rel="stylesheet" href="style.css?v=64" />
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -22,7 +24,7 @@
         measurementId: "G-2T6S7JB2Y1"
       });
     </script>
-    <script src="script.js?v=70" defer></script>
+    <script src="script.js?v=72" defer></script>
   </head>
   <body>
     <main class="arena" aria-label="Terrain de jeu">
@@ -387,6 +389,8 @@
             <p class="settings-note">Clique sur une touche puis appuie sur la nouvelle. Échap annule. Les flèches déplacent toujours le personnage.</p>
             <div class="settings-keys" id="settings-keys"></div>
             <button class="settings-edit-controls" id="edit-touch-controls" type="button" hidden>Modifier les touches du téléphone</button>
+            <button class="settings-edit-controls" id="landscape-button" type="button" hidden>Passer en paysage (plein écran)</button>
+            <p class="settings-note" id="landscape-note" hidden></p>
           </div>
           <div class="settings-section" data-settings-section="account" role="tabpanel" hidden>
             <p class="settings-note" id="settings-account-name">Aucun compte connecté.</p>
