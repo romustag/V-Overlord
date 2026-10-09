@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brawler 3D – Three.js (style Brawl Stars)</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #2b1b5a; }
+  canvas { display: block; width: 100vw; height: 100vh; touch-action: none; }
+  #hint {
+    position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
+    font: 700 14px/1 system-ui, sans-serif; color: #fff; letter-spacing: .04em;
+    padding: 9px 16px; border-radius: 999px; background: rgba(0, 0, 0, .35);
+    pointer-events: none; user-select: none;
+  }
+</style>
+
+<!-- Three.js + OrbitControls via CDN (importmap) -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="hint">Glisser : tourner · Molette : zoom</div>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+/* ------------------------------------------------------------------ */
+/*  1. Rendu, scène, caméra                                            */
+/* ------------------------------------------------------------------ */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;   // ombres portées douces
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x3a2480);
+scene.fog = new THREE.Fog(0x3a2480, 14, 32);
+
+const camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(4.6, 3.4, 8.2);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 1.7, 0);
+controls.enableDamping = true;
+controls.minDistance = 4;
+controls.maxDistance = 16;
+controls.maxPolarAngle = Math.PI * 0.52;   // ne pas passer sous le sol
+controls.update();
+
+/* ------------------------------------------------------------------ */
+/*  2. Lumières                                                        */
+/* ------------------------------------------------------------------ */
+scene.add(new THREE.AmbientLight(0xc7a8ff, 0.95));          // ambiance colorée
+
+const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+sun.position.set(-4, 8, 6);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -5;  sun.shadow.camera.right = 5;
+sun.shadow.camera.top = 6;    sun.shadow.camera.bottom = -4;
+sun.shadow.camera.near = 1;   sun.shadow.camera.far = 24;
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.03;
+sun.shadow.radius = 4;
+scene.add(sun);
+
+/* ------------------------------------------------------------------ */
+/*  3. Toon shading : rampe à 3 niveaux (aplats nets, aucun dégradé)   */
+/* ------------------------------------------------------------------ */
+function makeGradientMap(levels = [95, 175, 255]) {
+  const data = new Uint8Array(levels);                       // 3 pixels, 1 canal
+  const tex = new THREE.DataTexture(data, levels.length, 1, THREE.RedFormat);
+  tex.minFilter = THREE.NearestFilter;                      // NEAREST = marches nettes
+  tex.magFilter = THREE.NearestFilter;
+  tex.generateMipmaps = false;
+  tex.needsUpdate = true;
+  return tex;
+}
+const gradientMap = makeGradientMap();
+
+const toon = (color) => new THREE.MeshToonMaterial({ color, gradientMap });
+const OUTLINE_MAT = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.BackSide });
+
+/* Palette très saturée */
+const C = {
+  purple:  0x8e44ad,
+  purple2: 0xa53bff,
+  yellow:  0xffd400,
+  blue:    0x2f8cff,     // visage
+  navy:    0x2a35d6,
+  white:   0xffffff,
+  pink:    0xff5fa8,
+  black:   0x0b0614,
+};
+
+/* ------------------------------------------------------------------ */
+/*  4. Utilitaires : mesh + contour noir (coque BackSide agrandie)     */
+/* ------------------------------------------------------------------ */
+/**
+ * Crée un mesh toon avec son contour noir.
+ * Le contour est un enfant du mesh : il hérite donc de son échelle
+ * (même non uniforme) et reste proportionnel à la forme.
+ */
+function part(geometry, color, { outline = 1.07, shadow = true } = {}) {
+  const mesh = new THREE.Mesh(geometry, toon(color));
+  mesh.castShadow = shadow;
+  mesh.receiveShadow = true;
+  if (outline) {
+    const shell = new THREE.Mesh(geometry, OUTLINE_MAT);
+    shell.scale.setScalar(outline);
+    mesh.add(shell);
+  }
+  return mesh;
+}
+
+const sphere  = (r) => new THREE.SphereGeometry(r, 40, 28);
+const pill    = (r, len) => new THREE.CapsuleGeometry(r, len, 10, 28);   // forme "pilule"
+const place   = (obj, x = 0, y = 0, z = 0) => (obj.position.set(x, y, z), obj);
+
+/* ------------------------------------------------------------------ */
+/*  5. Construction du Brawler                                         */
+/* ------------------------------------------------------------------ */
+function createBrawler() {
+  const root = new THREE.Group();     // oscillation / squash & stretch
+  root.name = "brawler";
+
+  /* ---------- Jambes (courtes, arrondies) ---------- */
+  const makeLeg = (side) => {
+    const leg = new THREE.Group();                 // pivot = hanche
+    leg.name = side < 0 ? "leftLeg" : "rightLeg";
+    leg.position.set(side * 0.3, 0.64, 0);
+
+    leg.add(place(part(pill(0.21, 0.16), C.navy), 0, -0.27, 0));
+    const shoe = part(sphere(0.3), C.yellow);       // chaussure ronde jaune
+    shoe.scale.set(1.0, 0.62, 1.45);
+    leg.add(place(shoe, 0, -0.52, 0.1));
+    return leg;
+  };
+  const leftLeg = makeLeg(-1), rightLeg = makeLeg(1);
+
+  /* ---------- Torse (petit, rond) ---------- */
+  const torso = new THREE.Group();
+  torso.name = "torso";
+  torso.position.set(0, 1.05, 0);
+  const body = part(pill(0.42, 0.2), C.purple);
+  body.scale.set(1.12, 1, 0.95);
+  torso.add(body);
+
+  const belt = part(new THREE.TorusGeometry(0.43, 0.09, 14, 40), C.yellow);
+  belt.rotation.x = Math.PI / 2;
+  belt.scale.set(1.12, 0.95, 1);
+  torso.add(place(belt, 0, -0.2, 0));
+
+  const badge = part(sphere(0.17), C.yellow);       // médaillon sur la poitrine
+  badge.scale.set(1, 1, 0.45);
+  torso.add(place(badge, 0, 0.12, 0.4));
+
+  /* ---------- Bras (courts, mains rondes) ---------- */
+  const makeArm = (side) => {
+    const arm = new THREE.Group();                 // pivot = épaule
+    arm.name = side < 0 ? "leftArm" : "rightArm";
+    arm.position.set(side * 0.62, 1.34, 0);
+    arm.add(place(part(pill(0.15, 0.22), C.purple), 0, -0.26, 0));
+    arm.add(place(part(sphere(0.23), C.yellow), 0, -0.64, 0.02));   // main-poing
+    return arm;
+  };
+  const leftArm = makeArm(-1), rightArm = makeArm(1);
+
+  /* ---------- Tête (énorme et sphérique) ---------- */
+  const head = new THREE.Group();
+  head.name = "head";
+  head.position.set(0, 2.34, 0);
+  head.add(part(sphere(0.95), C.blue, { outline: 1.045 }));
+
+  // Yeux : gros, simples, expressifs
+  const eyes = [];
+  for (const side of [-1, 1]) {
+    const eye = new THREE.Group();
+    eye.position.set(side * 0.34, 0.04, 0.78);
+    eye.rotation.y = side * 0.22;                  // légèrement tournés vers l'extérieur
+
+    const white = part(sphere(0.27), C.white, { outline: 1.1 });
+    white.scale.set(1, 1.3, 0.55);
+    eye.add(white);
+
+    const pupil = part(sphere(0.15), C.black, { outline: 0 });
+    pupil.scale.set(1, 1.3, 0.5);
+    eye.add(place(pupil, side * -0.02, -0.02, 0.12));
+
+    const shine = new THREE.Mesh(sphere(0.055), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    eye.add(place(shine, 0.06, 0.1, 0.2));
+    const shine2 = shine.clone();
+    shine2.scale.setScalar(0.5);
+    eye.add(place(shine2, -0.05, -0.1, 0.2));
+
+    head.add(eye);
+    eyes.push(eye);
+  }
+
+  // Sourcils épais
+  for (const side of [-1, 1]) {
+    const brow = part(pill(0.05, 0.22), C.black, { outline: 0 });
+    brow.rotation.z = Math.PI / 2 + side * 0.28;
+    head.add(place(brow, side * 0.38, 0.46, 0.8));
+  }
+
+  // Bouche (grand sourire) + joues roses
+  const mouth = new THREE.Mesh(
+    new THREE.TorusGeometry(0.22, 0.045, 10, 24, Math.PI),
+    new THREE.MeshBasicMaterial({ color: C.black })
+  );
+  mouth.rotation.z = Math.PI;                       // arc vers le bas = sourire
+  mouth.rotation.x = 0.12;
+  head.add(place(mouth, 0, -0.3, 0.88));
+
+  for (const side of [-1, 1]) {
+    const cheek = part(sphere(0.12), C.pink, { outline: 0, shadow: false });
+    cheek.scale.set(1.2, 0.75, 0.4);
+    cheek.rotation.y = side * 0.7;
+    head.add(place(cheek, side * 0.6, -0.22, 0.66));
+  }
+
+  // Cheveux : calotte + mèches sphériques
+  const hair = new THREE.Group();
+  hair.name = "hair";
+  hair.rotation.x = -0.62;                          // bascule vers l'arrière → front dégagé
+  const cap = part(new THREE.SphereGeometry(1.0, 48, 32, 0, Math.PI * 2, 0, 1.75), C.purple, { outline: 1.05 });
+  hair.add(cap);
+
+  // Mèches réparties (spirale de Fibonacci) sur le dessus et l'arrière
+  const rng = mulberry32(7);
+  const TUFTS = 26;
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  for (let i = 0; i < TUFTS; i++) {
+    const t = i / (TUFTS - 1);
+    const polar = 0.1 + t * 1.35;                   // du sommet vers le bord de la calotte
+    const az = i * golden;
+    const dir = new THREE.Vector3(
+      Math.sin(polar) * Math.cos(az), Math.cos(polar), Math.sin(polar) * Math.sin(az)
+    );
+    const size = 0.2 + rng() * 0.14;
+    const tuft = part(sphere(size), i % 5 === 0 ? C.purple2 : C.purple, { outline: 1.12 });
+    tuft.scale.set(1, 1 + rng() * 0.6, 1);          // un peu allongées vers l'extérieur
+    tuft.position.copy(dir).multiplyScalar(0.98);
+    tuft.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+    hair.add(tuft);
+  }
+
+  // Grosse mèche frontale (signature "pic" de brawler)
+  const spike = part(sphere(0.3), C.purple2, { outline: 1.1 });
+  spike.scale.set(0.9, 1.5, 0.9);
+  spike.position.set(0.1, 1.12, 0.12);
+  spike.rotation.set(0.3, 0, -0.25);
+  hair.add(spike);
+  head.add(hair);
+
+  // Oreilles
+  for (const side of [-1, 1]) {
+    const ear = part(sphere(0.16), C.blue);
+    ear.scale.set(0.6, 1, 0.9);
+    head.add(place(ear, side * 0.93, -0.02, 0));
+  }
+
+  /* ---------- Assemblage de la hiérarchie ---------- */
+  root.add(leftLeg, rightLeg, torso, leftArm, rightArm, head);
+  root.userData = { head, torso, leftArm, rightArm, leftLeg, rightLeg, eyes, hair };
+  return root;
+}
+
+function mulberry32(a) {                            // petit PRNG déterministe
+  return () => {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const brawler = createBrawler();
+scene.add(brawler);
+
+/* ------------------------------------------------------------------ */
+/*  6. Sol circulaire                                                  */
+/* ------------------------------------------------------------------ */
+const ground = new THREE.Mesh(new THREE.CircleGeometry(4.2, 72), toon(0xffb62e));
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+const groundRing = new THREE.Mesh(
+  new THREE.RingGeometry(3.7, 4.2, 72),
+  new THREE.MeshToonMaterial({ color: 0xff6a2e, gradientMap })
+);
+groundRing.rotation.x = -Math.PI / 2;
+groundRing.position.y = 0.01;
+groundRing.receiveShadow = true;
+scene.add(groundRing);
+
+const groundOutline = new THREE.Mesh(new THREE.CircleGeometry(4.38, 72), new THREE.MeshBasicMaterial({ color: 0x000000 }));
+groundOutline.rotation.x = -Math.PI / 2;
+groundOutline.position.y = -0.02;
+scene.add(groundOutline);
+
+/* ------------------------------------------------------------------ */
+/*  7. Animation d'attente (Idle) cartoon                              */
+/* ------------------------------------------------------------------ */
+const clock = new THREE.Clock();
+let nextBlink = 2;
+
+function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+  const { head, torso, leftArm, rightArm, leftLeg, rightLeg, eyes } = brawler.userData;
+
+  // Respiration / rebond : montée-descente + squash & stretch
+  const bob = Math.sin(t * 3.0);
+  brawler.position.y = Math.abs(bob) * 0.1 - 0.02;
+  const stretch = 1 + bob * 0.025;
+  brawler.scale.set(1 / Math.sqrt(stretch), stretch, 1 / Math.sqrt(stretch));
+
+  // Bras qui balancent avec un décalage (overlapping action)
+  leftArm.rotation.z  = -0.22 - Math.sin(t * 3.0 + 0.6) * 0.16;
+  rightArm.rotation.z =  0.22 + Math.sin(t * 3.0 + 0.6) * 0.16;
+  leftArm.rotation.x  =  Math.sin(t * 1.5) * 0.35;
+  rightArm.rotation.x = -Math.sin(t * 1.5) * 0.35;
+
+  // Torse et tête : léger retard pour l'effet "élastique"
+  torso.rotation.y = Math.sin(t * 1.5) * 0.08;
+  head.rotation.z  = Math.sin(t * 1.5 + 0.8) * 0.06;
+  head.rotation.y  = Math.sin(t * 0.75) * 0.18;
+  head.position.y  = 2.34 + Math.sin(t * 3.0 - 0.7) * 0.035;
+
+  // Petits pas sur place
+  leftLeg.rotation.x  =  Math.sin(t * 1.5) * 0.08;
+  rightLeg.rotation.x = -Math.sin(t * 1.5) * 0.08;
+
+  // Clignement des yeux
+  const blinking = t > nextBlink && t < nextBlink + 0.12;
+  for (const e of eyes) e.scale.y = blinking ? 0.12 : 1;
+  if (t > nextBlink + 0.12) nextBlink = t + 1.8 + Math.random() * 2.5;
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+/* ------------------------------------------------------------------ */
+/*  8. Redimensionnement                                               */
+/* ------------------------------------------------------------------ */
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,127 @@
+/*
+ * Rendu « 3D cartoon » façon Brawl Stars / Fortnite.
+ * Couche purement visuelle : aucune règle de jeu, aucune collision, aucun contrôle n'est modifié.
+ * Chargée après style.css. Pour la désactiver, retirer data-look="toon" de <html>.
+ */
+/* ---------- Carte : sol vivant, lumière directionnelle, profondeur ---------- */
+html[data-look="toon"] .world {
+  background-image: none;
+}
+
+html[data-look="toon"] .world::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  content: "";
+  background-image: var(--map-image);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  filter: saturate(1.05) contrast(1.04);
+}
+
+/* Carte vivante : le fond sans arbres ni flammes est complété par la scène Three.js animée (three/maplive.js). */
+html[data-look="toon"] .arena.map-live .world::before {
+  background-image: var(--map-base);
+}
+
+/* Carte en vrai relief : le sol et le décor sont dessinés par Three.js sous les personnages (voir three/relief.js). */
+html[data-look="toon"] .arena.map-relief .world::before,
+.arena.map-relief .world {
+  background-image: none;
+}
+
+.map-relief-canvas {
+  visibility: hidden;
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  user-select: none;
+}
+
+.arena.map-relief > .map-relief-canvas {
+  visibility: visible;
+}
+
+.map-live-canvas {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Lumière chaude en haut à gauche, ombre froide en bas à droite : relief du décor. */
+html[data-look="toon"] .world::after {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 55% at 22% 18%, rgb(255 214 140 / 0.14), transparent 70%),
+    radial-gradient(ellipse 70% 60% at 85% 95%, rgb(20 10 70 / 0.2), transparent 70%);
+  mix-blend-mode: soft-light;
+}
+
+/* ---------- Héros ---------- */
+html[data-look="toon"] .player .player-art {
+  filter: drop-shadow(0 4px 0 rgb(14 6 25 / 0.55)) saturate(1.08);
+}
+
+/* Ombres au sol plus marquées : les personnages « posent » sur la carte. */
+html[data-look="toon"] .player::before {
+  width: 60px;
+  height: 18px;
+  background: radial-gradient(ellipse, rgb(8 4 24 / 0.78), rgb(8 4 24 / 0.38) 55%, transparent 74%);
+}
+
+html[data-look="toon"] .enemy-shadow {
+  background: radial-gradient(ellipse, rgb(8 4 24 / 0.78), rgb(8 4 24 / 0.38) 55%, transparent 74%);
+}
+
+/* ---------- Personnages en vrai 3D (Three.js) ----------
+ * Le canvas remplace les calques de sprite : les animations CSS de membres ne s'appliquent plus. */
+.rig-3d {
+  animation: none;
+}
+
+.player .rig-3d,
+.hero-real .rig-3d {
+  animation: none !important;
+  rotate: none;
+}
+
+/* Le canvas est plus large que le rig : l'arme tendue et les capes ne sont pas coupées. */
+.rig-3d > canvas.actor3d-canvas {
+  position: absolute;
+  bottom: -5%;
+  left: 50%;
+  display: block;
+  width: auto;
+  height: 125%;
+  translate: -50% 0;
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 3px 0 rgb(14 6 25 / 0.35));
+}
+
+/* L'arme 2D et son flash sont remplacés par l'arme 3D tenue dans la main du modèle. */
+.hero-3d .rig-weapon-mount,
+.hero-3d .hero-real-weapon,
+.hero-3d .hero-weapon-flash {
+  display: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-look="toon"] .world::after {
+    mix-blend-mode: normal;
+    opacity: 0.6;
+  }
+}

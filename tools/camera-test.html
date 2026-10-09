@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="fr" data-look="toon">
+  <head>
+    <meta charset="utf-8" />
+    <title>Test caméra 3D</title>
+    <link rel="stylesheet" href="../style.css" />
+    <link rel="stylesheet" href="../toon3d.css" />
+    <style>
+      html, body { margin: 0; height: 100%; background: #000; }
+      .arena { position: fixed; inset: 0; width: auto; height: auto; max-width: none; max-height: none; aspect-ratio: auto; margin: 0; }
+      .mark { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: #ff2d6f; border: 2px solid #fff; }
+      .tag { position: fixed; top: 6px; left: 6px; z-index: 50; background: #000a; color: #fff; padding: 4px 8px; font: 12px monospace; }
+    </style>
+  </head>
+  <body>
+    <main class="arena" id="arena" data-wave="1"><div class="world" id="world"></div></main>
+    <div class="tag" id="tag"></div>
+    <script>
+      // Copie fidèle des fonctions de caméra de script.js, pour les tester sans passer par la connexion.
+      const arena = document.getElementById("arena");
+      const world = document.getElementById("world");
+      const params = new URLSearchParams(location.search);
+      const camera = { zoom: 1.6, tilt: Number(params.get("tilt") ?? 18) };
+      const WW = 1405, WH = 768;
+      world.style.width = `${WW}px`;
+      world.style.height = `${WH}px`;
+      const px = Number(params.get("x") ?? 0.5), py = Number(params.get("y") ?? 0.5);
+      const player = { x: px * WW, y: py * WH };
+      function cameraPerspective() { return Math.max(arena.clientWidth, arena.clientHeight) * 1.4; }
+      function projectView(u, v) {
+        const t = (camera.tilt * Math.PI) / 180, P = cameraPerspective(), k = P / (P - v * Math.sin(t));
+        return { x: u * k, y: v * Math.cos(t) * k, scale: k };
+      }
+      function unprojectView(sx, sy) {
+        const t = (camera.tilt * Math.PI) / 180, P = cameraPerspective();
+        const v = (sy * P) / (P * Math.cos(t) + sy * Math.sin(t));
+        return { u: (sx * (P - v * Math.sin(t))) / P, v };
+      }
+      function cameraExtents() {
+        const hw = arena.clientWidth / 2, hh = arena.clientHeight / 2;
+        const tc = unprojectView(hw, -hh), b = unprojectView(0, hh);
+        return { half: Math.abs(tc.u) / camera.zoom, top: -tc.v / camera.zoom, bottom: b.v / camera.zoom };
+      }
+      function cameraFocus() {
+        const e = cameraExtents();
+        const c = (v, lo, hi) => (lo > hi ? (lo + hi) / 2 : Math.max(lo, Math.min(hi, v)));
+        return { x: c(player.x, e.half, WW - e.half), y: c(player.y, e.top, WH - e.bottom) };
+      }
+      function update() {
+        const f = cameraFocus(), W = arena.clientWidth, H = arena.clientHeight;
+        arena.style.setProperty("--cam-mid-x", `${W / 2}px`);
+        arena.style.setProperty("--cam-mid-y", `${H / 2}px`);
+        arena.style.setProperty("--cam-focus-x", `${-f.x * camera.zoom}px`);
+        arena.style.setProperty("--cam-focus-y", `${-f.y * camera.zoom}px`);
+        arena.style.setProperty("--cam-zoom", String(camera.zoom));
+        arena.style.setProperty("--cam-tilt", `${camera.tilt}deg`);
+        arena.style.setProperty("--cam-persp", `${cameraPerspective()}px`);
+        return f;
+      }
+      const f = update();
+      // repères répartis sur le monde ; on contrôle ensuite que l'inverse retombe sur eux
+      const marks = [[0.1, 0.1], [0.5, 0.1], [0.9, 0.1], [0.1, 0.5], [0.5, 0.5], [0.9, 0.5], [0.1, 0.9], [0.5, 0.9], [0.9, 0.9], [px, py]];
+      for (const [mx, my] of marks) {
+        const m = document.createElement("div");
+        m.className = "mark";
+        m.style.left = `${mx * WW}px`;
+        m.style.top = `${my * WH}px`;
+        world.append(m);
+      }
+      // test aller-retour : monde -> écran (réel, mesuré dans le DOM) -> monde (maths)
+      const rect = arena.getBoundingClientRect();
+      let worst = 0;
+      for (const m of world.querySelectorAll(".mark")) {
+        const r = m.getBoundingClientRect();
+        const back = (() => {
+          const p = unprojectView(r.left + r.width / 2 - rect.left - rect.width / 2, r.top + r.height / 2 - rect.top - rect.height / 2);
+          return { x: f.x + p.u / camera.zoom, y: f.y + p.v / camera.zoom };
+        })();
+        worst = Math.max(worst, Math.hypot(back.x - parseFloat(m.style.left), back.y - parseFloat(m.style.top)));
+      }
+      document.getElementById("tag").textContent = `tilt ${camera.tilt}° · focus ${f.x.toFixed(0)},${f.y.toFixed(0)} · erreur max inverse = ${worst.toFixed(2)} px monde`;
+    </script>
+  </body>
+</html>

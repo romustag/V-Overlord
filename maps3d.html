@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>V-Overlord · Cartes 3D</title>
+    <style>
+      html, body { margin: 0; background: #1a0b2e; color: #fff; font: 14px system-ui, sans-serif; }
+      canvas { display: block; width: 100vw; height: auto; max-height: 100vh; object-fit: contain; }
+      #bar { position: fixed; top: 6px; left: 6px; background: #000a; padding: 4px 10px; border-radius: 8px; z-index: 2; }
+      #bar a { color: #ffd23f; margin-right: 10px; }
+    </style>
+  </head>
+  <body>
+    <div id="bar">
+      <a href="?map=1">Village</a><a href="?map=2">Épouvantail</a><a href="?map=3">Fête foraine</a><a href="?map=4">Bouffon</a><a href="?map=throne">Trône</a>
+    </div>
+    <canvas id="view"></canvas>
+    <script type="module">
+      import { renderMap, treeColliders } from "./three/maps.js?v=53";
+      const params = new URLSearchParams(location.search);
+      const id = params.get("map") ?? "1";
+      const scale = Number(params.get("scale") ?? 1);
+      const canvas = document.getElementById("view");
+      const t0 = performance.now();
+      if (params.get("dump") === "trees") {
+        const data = {};
+        for (const key of [1, 2, 3, 4, 5]) data[key] = treeColliders(key);
+        window.treeData = `// Troncs d'arbres : générés par maps3d.html?dump=trees (collisions du jeu).\nconst treeObstacles = ${JSON.stringify(data)};\n`;
+        document.body.append(Object.assign(document.createElement("pre"), { textContent: window.treeData.slice(0, 600) }));
+        window.mapReady = true;
+      } else renderMap(id, { width: Math.round(2810 * scale), height: Math.round(1536 * scale), canvas, mode: params.get("mode") ?? "full" });
+      window.mapReady = true;
+      window.mapTime = performance.now() - t0;
+      // export : window.exportMap() -> data URL JPEG
+      window.exportMap = (quality = 0.88) => canvas.toDataURL("image/jpeg", quality);
+      // export de toutes les cartes (image complète + fond sans arbres) en une seule fois
+      window.exportAll = async (quality = 0.86, modes = ["full", "base", "ground"]) => {
+        const out = {};
+        for (const key of [1, 2, 3, 4]) {
+          for (const mode of modes) {
+            const c = renderMap(key, { width: 2810, height: 1536, canvas: document.createElement("canvas"), mode });
+            out[`${key}-${mode}`] = c.toDataURL("image/jpeg", quality);
+            await new Promise((r) => setTimeout(r, 30));
+          }
+        }
+        return JSON.stringify(out);
+      };
+    </script>
+  </body>
+</html>

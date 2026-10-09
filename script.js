@@ -5,7 +5,24 @@ const world = document.createElement("div");
 world.className = "world";
 arena.prepend(world);
 world.append(document.querySelector(".throne-room"), player);
-const camera = { zoom: 1.6 };
+// viseur au centre de l'écran (visible quand la souris pilote la caméra)
+const crosshair = document.createElement("div");
+crosshair.className = "cam-crosshair";
+crosshair.setAttribute("aria-hidden", "true");
+arena.append(crosshair);
+// Caméra à la 3e personne (façon Fortnite) : derrière le joueur, inclinée pour voir l'horizon, orientable à la souris.
+// Le jeu est en 2D tant que window.OV_3D est faux (?3d=1 pour la 3D). ?cam=top rend l'ancienne vue de dessus ; ?tilt=… et ?yaw=… règlent l'inclinaison et l'orientation.
+const cameraQuery = new URLSearchParams(location.search);
+const camera = {
+  zoom: 1.6,
+  tps: Boolean(window.OV_3D) && cameraQuery.get("cam") !== "top",
+  tilt: 0,
+  yaw: 0,
+  lead: 0,
+};
+camera.tilt = Math.max(0, Math.min(camera.tps ? 84 : 40, Number(cameraQuery.get("tilt") ?? (camera.tps ? 68 : window.OV_3D ? 18 : 0)) || 0));
+camera.yaw = Number(cameraQuery.get("yaw") ?? 0) || 0;
+camera.lead = camera.tps ? Number(cameraQuery.get("lead") ?? 70) || 0 : 0;
 const atmosphereParticles = document.querySelector("#atmosphere-particles");
 const damageVignette = document.querySelector("#damage-vignette");
 const timerDisplay = document.querySelector("#timer");
@@ -16,6 +33,7 @@ const waveCountdownLabel = document.querySelector("#wave-countdown-label");
 const gameOver = document.querySelector("#game-over");
 const gameOverTitle = document.querySelector("#game-over-title");
 const retryButton = document.querySelector("#retry-button");
+const nextWorldButton = document.querySelector("#next-world-button");
 const shopButton = document.querySelector("#shop-button");
 const frontMenu = document.querySelector("#front-menu");
 const loadoutScreen = document.querySelector("#loadout-screen");
@@ -61,6 +79,19 @@ const combatPowerIcon = document.querySelector("#combat-power-icon");
 const combatWeaponIcon = document.querySelector("#combat-weapon-icon");
 const combatWeaponName = document.querySelector("#combat-weapon-name");
 const combatWeaponDetail = document.querySelector("#combat-weapon-detail");
+const iconImages = { "🧪": "./assets/icons/potion.png?v=1" };
+function setIcon(element, icon) {
+  if (iconImages[icon]) {
+    const img = document.createElement("img");
+    img.className = "potion-icon-img";
+    img.src = iconImages[icon];
+    img.alt = "";
+    element.replaceChildren(img);
+  } else {
+    element.textContent = icon;
+  }
+}
+
 const combatBoostIcon = document.querySelector("#combat-boost-icon");
 const combatBoostName = document.querySelector("#combat-boost-name");
 const combatBoostDetail = document.querySelector("#combat-boost-detail");
@@ -255,11 +286,12 @@ function updateKeyLabels() {
 const speed = 195;
 const walkSpeedRatio = 0.72;
 const runRampDuration = 0.5;
-const roundLength = 90;
-const bossWaveLength = 120;
-const bossArrivalTimeLeft = 50;
+// Toutes les vagues (monde 1 et 2) durent 2 min 50 ; les boss arrivent quand le chrono affiche 2:00.
+const roundLength = 170;
+const bossWaveLength = 170;
+const bossArrivalTimeLeft = 120;
 const finalWaveLength = 170;
-const finalBossArrivalTimeLeft = 110;
+const finalBossArrivalTimeLeft = 120;
 const maxEnemiesOnField = 18;
 const finalWaveMaxEnemies = 26;
 const waveCountdownLength = 3;
@@ -297,9 +329,17 @@ const activePowerOptions = [
   { id: "flamme-infernale", label: "Flamme infernale", description: "Une explosion de feu maudit brûle et repousse les monstres proches.", icon: "🔥", cooldown: 17, price: 225, rotation: 1, effect: "fire", tier: "divin", kind: "attack" },
   { id: "pacte-vampirique", label: "Pacte vampirique", description: "Aspire le sang des monstres proches : dégâts, saignement et soin pour chaque victime.", icon: "🩸", cooldown: 18, price: 300, rotation: 0, effect: "vampire", tier: "divin", kind: "heal" },
   { id: "arret-du-temps", label: "Arrêt du temps", description: "Le temps se fige : tous les monstres alentour sont immobilisés et subissent 50 % de dégâts en plus.", icon: "⏳", cooldown: 24, price: 320, rotation: 2, effect: "timestop", tier: "divin", kind: "control" },
+  // Pouvoirs du Cauchemar de Noël : même moteur que les pouvoirs classiques, couleurs et puissance propres.
+  { id: "carillon-sacre", label: "Carillon des anges déchus", description: "Des clochettes sacrées te soignent et brûlent les monstres autour de toi.", icon: "🔔", cooldown: 19, price: 0, rotation: 0, effect: "holy", tier: "peu-commun", kind: "heal", noel: true, boost: 1.25, fxHue: 35 },
+  { id: "blizzard-tenebres", label: "Blizzard des Ténèbres", description: "Une tempête de neige noire gèle, blesse et ralentit tout ce qui t'entoure.", icon: "🌨️", cooldown: 14, price: 0, rotation: 0, effect: "ice", tier: "rare", kind: "control", noel: true, boost: 1.6, radiusBoost: 1.25, fxHue: 20 },
+  { id: "boule-neige-explosive", label: "Boule de neige explosive", description: "Une énorme boule de neige explose sur le groupe le plus proche : souffle, recul et givre.", icon: "☃️", cooldown: 15, price: 0, rotation: 0, effect: "pumpkin", tier: "rare", kind: "attack", noel: true, boost: 1.3, fxHue: 175 },
+  { id: "pluie-cadeaux-pieges", label: "Pluie de cadeaux piégés", description: "Des cadeaux empoisonnés tombent du ciel et explosent sur les monstres.", icon: "🎁", cooldown: 19, price: 0, rotation: 0, effect: "meteor", tier: "legendaire", kind: "attack", noel: true, boost: 1.4, fxHue: 95 },
+  { id: "meute-rennes", label: "Meute de rennes squelettes", description: "Des rennes fantômes chargent les monstres proches et les mordent jusqu'au sang.", icon: "🦌", cooldown: 22, price: 0, rotation: 0, effect: "wolves", tier: "legendaire", kind: "summon", noel: true, boost: 1.3, fxHue: 150 },
+  { id: "colere-pere-noel", label: "Colère du Père Noël noir", description: "Une explosion de braises de cheminée maudite brûle et repousse les monstres.", icon: "🎅", cooldown: 17, price: 0, rotation: 0, effect: "fire", tier: "divin", kind: "attack", noel: true, boost: 1.5, radiusBoost: 1.1, fxHue: 320 },
+  { id: "hiver-eternel", label: "Hiver éternel", description: "Le temps se fige sous la glace : monstres immobilisés et +50 % de dégâts subis, très longtemps.", icon: "🥶", cooldown: 24, price: 0, rotation: 0, effect: "timestop", tier: "divin", kind: "control", noel: true, boost: 1.0, radiusBoost: 1.2, fxHue: 150 },
 ];
 const powerKindLabels = { attack: "Attaque", control: "Contrôle", defense: "Défense", heal: "Soin", summon: "Invocation" };
-const skinStyleLabels = { aventure: "Aventure", animal: "Animal", guerrier: "Guerrier", western: "Western", futuriste: "Futuriste", halloween: "Halloween" };
+const skinStyleLabels = { aventure: "Aventure", animal: "Animal", guerrier: "Guerrier", western: "Western", futuriste: "Futuriste", halloween: "Halloween", noel: "Noël cauchemar" };
 const weaponTypeLabels = {
   fronde: "Fronde", "double-fronde": "Fronde", arbalete: "Arbalète", "arc-long": "Arc",
   "fusil-pompe": "Fusil", "lance-clous": "Lanceur", "lance-bonbons": "Lanceur",
@@ -308,8 +348,11 @@ const weaponTypeLabels = {
   "hache-bucheron": "Hache", "lance-centurion": "Lance", "marteau-guerre": "Marteau", "dague-assassin": "Dague", "katana-ombre": "Katana",
   "pistolet-silex": "Pistolet", "revolver-sherif": "Pistolet", "pistolet-citrouille": "Pistolet", "pistolet-spectral": "Pistolet", "canon-roi-ombres": "Pistolet",
   "tromblon-pirate": "Fusil", "fusil-precision": "Fusil", "pistolet-givre": "Pistolet", "baguette-foudre": "Magie", "blaster-neon": "Laser",
+  "canne-sucre": "Épée", "pistolet-glacon": "Pistolet", "hache-glacee": "Hache", "arbalete-lutin": "Arbalète", "lance-cadeaux": "Lanceur",
+  "epee-mere-froide": "Épée", "canon-boules-neige": "Canon", "baguette-etoile": "Magie",
+  "canon-traineau-noir": "Canon", "sceptre-roi-hiver": "Sceptre", "fourche-krampus": "Lance",
 };
-const weaponTypeIcons = { Épée: "🗡️", Hache: "🪓", Lance: "🔱", Marteau: "🔨", Dague: "🔪", Katana: "⚔️", Faux: "🌙", Fouet: "🌿", Pistolet: "🔫", Fusil: "💥", Laser: "🔆", Magie: "🪄", Arc: "🏹", Arbalète: "🏹", Fronde: "🎯", Lanceur: "🔩" };
+const weaponTypeIcons = { Épée: "🗡️", Hache: "🪓", Lance: "🔱", Marteau: "🔨", Dague: "🔪", Katana: "⚔️", Faux: "🌙", Fouet: "🌿", Pistolet: "🔫", Fusil: "💥", Laser: "🔆", Magie: "🪄", Arc: "🏹", Arbalète: "🏹", Fronde: "🎯", Lanceur: "🔩", Canon: "💣", Sceptre: "👑" };
 function getItemTypeLabel(category, item) {
   if (!item) return "";
   if (category === "weapons") return weaponTypeLabels[item.id] || (item.melee ? "Mêlée" : "Distance");
@@ -324,6 +367,57 @@ const loadoutOptions = {
     { id: "pisteur", label: "Pisteur", description: "Tenue de camouflage légère.", icon: "🌿" },
     { id: "secouriste", label: "Secouriste", description: "Équipement médical de terrain.", icon: "✚" },
     { id: "sentinelle", label: "Sentinelle", description: "Armure robuste pour tenir la ligne.", icon: "🛡️" },
+    // 50 personnages supplémentaires : ils s'affichent avec la tenue « Survivant ».
+    { id: "archere-elfe", label: "Archère elfe", description: "Cape verte, carquois et regard perçant : l'elfe des forêts ne rate jamais sa cible.", icon: "🏹", tier: "peu-commun" },
+    { id: "forgeron-nain", label: "Forgeron nain", description: "Barbe rousse tressée, tablier de cuir et lunettes de soudeur : il forge sa propre chance.", icon: "🔨", tier: "peu-commun" },
+    { id: "paladin-aube", label: "Paladin de l'aube", description: "Armure dorée frappée du soleil : la lumière marche devant lui.", icon: "☀️", tier: "legendaire" },
+    { id: "druide-brume", label: "Druide des brumes", description: "Bois de cerf, manteau de feuilles et yeux d'émeraude : la forêt lui obéit.", icon: "🦌", tier: "rare" },
+    { id: "barbare-nord", label: "Barbare du Nord", description: "Fourrures, tresses et peintures de guerre : il ne connaît pas le froid.", icon: "🪓", tier: "peu-commun" },
+    { id: "moine-guerrier", label: "Moine guerrier", description: "Robe orange, poings bandés et calme absolu.", icon: "🥋", tier: "peu-commun" },
+    { id: "elfe-noir", label: "Elfe noir", description: "Peau violacée, cheveux d'argent et armure de cuir sombre.", icon: "🌑", tier: "rare" },
+    { id: "orc-sauvage", label: "Orc sauvage", description: "Un colosse vert aux épaulières hérissées de pointes.", icon: "👹", tier: "rare" },
+    { id: "gobelin-pillard", label: "Gobelin pillard", description: "Petit, rapide et toujours avec un sac volé sur le dos.", icon: "🧌", tier: "commun" },
+    { id: "troll-cavernes", label: "Troll des cavernes", description: "Une montagne de muscles et de poils qui sent la roche humide.", icon: "🪨", tier: "legendaire" },
+    { id: "golem-pierre", label: "Golem de pierre", description: "Des blocs de granit animés par des runes de feu : rien ne l'arrête.", icon: "🗿", tier: "divin" },
+    { id: "tritonne-guerriere", label: "Tritonne guerrière", description: "Écailles turquoise, armure de perles et nageoires fendues.", icon: "🧜", tier: "legendaire" },
+    { id: "chevalier-dragon", label: "Chevalier-dragon", description: "Écailles d'émeraude, petites ailes et crocs : mi-dragon, mi-chevalier.", icon: "🐲", tier: "legendaire" },
+    { id: "barde-errant", label: "Barde errant", description: "Manteau rapiécé multicolore, chapeau à plume et luth sur le dos.", icon: "🎻", tier: "rare" },
+    { id: "legionnaire", label: "Légionnaire romain", description: "Casque à crête rouge, cuirasse segmentée et cape écarlate.", icon: "🛡️", tier: "commun" },
+    { id: "gladiateur", label: "Gladiateur", description: "Torse nu, sangles de cuir et épaulière de bronze : l'arène l'attend.", icon: "⚔️", tier: "peu-commun" },
+    { id: "chevalier-errant", label: "Chevalier errant", description: "Une armure cabossée par mille batailles et une cotte déchirée.", icon: "🐴", tier: "peu-commun" },
+    { id: "mousquetaire", label: "Mousquetaire", description: "Grand chapeau à plume, cape bleue et moustache de héros.", icon: "🪶", tier: "peu-commun" },
+    { id: "pharaon-sables", label: "Pharaon des sables", description: "Coiffe d'or et de lapis, pagne blanc et bracelets royaux.", icon: "🏺", tier: "rare" },
+    { id: "guerrier-jaguar", label: "Guerrier jaguar", description: "Peau de jaguar, plumes vertes et rouges : le chasseur de la jungle.", icon: "🐆", tier: "rare" },
+    { id: "cosaque", label: "Cosaque", description: "Haut bonnet de fourrure, long manteau rouge et grosse moustache.", icon: "🧣", tier: "commun" },
+    { id: "toreador", label: "Toréador", description: "Costume rose brodé d'or et cape rouge sur l'épaule.", icon: "🌹", tier: "peu-commun" },
+    { id: "conquistador", label: "Conquistador", description: "Morion, plastron d'acier et collerette blanche.", icon: "⛑️", tier: "peu-commun" },
+    { id: "pompier", label: "Pompier", description: "Veste jaune, casque à visière et hache à la ceinture.", icon: "🚒", tier: "commun" },
+    { id: "agent-special", label: "Agent spécial", description: "Costume noir, lunettes sombres et oreillette : mission confidentielle.", icon: "🕶️", tier: "commun" },
+    { id: "chasseur-primes", label: "Chasseur de primes", description: "Long manteau poussiéreux, foulard sur le visage et cartouchière.", icon: "🎯", tier: "peu-commun" },
+    { id: "mineur", label: "Mineur", description: "Casque à lampe, salopette bleue et outils à la ceinture.", icon: "⛏️", tier: "commun" },
+    { id: "plongeur-abysses", label: "Plongeur des abysses", description: "Scaphandre de laiton et combinaison épaisse : il descend là où personne ne va.", icon: "🤿", tier: "rare" },
+    { id: "pilote-chasse", label: "Pilote de chasse", description: "Combinaison orange, casque d'aviateur et lunettes de vol.", icon: "✈️", tier: "peu-commun" },
+    { id: "savant-fou", label: "Savant fou", description: "Cheveux dressés, blouse blanche et fioles vertes à la ceinture.", icon: "🧪", tier: "rare" },
+    { id: "hackeuse", label: "Hackeuse", description: "Sweat fluo, casque audio et visière holographique.", icon: "💻", tier: "peu-commun" },
+    { id: "robot-combat", label: "Robot de combat", description: "Un exo d'acier riveté avec un œil rouge qui ne cligne jamais.", icon: "🤖", tier: "divin" },
+    { id: "droide-eclaireur", label: "Droïde éclaireur", description: "Une boule rondouillarde, des chenilles et une antenne parabolique.", icon: "📡", tier: "legendaire" },
+    { id: "mercenaire", label: "Mercenaire", description: "Gilet tactique, treillis camouflé et bandeau rouge.", icon: "🔫", tier: "commun" },
+    { id: "motard-ruines", label: "Motard des ruines", description: "Blouson clouté, casque à lunettes et chaînes qui claquent.", icon: "🏍️", tier: "commun" },
+    { id: "medecin-guerre", label: "Médecin de guerre", description: "Casque à croix rouge et sacoche de premiers secours.", icon: "⚕️", tier: "peu-commun" },
+    { id: "alchimiste", label: "Alchimiste", description: "Tablier taché, lunettes de laiton et fioles colorées.", icon: "⚗️", tier: "rare" },
+    { id: "necromancien", label: "Nécromancien", description: "Robe noire et os, crâne sous la capuche et yeux verts de poison.", icon: "💀", tier: "divin" },
+    { id: "assassin-masque", label: "Assassin masqué", description: "Capuche sombre, masque blanc lisse et avant-bras bandés.", icon: "🎭", tier: "legendaire" },
+    { id: "voleuse-toits", label: "Voleuse des toits", description: "Courte cape, foulard rayé, masque noir et crochets à la ceinture.", icon: "🗝️", tier: "rare" },
+    { id: "docteur-peste", label: "Docteur de la peste", description: "Masque à long bec, chapeau noir et grand manteau de cuir.", icon: "🐦", tier: "legendaire" },
+    { id: "chevalier-trepasse", label: "Chevalier trépassé", description: "Armure rouillée, cape en lambeaux et lueur bleue dans le heaume.", icon: "⚰️", tier: "divin" },
+    { id: "loup-garou", label: "Loup-garou", description: "Fourrure grise, yeux jaunes et pantalon en lambeaux.", icon: "🐺", tier: "legendaire" },
+    { id: "dame-blanche", label: "Dame blanche", description: "Robe et voile de brume, des yeux vides et un sourire figé.", icon: "👰", tier: "legendaire" },
+    { id: "sorcier-vaudou", label: "Sorcier vaudou", description: "Haut-de-forme à os, visage peint et colliers de perles.", icon: "🪆", tier: "rare" },
+    { id: "fermier-fou", label: "Fermier fou", description: "Chapeau de paille, salopette rapiécée et regard de fou.", icon: "🌾", tier: "commun" },
+    { id: "pecheur-marais", label: "Pêcheur des marais", description: "Ciré vert, chapeau détrempé et épuisette sur le dos.", icon: "🎣", tier: "commun" },
+    { id: "cuisinier-maudit", label: "Cuisinier maudit", description: "Toque, tablier ensanglanté et sourire glaçant.", icon: "🍳", tier: "rare" },
+    { id: "apiculteur", label: "Apiculteur", description: "Combinaison blanche, voile de protection, enfumoir et abeilles.", icon: "🐝", tier: "peu-commun" },
+    { id: "gardien-tombeau", label: "Gardien de tombeau", description: "Momie sombre au casque de chacal doré, yeux bleus luisants.", icon: "🔱", tier: "divin" },
   ],
   skins: [
     { id: "survivant", label: "Survivant", description: "Tenue de terrain d'origine.", icon: "🧭", tier: "commun", style: "aventure" },
@@ -354,6 +448,16 @@ const loadoutOptions = {
     { id: "chasseur-vampires", label: "Chasseur de vampires", description: "Chapeau large, long manteau et pieux d'argent.", icon: "🗡️", tier: "legendaire", halloween: true, style: "halloween" },
     { id: "astronaute", label: "Astronaute perdu", description: "Combinaison spatiale blanche et visière dorée.", icon: "🧑‍🚀", tier: "legendaire", style: "futuriste" },
     { id: "faucheuse", label: "La Faucheuse", description: "Capuche noire sans visage et aura de mort.", icon: "☠️", tier: "divin", halloween: true, style: "halloween" },
+    { id: "maisie-draconique", label: "Maisie draconique", description: "Casque d'argent à cornes, armure cramoisie et gantelet en tête de dragon.", icon: "🐉", tier: "legendaire", style: "guerrier" },
+    // Costumes du Cauchemar de Noël (monde 2) : uniquement dans les caisses « Noël cauchemar ».
+    { id: "choriste-maudite", label: "Choriste maudite", description: "Bonnet de houx, recueil de cantiques et lanterne : elle chante pour les morts.", icon: "🔔", tier: "peu-commun", noel: true, style: "noel" },
+    { id: "patineur-fantome", label: "Patineur fantôme", description: "Corps de glace translucide et patins aiguisés : il glisse sans bruit.", icon: "⛸️", tier: "peu-commun", noel: true, style: "noel" },
+    { id: "casse-noisette", label: "Casse-noisette maudit", description: "Soldat de bois fendillé, mâchoire claquante et uniforme rouge et or.", icon: "🪖", tier: "rare", noel: true, style: "noel" },
+    { id: "sorcier-gui", label: "Sorcier du gui", description: "Couronne de houx, barbe givrée et bâton de gui qui crépite de magie verte.", icon: "🌿", tier: "rare", noel: true, style: "noel" },
+    { id: "trappeur-polaire", label: "Trappeur polaire", description: "Parka de fourrure, lunettes de neige, corde et pièges d'acier.", icon: "🧥", tier: "rare", noel: true, style: "noel" },
+    { id: "ange-dechu", label: "Ange déchu de Noël", description: "Ailes noires et rouges, auréole fêlée et armure blanche tachée de cendres.", icon: "😇", tier: "legendaire", noel: true, style: "noel" },
+    { id: "krampus", label: "Krampus", description: "Le démon cornu de Noël : fourrure sombre, chaînes et clochettes.", icon: "🐐", tier: "divin", noel: true, style: "noel" },
+    { id: "seigneur-aurore", label: "Seigneur de l'Aurore", description: "Couronne de glace et cape d'aurore boréale qui danse de vert et de violet.", icon: "🌌", tier: "divin", noel: true, style: "noel" },
     { id: "cyborg", label: "Cyborg néon", description: "Armure chromée et circuits lumineux.", icon: "🤖", tier: "divin", style: "futuriste" },
   ],
   equipment: [
@@ -395,6 +499,19 @@ const loadoutOptions = {
     { id: "pistolet-givre", label: "Pistolet de givre", description: "Balles de glace qui ralentissent et peuvent geler sur place.", damage: 3, interval: 0.36, projectiles: 1, icon: "❄️", rarity: "orange", tier: "rare", crate: true },
     { id: "baguette-foudre", label: "Baguette de foudre", description: "Un éclair magique qui rebondit sur les monstres voisins.", damage: 4, interval: 0.5, projectiles: 1, icon: "🪄", rarity: "orange", tier: "legendaire", crate: true },
     { id: "blaster-neon", label: "Blaster néon", description: "Arme divine du futur : rafale laser perforante et explosive.", damage: 4, interval: 0.2, projectiles: 1, icon: "🔆", rarity: "doree", tier: "divin", crate: true },
+    // Armes du Cauchemar de Noël (monde 2) : uniquement dans les caisses « Noël cauchemar ».
+    { id: "canne-sucre", label: "Canne d'orge tranchante", description: "Une canne de bonbon taillée en lame : coups amples qui font saigner.", damage: 5, interval: 0.42, projectiles: 1, icon: "🍭", rarity: "violette", tier: "peu-commun", noel: true, melee: { reach: 126, arc: 130, color: "#ff6b81" } },
+    { id: "pistolet-glacon", label: "Pistolet à glaçons", description: "Tire des éclats de glace de Noël qui ralentissent et peuvent geler.", damage: 3, interval: 0.33, projectiles: 1, icon: "🧊", rarity: "violette", tier: "peu-commun", noel: true },
+    { id: "hache-glacee", label: "Hache du blizzard", description: "Double hache de glace : gros coups qui givrent et ralentissent les monstres.", damage: 8, interval: 0.6, projectiles: 1, icon: "🪓", rarity: "orange", tier: "rare", noel: true, melee: { reach: 124, arc: 118, color: "#9fe6ff" } },
+    { id: "arbalete-lutin", label: "Arbalète du lutin", description: "Carreaux étoilés qui transpercent deux monstres, avec de gros critiques.", damage: 6, interval: 0.55, projectiles: 1, icon: "🔔", rarity: "orange", tier: "rare", noel: true },
+    { id: "lance-cadeaux", label: "Lance-cadeaux piégés", description: "Envoie des cadeaux qui explosent en gerbe de confettis sur les groupes.", damage: 5, interval: 0.55, projectiles: 1, icon: "🎁", projectile: "candy", rarity: "orange", tier: "legendaire", noel: true },
+    { id: "epee-mere-froide", label: "Épée de la Mère Froide", description: "Lame de cristal : ses entailles glacées ralentissent tout ce qu'elles touchent.", damage: 9, interval: 0.38, projectiles: 1, icon: "❄️", rarity: "orange", tier: "legendaire", noel: true, melee: { reach: 150, arc: 150, color: "#8fe9ff" } },
+    { id: "canon-boules-neige", label: "Canon à boules de neige", description: "Quatre boules de neige en éventail : idéal pour freiner les hordes.", damage: 3, interval: 0.6, projectiles: 4, icon: "☃️", rarity: "orange", tier: "legendaire", noel: true },
+    { id: "baguette-etoile", label: "Baguette de l'Étoile noire", description: "Arme divine : l'étoile maudite du sapin tire des runes qui rebondissent d'ennemi en ennemi.", damage: 5, interval: 0.26, projectiles: 1, icon: "⭐", rarity: "doree", tier: "divin", noel: true },
+    // Armes exclusives de la roue (niveau 250 et plus) : introuvables ailleurs.
+    { id: "canon-traineau-noir", label: "Canon du Traîneau noir", description: "Exclusif de la roue : double salve de glace et de feu qui explose à l'impact.", damage: 8, interval: 0.24, projectiles: 2, icon: "🛷", rarity: "doree", tier: "divin", exclusive: true },
+    { id: "sceptre-roi-hiver", label: "Sceptre du Roi Hiver", description: "Exclusif de la roue : un croissant de givre fauche et ralentit tout autour de toi.", damage: 14, interval: 0.4, projectiles: 1, icon: "👑", rarity: "doree", tier: "divin", exclusive: true, melee: { reach: 165, arc: 180, color: "#7fdcff" } },
+    { id: "fourche-krampus", label: "Fourche de Krampus", description: "Exclusif de la roue : très longue portée, transperce en ligne et fait saigner.", damage: 12, interval: 0.36, projectiles: 1, icon: "🔱", rarity: "doree", tier: "divin", exclusive: true, melee: { reach: 190, arc: 50, color: "#ff4040" } },
   ],
   coatings: [
     { id: "aucun", label: "Sans revêtement", description: "La finition d'origine de ton arme.", icon: "⬜", tier: "commun" },
@@ -415,13 +532,63 @@ const shopCatalog = [
   { id: "pisteur", category: "characters", label: "Personnage Pisteur", description: "Une tenue de camouflage verte.", price: 75, icon: "🌲", rotation: 0 },
   { id: "secouriste", category: "characters", label: "Personnage Secouriste", description: "Une tenue claire inspirée des équipes de secours.", price: 95, icon: "✚", rotation: 1 },
   { id: "sentinelle", category: "characters", label: "Personnage Sentinelle", description: "Une apparence blindée pour les expéditions difficiles.", price: 125, icon: "🛡️", rotation: 2 },
+  { id: "archere-elfe", category: "characters", label: "Personnage Archère elfe", description: "Cape verte, carquois et regard perçant : l'elfe des forêts ne rate jamais sa cible.", price: 240, icon: "🏹", tier: "peu-commun", rotation: 0 },
+  { id: "forgeron-nain", category: "characters", label: "Personnage Forgeron nain", description: "Barbe rousse tressée, tablier de cuir et lunettes de soudeur : il forge sa propre chance.", price: 250, icon: "🔨", tier: "peu-commun", rotation: 1 },
+  { id: "paladin-aube", category: "characters", label: "Personnage Paladin de l'aube", description: "Armure dorée frappée du soleil : la lumière marche devant lui.", price: 950, icon: "☀️", tier: "legendaire", rotation: 2 },
+  { id: "druide-brume", category: "characters", label: "Personnage Druide des brumes", description: "Bois de cerf, manteau de feuilles et yeux d'émeraude : la forêt lui obéit.", price: 450, icon: "🦌", tier: "rare", rotation: 0 },
+  { id: "barbare-nord", category: "characters", label: "Personnage Barbare du Nord", description: "Fourrures, tresses et peintures de guerre : il ne connaît pas le froid.", price: 260, icon: "🪓", tier: "peu-commun", rotation: 1 },
+  { id: "moine-guerrier", category: "characters", label: "Personnage Moine guerrier", description: "Robe orange, poings bandés et calme absolu.", price: 230, icon: "🥋", tier: "peu-commun", rotation: 2 },
+  { id: "elfe-noir", category: "characters", label: "Personnage Elfe noir", description: "Peau violacée, cheveux d'argent et armure de cuir sombre.", price: 480, icon: "🌑", tier: "rare", rotation: 0 },
+  { id: "orc-sauvage", category: "characters", label: "Personnage Orc sauvage", description: "Un colosse vert aux épaulières hérissées de pointes.", price: 430, icon: "👹", tier: "rare", rotation: 1 },
+  { id: "gobelin-pillard", category: "characters", label: "Personnage Gobelin pillard", description: "Petit, rapide et toujours avec un sac volé sur le dos.", price: 150, icon: "🧌", tier: "commun", rotation: 2 },
+  { id: "troll-cavernes", category: "characters", label: "Personnage Troll des cavernes", description: "Une montagne de muscles et de poils qui sent la roche humide.", price: 900, icon: "🪨", tier: "legendaire", rotation: 0 },
+  { id: "golem-pierre", category: "characters", label: "Personnage Golem de pierre", description: "Des blocs de granit animés par des runes de feu : rien ne l'arrête.", price: 2400, icon: "🗿", tier: "divin", rotation: 1 },
+  { id: "tritonne-guerriere", category: "characters", label: "Personnage Tritonne guerrière", description: "Écailles turquoise, armure de perles et nageoires fendues.", price: 880, icon: "🧜", tier: "legendaire", rotation: 2 },
+  { id: "chevalier-dragon", category: "characters", label: "Personnage Chevalier-dragon", description: "Écailles d'émeraude, petites ailes et crocs : mi-dragon, mi-chevalier.", price: 1000, icon: "🐲", tier: "legendaire", rotation: 0 },
+  { id: "barde-errant", category: "characters", label: "Personnage Barde errant", description: "Manteau rapiécé multicolore, chapeau à plume et luth sur le dos.", price: 420, icon: "🎻", tier: "rare", rotation: 1 },
+  { id: "legionnaire", category: "characters", label: "Personnage Légionnaire romain", description: "Casque à crête rouge, cuirasse segmentée et cape écarlate.", price: 160, icon: "🛡️", tier: "commun", rotation: 2 },
+  { id: "gladiateur", category: "characters", label: "Personnage Gladiateur", description: "Torse nu, sangles de cuir et épaulière de bronze : l'arène l'attend.", price: 250, icon: "⚔️", tier: "peu-commun", rotation: 0 },
+  { id: "chevalier-errant", category: "characters", label: "Personnage Chevalier errant", description: "Une armure cabossée par mille batailles et une cotte déchirée.", price: 270, icon: "🐴", tier: "peu-commun", rotation: 1 },
+  { id: "mousquetaire", category: "characters", label: "Personnage Mousquetaire", description: "Grand chapeau à plume, cape bleue et moustache de héros.", price: 290, icon: "🪶", tier: "peu-commun", rotation: 2 },
+  { id: "pharaon-sables", category: "characters", label: "Personnage Pharaon des sables", description: "Coiffe d'or et de lapis, pagne blanc et bracelets royaux.", price: 520, icon: "🏺", tier: "rare", rotation: 0 },
+  { id: "guerrier-jaguar", category: "characters", label: "Personnage Guerrier jaguar", description: "Peau de jaguar, plumes vertes et rouges : le chasseur de la jungle.", price: 500, icon: "🐆", tier: "rare", rotation: 1 },
+  { id: "cosaque", category: "characters", label: "Personnage Cosaque", description: "Haut bonnet de fourrure, long manteau rouge et grosse moustache.", price: 170, icon: "🧣", tier: "commun", rotation: 2 },
+  { id: "toreador", category: "characters", label: "Personnage Toréador", description: "Costume rose brodé d'or et cape rouge sur l'épaule.", price: 280, icon: "🌹", tier: "peu-commun", rotation: 0 },
+  { id: "conquistador", category: "characters", label: "Personnage Conquistador", description: "Morion, plastron d'acier et collerette blanche.", price: 300, icon: "⛑️", tier: "peu-commun", rotation: 1 },
+  { id: "pompier", category: "characters", label: "Personnage Pompier", description: "Veste jaune, casque à visière et hache à la ceinture.", price: 140, icon: "🚒", tier: "commun", rotation: 2 },
+  { id: "agent-special", category: "characters", label: "Personnage Agent spécial", description: "Costume noir, lunettes sombres et oreillette : mission confidentielle.", price: 180, icon: "🕶️", tier: "commun", rotation: 0 },
+  { id: "chasseur-primes", category: "characters", label: "Personnage Chasseur de primes", description: "Long manteau poussiéreux, foulard sur le visage et cartouchière.", price: 270, icon: "🎯", tier: "peu-commun", rotation: 1 },
+  { id: "mineur", category: "characters", label: "Personnage Mineur", description: "Casque à lampe, salopette bleue et outils à la ceinture.", price: 150, icon: "⛏️", tier: "commun", rotation: 2 },
+  { id: "plongeur-abysses", category: "characters", label: "Personnage Plongeur des abysses", description: "Scaphandre de laiton et combinaison épaisse : il descend là où personne ne va.", price: 470, icon: "🤿", tier: "rare", rotation: 0 },
+  { id: "pilote-chasse", category: "characters", label: "Personnage Pilote de chasse", description: "Combinaison orange, casque d'aviateur et lunettes de vol.", price: 260, icon: "✈️", tier: "peu-commun", rotation: 1 },
+  { id: "savant-fou", category: "characters", label: "Personnage Savant fou", description: "Cheveux dressés, blouse blanche et fioles vertes à la ceinture.", price: 440, icon: "🧪", tier: "rare", rotation: 2 },
+  { id: "hackeuse", category: "characters", label: "Personnage Hackeuse", description: "Sweat fluo, casque audio et visière holographique.", price: 310, icon: "💻", tier: "peu-commun", rotation: 0 },
+  { id: "robot-combat", category: "characters", label: "Personnage Robot de combat", description: "Un exo d'acier riveté avec un œil rouge qui ne cligne jamais.", price: 2200, icon: "🤖", tier: "divin", rotation: 1 },
+  { id: "droide-eclaireur", category: "characters", label: "Personnage Droïde éclaireur", description: "Une boule rondouillarde, des chenilles et une antenne parabolique.", price: 850, icon: "📡", tier: "legendaire", rotation: 2 },
+  { id: "mercenaire", category: "characters", label: "Personnage Mercenaire", description: "Gilet tactique, treillis camouflé et bandeau rouge.", price: 170, icon: "🔫", tier: "commun", rotation: 0 },
+  { id: "motard-ruines", category: "characters", label: "Personnage Motard des ruines", description: "Blouson clouté, casque à lunettes et chaînes qui claquent.", price: 180, icon: "🏍️", tier: "commun", rotation: 1 },
+  { id: "medecin-guerre", category: "characters", label: "Personnage Médecin de guerre", description: "Casque à croix rouge et sacoche de premiers secours.", price: 240, icon: "⚕️", tier: "peu-commun", rotation: 2 },
+  { id: "alchimiste", category: "characters", label: "Personnage Alchimiste", description: "Tablier taché, lunettes de laiton et fioles colorées.", price: 460, icon: "⚗️", tier: "rare", rotation: 0 },
+  { id: "necromancien", category: "characters", label: "Personnage Nécromancien", description: "Robe noire et os, crâne sous la capuche et yeux verts de poison.", price: 2600, icon: "💀", tier: "divin", rotation: 1 },
+  { id: "assassin-masque", category: "characters", label: "Personnage Assassin masqué", description: "Capuche sombre, masque blanc lisse et avant-bras bandés.", price: 920, icon: "🎭", tier: "legendaire", rotation: 2 },
+  { id: "voleuse-toits", category: "characters", label: "Personnage Voleuse des toits", description: "Courte cape, foulard rayé, masque noir et crochets à la ceinture.", price: 410, icon: "🗝️", tier: "rare", rotation: 0 },
+  { id: "docteur-peste", category: "characters", label: "Personnage Docteur de la peste", description: "Masque à long bec, chapeau noir et grand manteau de cuir.", price: 980, icon: "🐦", tier: "legendaire", rotation: 1 },
+  { id: "chevalier-trepasse", category: "characters", label: "Personnage Chevalier trépassé", description: "Armure rouillée, cape en lambeaux et lueur bleue dans le heaume.", price: 2800, icon: "⚰️", tier: "divin", rotation: 2 },
+  { id: "loup-garou", category: "characters", label: "Personnage Loup-garou", description: "Fourrure grise, yeux jaunes et pantalon en lambeaux.", price: 1100, icon: "🐺", tier: "legendaire", rotation: 0 },
+  { id: "dame-blanche", category: "characters", label: "Personnage Dame blanche", description: "Robe et voile de brume, des yeux vides et un sourire figé.", price: 1050, icon: "👰", tier: "legendaire", rotation: 1 },
+  { id: "sorcier-vaudou", category: "characters", label: "Personnage Sorcier vaudou", description: "Haut-de-forme à os, visage peint et colliers de perles.", price: 530, icon: "🪆", tier: "rare", rotation: 2 },
+  { id: "fermier-fou", category: "characters", label: "Personnage Fermier fou", description: "Chapeau de paille, salopette rapiécée et regard de fou.", price: 150, icon: "🌾", tier: "commun", rotation: 0 },
+  { id: "pecheur-marais", category: "characters", label: "Personnage Pêcheur des marais", description: "Ciré vert, chapeau détrempé et épuisette sur le dos.", price: 160, icon: "🎣", tier: "commun", rotation: 1 },
+  { id: "cuisinier-maudit", category: "characters", label: "Personnage Cuisinier maudit", description: "Toque, tablier ensanglanté et sourire glaçant.", price: 400, icon: "🍳", tier: "rare", rotation: 2 },
+  { id: "apiculteur", category: "characters", label: "Personnage Apiculteur", description: "Combinaison blanche, voile de protection, enfumoir et abeilles.", price: 250, icon: "🐝", tier: "peu-commun", rotation: 0 },
+  { id: "gardien-tombeau", category: "characters", label: "Personnage Gardien de tombeau", description: "Momie sombre au casque de chacal doré, yeux bleus luisants.", price: 3000, icon: "🔱", tier: "divin", rotation: 1 },
   { id: "bottes", category: "equipment", label: "Bottes légères", description: "Esquive plus souvent grâce à un délai réduit.", price: 65, icon: "🥾", rotation: 0 },
   { id: "veste", category: "equipment", label: "Veste renforcée", description: "Réduit les dégâts reçus de 25 %.", price: 95, icon: "🧥", rotation: 1 },
   { id: "sac-renforce", category: "equipment", label: "Sac médical", description: "Augmente la vie maximale à 125.", price: 110, icon: "🎒", rotation: 2 },
   ...boostOptions.map((boost) => ({ ...boost, category: "boosts" })),
 ];
 const shopCategoryQuotas = {
-  characters: 1,
+  characters: 3,
   equipment: 1,
   boosts: 3,
 };
@@ -454,6 +621,13 @@ const powerUpgradeDetails = {
   "pluie-meteores": { label: "Pluie de météores", icon: "☄️", benefit: "plus de météores, plus de dégâts et de brûlure" },
   "meute-spectrale": { label: "Meute spectrale", icon: "🐺", benefit: "plus de loups, des morsures plus fortes et plus longues" },
   "arret-du-temps": { label: "Arrêt du temps", icon: "⏳", benefit: "fige le temps plus longtemps et plus loin" },
+  "carillon-sacre": { label: "Carillon des anges déchus", icon: "🔔", benefit: "plus de soin, de dégâts et un halo plus large" },
+  "blizzard-tenebres": { label: "Blizzard des Ténèbres", icon: "🌨️", benefit: "plus de dégâts, un blizzard plus large et un gel plus long" },
+  "boule-neige-explosive": { label: "Boule de neige explosive", icon: "☃️", benefit: "renforce l'explosion et son rayon" },
+  "pluie-cadeaux-pieges": { label: "Pluie de cadeaux piégés", icon: "🎁", benefit: "plus de cadeaux, plus de dégâts et de brûlure" },
+  "meute-rennes": { label: "Meute de rennes squelettes", icon: "🦌", benefit: "plus de rennes, des morsures plus fortes et plus longues" },
+  "colere-pere-noel": { label: "Colère du Père Noël noir", icon: "🎅", benefit: "augmente les dégâts et la durée de brûlure" },
+  "hiver-eternel": { label: "Hiver éternel", icon: "🥶", benefit: "fige le temps plus longtemps et plus loin" },
 };
 const powerMaxLevel = 5;
 const powerLevelStats = {
@@ -475,6 +649,20 @@ const powerLevelStats = {
   timestop: (level) => ({ duration: 2.5 + (level - 1) * 0.4, radius: 420 + (level - 1) * 30 }),
 };
 const weaponMaxLevel = 5;
+
+// Les pouvoirs de Noël réutilisent un moteur existant, avec leurs propres dégâts et leur rayon.
+function getPowerStats(power, level) {
+  const stats = powerLevelStats[power.effect](level);
+  if (!power.boost && !power.radiusBoost) return stats;
+  const scaled = { ...stats };
+  if (power.boost) {
+    for (const key of ["damage", "heal"]) if (typeof scaled[key] === "number") scaled[key] = Math.round(scaled[key] * power.boost);
+  }
+  if (power.radiusBoost && typeof scaled.radius === "number") scaled.radius = Math.round(scaled.radius * power.radiusBoost);
+  if (power.boost && power.effect === "wolves") scaled.count += 1;
+  if (power.boost && power.effect === "meteor") scaled.count += 2;
+  return scaled;
+}
 const weaponUpgradeBaseCosts = { violette: 55, orange: 85, doree: 130 };
 const powerUpgradeOptions = activePowerOptions.flatMap((power) => {
   const details = powerUpgradeDetails[power.id];
@@ -509,17 +697,17 @@ const royalCrateOdds = { commun: 0, "peu-commun": 30, rare: 36, legendaire: 24, 
 const halloweenCrateOdds = { commun: 0, "peu-commun": 40, rare: 36, legendaire: 18, divin: 6 };
 const halloweenRoyalCrateOdds = { commun: 0, "peu-commun": 0, rare: 50, legendaire: 35, divin: 15 };
 const shopCrates = [
-  { id: "caisse-costumes", category: "skins", label: "Caisse de costumes", description: "Un costume au hasard parmi toutes les tenues, de la plus simple à la plus rare.", price: 110, odds: standardCrateOdds, emblem: "🎭", style: "garde-robe", includes: (item) => item.id !== "survivant" },
+  { id: "caisse-costumes", category: "skins", label: "Caisse de costumes", description: "Un costume au hasard parmi toutes les tenues, de la plus simple à la plus rare.", price: 110, odds: standardCrateOdds, emblem: "🎭", style: "garde-robe", includes: (item) => item.id !== "survivant" && !item.noel },
   { id: "caisse-halloween", category: "skins", label: "Caisse d'Halloween", description: "Uniquement des costumes d'Halloween : momie, sorcière, fantôme, vampire, démon…", price: 160, odds: halloweenCrateOdds, emblem: "🎃", style: "hantee", includes: (item) => item.halloween },
   { id: "caisse-halloween-royale", category: "skins", label: "Caisse d'Halloween royale", description: "Jamais de costume peu commun : 35 % de chances d'un légendaire et 15 % d'un costume divin.", price: 360, odds: halloweenRoyalCrateOdds, emblem: "🦇", style: "royale", premium: true, includes: (item) => item.halloween },
   { id: "caisse-legendes", category: "skins", label: "Caisse des légendes", description: "Guerriers, cow-boys et héros du futur : ninja, samouraï, viking, astronaute, cyborg…", price: 180, odds: { commun: 30, "peu-commun": 0, rare: 42, legendaire: 20, divin: 8 }, emblem: "🛡️", style: "royale", includes: (item) => ["guerrier", "western", "futuriste"].includes(item.style) },
-  { id: "caisse-pouvoirs", category: "activePowers", label: "Caisse de pouvoirs", description: "Un pouvoir au hasard. Un pouvoir que tu possèdes déjà gagne un niveau gratuit.", price: 130, odds: standardCrateOdds, emblem: "✨", style: "grimoire", includes: () => true },
-  { id: "caisse-pouvoirs-royale", category: "activePowers", label: "Caisse de pouvoirs royale", description: "Jamais le souffle de givre et 5× plus de chances d'obtenir un pouvoir divin (flamme infernale, pacte vampirique, arrêt du temps).", price: 320, odds: royalCrateOdds, emblem: "🔮", style: "arcane", premium: true, includes: () => true },
+  { id: "caisse-pouvoirs", category: "activePowers", label: "Caisse de pouvoirs", description: "Un pouvoir au hasard. Un pouvoir que tu possèdes déjà gagne un niveau gratuit.", price: 130, odds: standardCrateOdds, emblem: "✨", style: "grimoire", includes: (item) => !item.noel },
+  { id: "caisse-pouvoirs-royale", category: "activePowers", label: "Caisse de pouvoirs royale", description: "Jamais le souffle de givre et 5× plus de chances d'obtenir un pouvoir divin (flamme infernale, pacte vampirique, arrêt du temps).", price: 320, odds: royalCrateOdds, emblem: "🔮", style: "arcane", premium: true, includes: (item) => !item.noel },
   { id: "caisse-epees", category: "weapons", label: "Caisse d'épées", description: "Une arme de mêlée au hasard parmi 10 : épées, hache, lance, marteau, dague et katana.", price: 120, odds: standardCrateOdds, emblem: "⚔️", style: "bois", includes: (item) => item.crate && item.melee },
   { id: "caisse-epees-royale", category: "weapons", label: "Caisse d'épées royale", description: "Jamais d'arme de mêlée commune et 5× plus de chances d'obtenir l'épée divine.", price: 340, odds: royalCrateOdds, emblem: "⚔️", style: "royale", premium: true, includes: (item) => item.crate && item.melee },
   { id: "caisse-pistolets", category: "weapons", label: "Caisse de pistolets", description: "Une arme à distance au hasard parmi 10 : pistolets, tromblon, fusil de précision, baguette et blaster.", price: 120, odds: standardCrateOdds, emblem: "🔫", style: "bois", includes: (item) => item.crate && !item.melee },
   { id: "caisse-pistolets-royale", category: "weapons", label: "Caisse de pistolets royale", description: "Jamais d'arme commune et 5× plus de chances d'obtenir le canon ou le blaster divins.", price: 340, odds: royalCrateOdds, emblem: "🔫", style: "royale", premium: true, includes: (item) => item.crate && !item.melee },
-  { id: "caisse-hantee", category: "weapons", label: "Caisse hantée", description: "Les armes de l'avant-poste : frondes, arbalète, grimoire, faux spectrale…", price: 160, odds: standardCrateOdds, emblem: "🎃", style: "hantee", includes: (item) => !item.crate && item.id !== "fronde" },
+  { id: "caisse-hantee", category: "weapons", label: "Caisse hantée", description: "Les armes de l'avant-poste : frondes, arbalète, grimoire, faux spectrale…", price: 160, odds: standardCrateOdds, emblem: "🎃", style: "hantee", includes: (item) => !item.crate && !item.noel && !item.exclusive && item.id !== "fronde" },
   { id: "caisse-revetements", category: "coatings", label: "Caisse de revêtements", description: "Une peinture au hasard pour changer la couleur de toutes tes armes.", price: 90, odds: standardCrateOdds, emblem: "🎨", style: "peinture", includes: (item) => item.id !== "aucun" },
   { id: "caisse-revetements-prestige", category: "coatings", label: "Caisse de revêtements prestige", description: "Jamais de revêtement commun et 5× plus de chances d'obtenir un revêtement divin.", price: 260, odds: royalCrateOdds, emblem: "🎨", style: "prestige", premium: true, includes: (item) => item.id !== "aucun" },
 ];
@@ -538,6 +726,123 @@ const shopPacks = [
   { id: "pack-neon", label: "Pack Cyborg néon", emblem: "🤖", theme: "neon", description: "Blaster, baguette de foudre et tempête électrique : la puissance du futur.", items: [["skins", "cyborg"], ["weapons", "blaster-neon"], ["weapons", "baguette-foudre"], ["activePowers", "tempete-foudre"]] },
   { id: "pack-faucheuse", label: "Pack de la Faucheuse", emblem: "☠️", theme: "faucheuse", description: "Le pack ultime : faux spectrale, pacte vampirique et arrêt du temps.", items: [["skins", "faucheuse"], ["weapons", "faux-spectrale"], ["activePowers", "pacte-vampirique"], ["activePowers", "arret-du-temps"]] },
 ];
+// 50 packs supplémentaires : des mini-packs à petit prix jusqu'aux collections mythiques.
+shopPacks.push(
+  { id: "pack-decouverte", label: "Pack Découverte", emblem: "🎒", theme: "foret", description: "Pour bien démarrer : une tenue d'aventurière et une fronde double.", items: [["skins", "aventuriere"], ["weapons", "double-fronde"]] },
+  { id: "pack-eclaireur", label: "Pack Éclaireur", emblem: "🧭", theme: "desert", description: "Le nomade et son lance-clous : léger, rapide et pas cher.", items: [["skins", "nomade"], ["weapons", "lance-clous"]] },
+  { id: "pack-fermier", label: "Pack Fermier", emblem: "🌾", theme: "foret", description: "Feuillage dans les cheveux et vieille épée rouillée à la main.", items: [["skins", "feuillage"], ["weapons", "epee-rouillee"]] },
+  { id: "pack-cendres", label: "Pack Cendres", emblem: "🌫️", theme: "ombre", description: "Sorti des cendres avec un pistolet à silex.", items: [["skins", "cendre"], ["weapons", "pistolet-silex"]] },
+  { id: "pack-etincelle", label: "Pack Étincelle", emblem: "⚡", theme: "orage", description: "Un souffle de givre et une double fronde pour se débrouiller.", items: [["activePowers", "glace"], ["weapons", "double-fronde"]] },
+  { id: "pack-petit-givre", label: "Pack Petit givre", emblem: "❄️", theme: "glace", description: "Un peu de givre au bout d'une épée rouillée.", items: [["activePowers", "glace"], ["weapons", "epee-rouillee"]] },
+  { id: "pack-cowboy-debutant", label: "Pack Cowboy débutant", emblem: "🤠", theme: "western", description: "Le chapeau et le revolver du shérif, version économique.", items: [["skins", "cowboy"], ["weapons", "revolver-sherif"]] },
+  { id: "pack-petit-renard", label: "Pack Petit renard", emblem: "🦊", theme: "braise", description: "Rusé et rapide : renard et lance-bonbons.", items: [["skins", "renard"], ["weapons", "lance-bonbons"]] },
+  { id: "pack-louveteau", label: "Pack Louveteau", emblem: "🐺", theme: "ombre", description: "Le loup et sa hache de bûcheron pour les premières nuits.", items: [["skins", "loup"], ["weapons", "hache-bucheron"]] },
+  { id: "pack-citrouillette", label: "Pack Citrouillette", emblem: "🎃", theme: "braise", description: "Une citrouille qui marche et un grimoire qui mord.", items: [["skins", "citrouille"], ["weapons", "grimoire-maudit"]] },
+  { id: "pack-marais", label: "Pack Marais", emblem: "🐸", theme: "marais", description: "Le zombie du marais et un essaim spectral.", items: [["skins", "zombie"], ["activePowers", "essaim-spectral"]] },
+  { id: "pack-mousse", label: "Pack Mousse", emblem: "🏴‍☠️", theme: "ocean", description: "Le pirate débutant et son tromblon rouillé.", items: [["skins", "pirate"], ["weapons", "tromblon-pirate"]] },
+  { id: "pack-lanterne-sainte", label: "Pack Lumière", emblem: "🕯️", theme: "or", description: "Une épée de chevalier et une lumière sacrée.", items: [["weapons", "epee-chevalier"], ["activePowers", "lumiere-sacree"]] },
+  { id: "pack-bricoleur", label: "Pack Bricoleur", emblem: "🔧", theme: "toxique", description: "Le mécanicien, ses clous et une nuée toxique.", items: [["skins", "mecanicien"], ["weapons", "lance-clous"], ["activePowers", "nuee-toxique"]] },
+  { id: "pack-garde-hache", label: "Pack Éclaireur du roi", emblem: "🪓", theme: "viking", description: "Hache, lance et lumière : l'équipement de base du soldat.", items: [["weapons", "hache-bucheron"], ["weapons", "lance-centurion"], ["activePowers", "lumiere-sacree"]] },
+  { id: "pack-apprenti", label: "Pack Apprenti", emblem: "📜", theme: "mystique", description: "Un grimoire, une nuée toxique et une tenue de nomade.", items: [["skins", "nomade"], ["weapons", "grimoire-maudit"], ["activePowers", "nuee-toxique"]] },
+  { id: "pack-sorciere", label: "Pack Sorcière des brumes", emblem: "🧙‍♀️", theme: "mystique", description: "Grimoire, pistolet-citrouille et citrouille infernale pour jeter des sorts.", items: [["skins", "sorciere"], ["weapons", "grimoire-maudit"], ["weapons", "pistolet-citrouille"], ["activePowers", "citrouille-infernale"]] },
+  { id: "pack-pharaon", label: "Pack Pharaon maudit", emblem: "🏺", theme: "desert", description: "La momie, un coutelas fantôme et la colère du sable.", items: [["skins", "momie"], ["weapons", "coutelas-fantome"], ["activePowers", "onde-sismique"], ["weapons", "lance-clous"]] },
+  { id: "pack-epouvantail", label: "Pack Champ de cauchemar", emblem: "🌽", theme: "braise", description: "L'épouvantail, un fusil à pompe et une tornade hurlante.", items: [["skins", "epouvantail"], ["weapons", "fusil-pompe"], ["activePowers", "tornade-hurlante"], ["weapons", "epee-rouillee"]] },
+  { id: "pack-ranger", label: "Pack Garde forestier", emblem: "🌲", theme: "foret", description: "Arbalète, fusil de précision et essaim spectral pour la forêt.", items: [["skins", "garde-forestier"], ["weapons", "arbalete"], ["weapons", "fusil-precision"], ["activePowers", "essaim-spectral"]] },
+  { id: "pack-hiver-sombre", label: "Pack Hiver sombre", emblem: "🥶", theme: "glace", description: "Loup blanc, pistolet de givre et souffle glacé.", items: [["skins", "loup"], ["weapons", "pistolet-givre"], ["activePowers", "glace"], ["weapons", "hache-bucheron"]] },
+  { id: "pack-ninja-ombre", label: "Pack Ninja pressé", emblem: "🥷", theme: "ninja", description: "Dague d'assassin, clous et nuée toxique.", items: [["skins", "ninja"], ["weapons", "dague-assassin"], ["weapons", "lance-clous"], ["activePowers", "nuee-toxique"]] },
+  { id: "pack-samourai-rouge", label: "Pack Lame écarlate", emblem: "🏯", theme: "samourai", description: "Le samouraï, une lance et le tremblement de la terre.", items: [["skins", "samourai"], ["weapons", "lance-centurion"], ["activePowers", "onde-sismique"], ["weapons", "coutelas-fantome"]] },
+  { id: "pack-viking-fer", label: "Pack Berserker", emblem: "⚔️", theme: "viking", description: "Marteau de guerre, hache et armure d'ossements.", items: [["skins", "viking"], ["weapons", "marteau-guerre"], ["weapons", "hache-bucheron"], ["activePowers", "armure-ossements"]] },
+  { id: "pack-chauve-souris", label: "Pack Nuée nocturne", emblem: "🦇", theme: "ombre", description: "Tir de chauves-souris, momie et lumière pour se défendre.", items: [["skins", "momie"], ["weapons", "tir-chauve-souris"], ["activePowers", "lumiere-sacree"], ["weapons", "pistolet-silex"]] },
+  { id: "pack-ferraille", label: "Pack Atelier maudit", emblem: "⚙️", theme: "neon", description: "Mécanicien, fusil à pompe et tempête de foudre.", items: [["skins", "mecanicien"], ["weapons", "fusil-pompe"], ["activePowers", "tempete-foudre"], ["weapons", "lance-clous"]] },
+  { id: "pack-chasse-sorciere", label: "Pack Chasse aux sorcières", emblem: "🔥", theme: "sang", description: "Sorcière, revolver du shérif, hache et armure d'ossements.", items: [["skins", "sorciere"], ["weapons", "revolver-sherif"], ["weapons", "hache-bucheron"], ["activePowers", "armure-ossements"]] },
+  { id: "pack-foudre-mini", label: "Pack Orage lointain", emblem: "⛈️", theme: "orage", description: "Fusil de précision, double fronde et tempête de foudre.", items: [["weapons", "fusil-precision"], ["weapons", "double-fronde"], ["activePowers", "tempete-foudre"], ["skins", "cendre"]] },
+  { id: "pack-lagon", label: "Pack Lagon des revenants", emblem: "🌊", theme: "ocean", description: "Pirate, coutelas fantôme, tromblon et tornade des mers.", items: [["skins", "pirate"], ["weapons", "coutelas-fantome"], ["weapons", "tromblon-pirate"], ["activePowers", "tornade-hurlante"]] },
+  { id: "pack-terreur-fete", label: "Pack Fête foraine", emblem: "🎪", theme: "cirque", description: "Citrouille, lance-bonbons, marteau de guerre et citrouille infernale.", items: [["skins", "citrouille"], ["weapons", "lance-bonbons"], ["weapons", "marteau-guerre"], ["activePowers", "citrouille-infernale"]] },
+  { id: "pack-chevalier-legende", label: "Pack Chevalier légendaire", emblem: "🛡️", theme: "or", description: "Le chevalier et tout son arsenal de lumière et de fer.", items: [["skins", "chevalier"], ["weapons", "epee-chevalier"], ["weapons", "lance-centurion"], ["weapons", "marteau-guerre"], ["activePowers", "armure-ossements"], ["activePowers", "lumiere-sacree"]] },
+  { id: "pack-fantome-royal", label: "Pack Fantôme royal", emblem: "👻", theme: "spectre", description: "Une lanterne d'âmes, un pistolet spectral et la meute des morts.", items: [["skins", "fantome"], ["weapons", "lanterne-ames"], ["weapons", "pistolet-spectral"], ["activePowers", "voile-fantome"], ["activePowers", "meute-spectrale"]] },
+  { id: "pack-squelette-roi", label: "Pack Roi squelette", emblem: "💀", theme: "ombre", description: "Lame de braise, fouet de ronces et vortex d'ombre pour le roi des os.", items: [["skins", "squelette"], ["weapons", "lame-braise"], ["weapons", "fouet-ronces"], ["activePowers", "vortex-ombre"], ["activePowers", "armure-ossements"]] },
+  { id: "pack-clown-sinistre", label: "Pack Clown sinistre", emblem: "🤡", theme: "cirque", description: "Lance-bonbons, marteau, baguette de foudre et pluie de météores.", items: [["skins", "clown"], ["weapons", "lance-bonbons"], ["weapons", "marteau-guerre"], ["weapons", "baguette-foudre"], ["activePowers", "pluie-meteores"]] },
+  { id: "pack-traqueur", label: "Pack Traqueur de vampires", emblem: "🏹", theme: "sang", description: "Katana, fusil de précision, arbalète et lumière sacrée.", items: [["skins", "chasseur-vampires"], ["weapons", "katana-ombre"], ["weapons", "fusil-precision"], ["weapons", "arbalete"], ["activePowers", "lumiere-sacree"], ["activePowers", "vortex-ombre"]] },
+  { id: "pack-cosmonaute", label: "Pack Cosmonaute", emblem: "🚀", theme: "galactique", description: "Baguette de foudre, pistolet de givre et pluie de météores.", items: [["skins", "astronaute"], ["weapons", "baguette-foudre"], ["weapons", "pistolet-givre"], ["activePowers", "pluie-meteores"], ["activePowers", "tempete-foudre"]] },
+  { id: "pack-dragon", label: "Pack Maîtresse des dragons", emblem: "🐉", theme: "braise", description: "Lame de braise, pistolet spectral et vortex pour la reine draconique.", items: [["skins", "maisie-draconique"], ["weapons", "lame-braise"], ["weapons", "pistolet-spectral"], ["activePowers", "vortex-ombre"], ["weapons", "katana-ombre"]] },
+  { id: "pack-sabre-ombre", label: "Pack Voie de l'ombre", emblem: "🌑", theme: "ninja", description: "Ninja, samouraï, katana et dague : le dojo complet.", items: [["skins", "ninja"], ["skins", "samourai"], ["weapons", "katana-ombre"], ["weapons", "dague-assassin"], ["activePowers", "voile-fantome"]] },
+  { id: "pack-tempete", label: "Pack Maître des tempêtes", emblem: "🌩️", theme: "orage", description: "Baguette de foudre, tempête, météores et onde sismique.", items: [["skins", "cyborg"], ["weapons", "baguette-foudre"], ["activePowers", "tempete-foudre"], ["activePowers", "pluie-meteores"], ["activePowers", "onde-sismique"], ["weapons", "fusil-pompe"]] },
+  { id: "pack-armurerie", label: "Pack Armurerie légendaire", emblem: "🔫", theme: "or", description: "Les six armes légendaires réunies dans une seule caisse.", items: [["weapons", "lanterne-ames"], ["weapons", "fouet-ronces"], ["weapons", "lame-braise"], ["weapons", "pistolet-spectral"], ["weapons", "katana-ombre"], ["weapons", "baguette-foudre"]] },
+  { id: "pack-sorciers", label: "Pack Cercle des mages", emblem: "🔮", theme: "mystique", description: "Quatre pouvoirs légendaires, le grimoire et la sorcière.", items: [["skins", "sorciere"], ["weapons", "grimoire-maudit"], ["activePowers", "voile-fantome"], ["activePowers", "vortex-ombre"], ["activePowers", "pluie-meteores"], ["activePowers", "meute-spectrale"]] },
+  { id: "pack-garde-robe", label: "Pack Garde-robe légendaire", emblem: "👗", theme: "bonbon", description: "Les sept tenues légendaires du jeu.", items: [["skins", "chevalier"], ["skins", "fantome"], ["skins", "squelette"], ["skins", "clown"], ["skins", "chasseur-vampires"], ["skins", "astronaute"], ["skins", "maisie-draconique"]] },
+  { id: "pack-vampire-seigneur", label: "Pack Seigneur vampire", emblem: "🧛", theme: "sang", description: "L'épée de la lune sanglante, le pacte vampirique et toute une cour de la nuit.", items: [["skins", "vampire"], ["skins", "chasseur-vampires"], ["weapons", "epee-lune-sanglante"], ["weapons", "tir-chauve-souris"], ["weapons", "katana-ombre"], ["activePowers", "pacte-vampirique"], ["activePowers", "vortex-ombre"], ["weapons", "fusil-precision"]] },
+  { id: "pack-demon-infernal", label: "Pack Démon infernal", emblem: "😈", theme: "braise", description: "La flamme infernale et un arsenal à faire fondre l'enfer.", items: [["skins", "demon"], ["weapons", "lame-braise"], ["weapons", "epee-lune-sanglante"], ["weapons", "pistolet-citrouille"], ["activePowers", "flamme-infernale"], ["activePowers", "citrouille-infernale"], ["activePowers", "pluie-meteores"], ["weapons", "canon-roi-ombres"]] },
+  { id: "pack-faucheuse-supreme", label: "Pack Faucheuse suprême", emblem: "☠️", theme: "faucheuse", description: "Faux spectrale, arrêt du temps et trois divinités de l'ombre.", items: [["skins", "faucheuse"], ["skins", "fantome"], ["weapons", "faux-spectrale"], ["weapons", "lanterne-ames"], ["activePowers", "arret-du-temps"], ["activePowers", "voile-fantome"], ["activePowers", "meute-spectrale"], ["weapons", "pistolet-spectral"]] },
+  { id: "pack-cyborg-ultime", label: "Pack Cyborg ultime", emblem: "🤖", theme: "neon", description: "Blaster néon, baguette de foudre et tempête : la technologie divine.", items: [["skins", "cyborg"], ["skins", "astronaute"], ["weapons", "blaster-neon"], ["weapons", "baguette-foudre"], ["weapons", "fusil-precision"], ["activePowers", "tempete-foudre"], ["activePowers", "pluie-meteores"], ["activePowers", "arret-du-temps"]] },
+  { id: "pack-arsenal-divin", label: "Pack Arsenal divin", emblem: "🌟", theme: "divin", description: "Les cinq armes divines du jeu, rien que ça.", items: [["weapons", "arc-long"], ["weapons", "faux-spectrale"], ["weapons", "epee-lune-sanglante"], ["weapons", "canon-roi-ombres"], ["weapons", "blaster-neon"]] },
+  { id: "pack-maitre-pouvoirs", label: "Pack Maître des pouvoirs", emblem: "✨", theme: "mystique", description: "Les dix pouvoirs les plus puissants du jeu, dont les trois divins.", items: [["activePowers", "flamme-infernale"], ["activePowers", "pacte-vampirique"], ["activePowers", "arret-du-temps"], ["activePowers", "voile-fantome"], ["activePowers", "vortex-ombre"], ["activePowers", "pluie-meteores"], ["activePowers", "meute-spectrale"], ["activePowers", "tempete-foudre"], ["activePowers", "onde-sismique"], ["activePowers", "tornade-hurlante"]] },
+  { id: "pack-collection-divine", label: "Pack Collection divine", emblem: "👑", theme: "divin", description: "Les 4 costumes, 5 armes et 3 pouvoirs divins : le pack le plus cher du jeu.", items: [["skins", "vampire"], ["skins", "demon"], ["skins", "faucheuse"], ["skins", "cyborg"], ["weapons", "arc-long"], ["weapons", "faux-spectrale"], ["weapons", "epee-lune-sanglante"], ["weapons", "canon-roi-ombres"], ["weapons", "blaster-neon"], ["activePowers", "flamme-infernale"], ["activePowers", "pacte-vampirique"], ["activePowers", "arret-du-temps"]] },
+  { id: "pack-legende-vivante", label: "Pack Légende vivante", emblem: "🏆", theme: "or", description: "Les héros légendaires, leurs armes de rêve et trois pouvoirs divins.", items: [["skins", "chevalier"], ["skins", "maisie-draconique"], ["skins", "chasseur-vampires"], ["weapons", "lame-braise"], ["weapons", "katana-ombre"], ["weapons", "baguette-foudre"], ["weapons", "lanterne-ames"], ["activePowers", "flamme-infernale"], ["activePowers", "arret-du-temps"], ["activePowers", "pluie-meteores"]] },
+);
+// 50 packs supplémentaires : personnages, Noël cauchemar et grandes collections de 5 000 à 20 000 pièces.
+shopPacks.push(
+  { id: "pack-pompier", label: "Pack Pompier", emblem: "🚒", theme: "braise", description: "Le pompier et sa hache de bûcheron : prêt à éteindre les feux de l'enfer.", items: [["characters", "pompier"], ["weapons", "hache-bucheron"]] },
+  { id: "pack-mineur", label: "Pack Mineur", emblem: "⛏️", theme: "desert", description: "Casque à lampe et lance-clous : de quoi creuser sa chance.", items: [["characters", "mineur"], ["weapons", "lance-clous"]] },
+  { id: "pack-fermier-fou", label: "Pack Fermier fou", emblem: "🌾", theme: "foret", description: "Chapeau de paille et double fronde pour défendre le champ.", items: [["characters", "fermier-fou"], ["weapons", "double-fronde"]] },
+  { id: "pack-pecheur", label: "Pack Pêcheur des marais", emblem: "🎣", theme: "marais", description: "L'épuisette dans une main, un souffle de givre dans l'autre.", items: [["characters", "pecheur-marais"], ["activePowers", "glace"]] },
+  { id: "pack-mercenaire", label: "Pack Mercenaire", emblem: "🔫", theme: "western", description: "Le soldat de fortune et son pistolet à silex.", items: [["characters", "mercenaire"], ["weapons", "pistolet-silex"]] },
+  { id: "pack-cosaque", label: "Pack Cosaque", emblem: "🧣", theme: "glace", description: "Haut bonnet de fourrure et un peu de givre pour les nuits froides.", items: [["characters", "cosaque"], ["activePowers", "glace"]] },
+  { id: "pack-legionnaire", label: "Pack Légionnaire", emblem: "🛡️", theme: "or", description: "Casque à crête rouge et vieille épée rouillée.", items: [["characters", "legionnaire"], ["weapons", "epee-rouillee"]] },
+  { id: "pack-gobelin", label: "Pack Gobelin pilleur", emblem: "🧌", theme: "toxique", description: "Petit, vicieux et armé de clous.", items: [["characters", "gobelin-pillard"], ["weapons", "lance-clous"]] },
+  { id: "pack-agent-secret", label: "Pack Agent secret", emblem: "🕶️", theme: "neon", description: "Costume noir, lunettes sombres et pistolet à silex.", items: [["characters", "agent-special"], ["weapons", "pistolet-silex"]] },
+  { id: "pack-motard", label: "Pack Motard des ruines", emblem: "🏍️", theme: "sang", description: "Blouson clouté et double fronde : la route est à lui.", items: [["characters", "motard-ruines"], ["weapons", "double-fronde"]] },
+  { id: "pack-choriste-minuit", label: "Pack Choriste de minuit", emblem: "🔔", theme: "glace", description: "La choriste maudite, sa canne d'orge et les clochettes sacrées.", items: [["skins", "choriste-maudite"], ["activePowers", "carillon-sacre"], ["weapons", "canne-sucre"]] },
+  { id: "pack-patinoire", label: "Pack Patinoire fantôme", emblem: "⛸️", theme: "spectre", description: "Le patineur de glace, un pistolet à glaçons et le blizzard noir.", items: [["skins", "patineur-fantome"], ["weapons", "pistolet-glacon"], ["activePowers", "blizzard-tenebres"]] },
+  { id: "pack-armee-bois", label: "Pack Armée de bois", emblem: "🪖", theme: "cirque", description: "Casse-noisette, arbalète du lutin et boule de neige explosive.", items: [["skins", "casse-noisette"], ["weapons", "arbalete-lutin"], ["activePowers", "boule-neige-explosive"]] },
+  { id: "pack-gui-sorcier", label: "Pack Sorcier du gui", emblem: "🌿", theme: "mystique", description: "Hache glacée, blizzard et magie verte du gui.", items: [["skins", "sorcier-gui"], ["weapons", "hache-glacee"], ["activePowers", "blizzard-tenebres"]] },
+  { id: "pack-trappeur-neiges", label: "Pack Trappeur des neiges", emblem: "🧥", theme: "glace", description: "Parka, canon à boules de neige et explosion givrée.", items: [["skins", "trappeur-polaire"], ["weapons", "canon-boules-neige"], ["activePowers", "boule-neige-explosive"]] },
+  { id: "pack-archere", label: "Pack Archère elfe", emblem: "🏹", theme: "foret", description: "Arbalète, fusil de précision et lumière sacrée.", items: [["characters", "archere-elfe"], ["weapons", "arbalete"], ["weapons", "fusil-precision"], ["activePowers", "lumiere-sacree"]] },
+  { id: "pack-forge-naine", label: "Pack Forge naine", emblem: "🔨", theme: "viking", description: "Marteau, hache et secousses sismiques pour le nain.", items: [["characters", "forgeron-nain"], ["weapons", "marteau-guerre"], ["weapons", "hache-bucheron"], ["activePowers", "onde-sismique"]] },
+  { id: "pack-barbares", label: "Pack Barbares du Nord", emblem: "🪓", theme: "viking", description: "Un barbare, un orc, deux haches et une armure d'ossements.", items: [["characters", "barbare-nord"], ["characters", "orc-sauvage"], ["weapons", "hache-bucheron"], ["weapons", "marteau-guerre"], ["activePowers", "armure-ossements"]] },
+  { id: "pack-moine-tonnerre", label: "Pack Moine du tonnerre", emblem: "🥋", theme: "orage", description: "Le moine guerrier canalise la foudre.", items: [["characters", "moine-guerrier"], ["weapons", "baguette-foudre"], ["activePowers", "tempete-foudre"]] },
+  { id: "pack-arene", label: "Pack Arène", emblem: "🏟️", theme: "or", description: "Gladiateur, légionnaire, lance, épée et lumière sacrée.", items: [["characters", "gladiateur"], ["characters", "legionnaire"], ["weapons", "lance-centurion"], ["weapons", "epee-chevalier"], ["activePowers", "lumiere-sacree"]] },
+  { id: "pack-mousquetaires", label: "Pack Mousquetaires", emblem: "🪶", theme: "pirate", description: "Mousquetaire, conquistador, deux armes à feu et une tornade.", items: [["characters", "mousquetaire"], ["characters", "conquistador"], ["weapons", "revolver-sherif"], ["weapons", "tromblon-pirate"], ["activePowers", "tornade-hurlante"]] },
+  { id: "pack-corrida", label: "Pack Corrida", emblem: "🌹", theme: "sang", description: "Le toréador, sa dague et une épée de chevalier.", items: [["characters", "toreador"], ["weapons", "dague-assassin"], ["weapons", "epee-chevalier"], ["activePowers", "essaim-spectral"]] },
+  { id: "pack-prime", label: "Pack Prime sur sa tête", emblem: "🎯", theme: "western", description: "Revolver, fusil de précision et nuée toxique pour le chasseur de primes.", items: [["characters", "chasseur-primes"], ["weapons", "revolver-sherif"], ["weapons", "fusil-precision"], ["activePowers", "nuee-toxique"]] },
+  { id: "pack-jungle", label: "Pack Jungle sacrée", emblem: "🐆", theme: "foret", description: "Le guerrier jaguar, une arbalète et un coutelas fantôme.", items: [["characters", "guerrier-jaguar"], ["weapons", "arbalete"], ["weapons", "coutelas-fantome"], ["activePowers", "nuee-toxique"]] },
+  { id: "pack-sables", label: "Pack Sables du pharaon", emblem: "🏺", theme: "desert", description: "Le pharaon, une lance de centurion et la colère du sable.", items: [["characters", "pharaon-sables"], ["weapons", "coutelas-fantome"], ["activePowers", "onde-sismique"], ["weapons", "lance-centurion"]] },
+  { id: "pack-abysses", label: "Pack Abysses", emblem: "🤿", theme: "ocean", description: "Plongeur, pistolet de givre, tromblon et tornade des mers.", items: [["characters", "plongeur-abysses"], ["weapons", "pistolet-givre"], ["weapons", "tromblon-pirate"], ["activePowers", "tornade-hurlante"]] },
+  { id: "pack-labo-fou", label: "Pack Laboratoire fou", emblem: "🧪", theme: "toxique", description: "Un savant fou, un alchimiste, un fusil à pompe et des poisons.", items: [["characters", "savant-fou"], ["characters", "alchimiste"], ["weapons", "fusil-pompe"], ["activePowers", "nuee-toxique"], ["activePowers", "citrouille-infernale"]] },
+  { id: "pack-cyber", label: "Pack Cyber-raid", emblem: "💻", theme: "neon", description: "Hackeuse, pilote, fusil de précision et pistolet de givre.", items: [["characters", "hackeuse"], ["characters", "pilote-chasse"], ["weapons", "fusil-precision"], ["weapons", "pistolet-givre"], ["activePowers", "tempete-foudre"]] },
+  { id: "pack-escadrille", label: "Pack Escadrille", emblem: "✈️", theme: "galactique", description: "Le pilote, un fusil à pompe et une pluie de météores.", items: [["characters", "pilote-chasse"], ["weapons", "fusil-pompe"], ["activePowers", "pluie-meteores"]] },
+  { id: "pack-infirmerie", label: "Pack Infirmerie de guerre", emblem: "⚕️", theme: "or", description: "Le médecin de guerre, une épée et la lumière sacrée.", items: [["characters", "medecin-guerre"], ["weapons", "pistolet-silex"], ["activePowers", "lumiere-sacree"], ["weapons", "epee-chevalier"]] },
+  { id: "pack-toits", label: "Pack Voleuse des toits", emblem: "🗝️", theme: "ninja", description: "Dague, coutelas et voile fantôme pour disparaître.", items: [["characters", "voleuse-toits"], ["weapons", "dague-assassin"], ["weapons", "coutelas-fantome"], ["activePowers", "voile-fantome"]] },
+  { id: "pack-cuisine", label: "Pack Cuisine du cauchemar", emblem: "🍳", theme: "braise", description: "Cuisinier maudit, fermier fou, hache et citrouille infernale.", items: [["characters", "cuisinier-maudit"], ["characters", "fermier-fou"], ["weapons", "hache-bucheron"], ["weapons", "pistolet-citrouille"], ["activePowers", "citrouille-infernale"]] },
+  { id: "pack-ruches", label: "Pack Les ruches", emblem: "🐝", theme: "or", description: "L'apiculteur, des bonbons et des essaims à foison.", items: [["characters", "apiculteur"], ["weapons", "lance-bonbons"], ["activePowers", "essaim-spectral"], ["activePowers", "nuee-toxique"]] },
+  { id: "pack-vaudou", label: "Pack Vaudou", emblem: "🪆", theme: "marais", description: "Poupées, grimoire et armure d'ossements pour le sorcier.", items: [["characters", "sorcier-vaudou"], ["weapons", "grimoire-maudit"], ["activePowers", "nuee-toxique"], ["activePowers", "armure-ossements"]] },
+  { id: "pack-barde-druide", label: "Pack Barde et druide", emblem: "🎻", theme: "mystique", description: "Deux conteurs de la forêt, un grimoire et trois sorts.", items: [["characters", "barde-errant"], ["characters", "druide-brume"], ["weapons", "grimoire-maudit"], ["weapons", "arbalete"], ["activePowers", "lumiere-sacree"], ["activePowers", "tornade-hurlante"]] },
+  { id: "pack-paladin-dragon", label: "Pack Paladin et dragon", emblem: "🐲", theme: "or", description: "Le paladin de l'aube, le chevalier-dragon et leurs armes sacrées.", items: [["characters", "paladin-aube"], ["characters", "chevalier-dragon"], ["weapons", "epee-chevalier"], ["weapons", "lance-centurion"], ["weapons", "lame-braise"], ["activePowers", "lumiere-sacree"]] },
+  { id: "pack-peste-noire", label: "Pack Peste noire", emblem: "🐦", theme: "toxique", description: "Le docteur de la peste, la dame blanche et leurs maléfices.", items: [["characters", "docteur-peste"], ["characters", "dame-blanche"], ["weapons", "lanterne-ames"], ["weapons", "grimoire-maudit"], ["activePowers", "nuee-toxique"], ["activePowers", "vortex-ombre"]] },
+  { id: "pack-sirene", label: "Pack Sirène des abysses", emblem: "🧜", theme: "ocean", description: "La tritonne guerrière, un fouet de ronces et des météores.", items: [["characters", "tritonne-guerriere"], ["weapons", "pistolet-givre"], ["weapons", "fouet-ronces"], ["activePowers", "tornade-hurlante"], ["activePowers", "pluie-meteores"]] },
+  { id: "pack-noel-garde-robe", label: "Pack Garde-robe de Noël", emblem: "🎄", theme: "bonbon", description: "Les six tenues de Noël cauchemar, du choriste à l'ange déchu.", price: 5000, items: [["skins", "choriste-maudite"], ["skins", "patineur-fantome"], ["skins", "casse-noisette"], ["skins", "sorcier-gui"], ["skins", "trappeur-polaire"], ["skins", "ange-dechu"]] },
+  { id: "pack-noel-armurerie", label: "Pack Armurerie de Noël", emblem: "🎁", theme: "bonbon", description: "Sept armes de Noël cauchemar : de la canne tranchante au canon à neige.", price: 5500, items: [["weapons", "canne-sucre"], ["weapons", "pistolet-glacon"], ["weapons", "hache-glacee"], ["weapons", "arbalete-lutin"], ["weapons", "lance-cadeaux"], ["weapons", "epee-mere-froide"], ["weapons", "canon-boules-neige"]] },
+  { id: "pack-noel-pouvoirs", label: "Pack Pouvoirs de Noël", emblem: "❄️", theme: "glace", description: "Cinq pouvoirs de Noël : clochettes, blizzards, cadeaux piégés et rennes.", price: 6000, items: [["activePowers", "carillon-sacre"], ["activePowers", "blizzard-tenebres"], ["activePowers", "boule-neige-explosive"], ["activePowers", "pluie-cadeaux-pieges"], ["activePowers", "meute-rennes"]] },
+  { id: "pack-legendes-royaumes", label: "Pack Légendes des royaumes", emblem: "🏰", theme: "or", description: "Les neuf personnages légendaires : paladin, dragon, loup-garou, troll…", price: 7000, items: [["characters", "paladin-aube"], ["characters", "troll-cavernes"], ["characters", "tritonne-guerriere"], ["characters", "chevalier-dragon"], ["characters", "droide-eclaireur"], ["characters", "assassin-masque"], ["characters", "docteur-peste"], ["characters", "loup-garou"], ["characters", "dame-blanche"]] },
+  { id: "pack-noel-legendaire", label: "Pack Noël légendaire", emblem: "🛷", theme: "glace", description: "Ange déchu, épée de la Mère Froide, cadeaux piégés et meute de rennes.", price: 7500, items: [["skins", "ange-dechu"], ["weapons", "lance-cadeaux"], ["weapons", "epee-mere-froide"], ["weapons", "canon-boules-neige"], ["activePowers", "pluie-cadeaux-pieges"], ["activePowers", "meute-rennes"]] },
+  { id: "pack-cinq-divins", label: "Pack Les cinq divins", emblem: "⚰️", theme: "faucheuse", description: "Les cinq personnages divins : golem, robot, nécromancien, chevalier trépassé et gardien.", price: 9000, items: [["characters", "golem-pierre"], ["characters", "robot-combat"], ["characters", "necromancien"], ["characters", "chevalier-trepasse"], ["characters", "gardien-tombeau"]] },
+  { id: "pack-noel-divin", label: "Pack Maître du Noël cauchemar", emblem: "🎅", theme: "divin", description: "Krampus, seigneur de l'aurore, baguette de l'Étoile noire, colère du Père Noël et hiver éternel.", price: 10000, items: [["skins", "krampus"], ["skins", "seigneur-aurore"], ["weapons", "baguette-etoile"], ["activePowers", "colere-pere-noel"], ["activePowers", "hiver-eternel"]] },
+  { id: "pack-tour-monde", label: "Pack Tour du monde", emblem: "🌍", theme: "pirate", description: "Quatorze aventuriers venus des quatre coins du monde.", price: 12000, items: [["characters", "archere-elfe"], ["characters", "forgeron-nain"], ["characters", "barbare-nord"], ["characters", "moine-guerrier"], ["characters", "gladiateur"], ["characters", "chevalier-errant"], ["characters", "mousquetaire"], ["characters", "toreador"], ["characters", "conquistador"], ["characters", "chasseur-primes"], ["characters", "pilote-chasse"], ["characters", "hackeuse"], ["characters", "medecin-guerre"], ["characters", "apiculteur"]] },
+  { id: "pack-cour-miracles", label: "Pack Cour des miracles", emblem: "🎭", theme: "cirque", description: "Les douze personnages rares : druide, orc, pharaon, savant fou, sorcier vaudou…", price: 14000, items: [["characters", "druide-brume"], ["characters", "elfe-noir"], ["characters", "orc-sauvage"], ["characters", "barde-errant"], ["characters", "pharaon-sables"], ["characters", "guerrier-jaguar"], ["characters", "plongeur-abysses"], ["characters", "savant-fou"], ["characters", "alchimiste"], ["characters", "voleuse-toits"], ["characters", "sorcier-vaudou"], ["characters", "cuisinier-maudit"]] },
+  { id: "pack-noel-complet", label: "Pack Monde de Noël complet", emblem: "🎅", theme: "bonbon", description: "Les 8 costumes, 8 armes et 7 pouvoirs du Noël cauchemar : tout le monde 2 !", price: 16000, items: [["skins", "choriste-maudite"], ["skins", "patineur-fantome"], ["skins", "casse-noisette"], ["skins", "sorcier-gui"], ["skins", "trappeur-polaire"], ["skins", "ange-dechu"], ["skins", "krampus"], ["skins", "seigneur-aurore"], ["weapons", "canne-sucre"], ["weapons", "pistolet-glacon"], ["weapons", "hache-glacee"], ["weapons", "arbalete-lutin"], ["weapons", "lance-cadeaux"], ["weapons", "epee-mere-froide"], ["weapons", "canon-boules-neige"], ["weapons", "baguette-etoile"], ["activePowers", "carillon-sacre"], ["activePowers", "blizzard-tenebres"], ["activePowers", "boule-neige-explosive"], ["activePowers", "pluie-cadeaux-pieges"], ["activePowers", "meute-rennes"], ["activePowers", "colere-pere-noel"], ["activePowers", "hiver-eternel"]] },
+  { id: "pack-cinquante", label: "Pack Les 50 personnages", emblem: "👥", theme: "mystique", description: "Tous les nouveaux personnages réunis : une armée entière dans ton casier.", price: 18000, items: [["characters", "archere-elfe"], ["characters", "forgeron-nain"], ["characters", "paladin-aube"], ["characters", "druide-brume"], ["characters", "barbare-nord"], ["characters", "moine-guerrier"], ["characters", "elfe-noir"], ["characters", "orc-sauvage"], ["characters", "gobelin-pillard"], ["characters", "troll-cavernes"], ["characters", "golem-pierre"], ["characters", "tritonne-guerriere"], ["characters", "chevalier-dragon"], ["characters", "barde-errant"], ["characters", "legionnaire"], ["characters", "gladiateur"], ["characters", "chevalier-errant"], ["characters", "mousquetaire"], ["characters", "pharaon-sables"], ["characters", "guerrier-jaguar"], ["characters", "cosaque"], ["characters", "toreador"], ["characters", "conquistador"], ["characters", "pompier"], ["characters", "agent-special"], ["characters", "chasseur-primes"], ["characters", "mineur"], ["characters", "plongeur-abysses"], ["characters", "pilote-chasse"], ["characters", "savant-fou"], ["characters", "hackeuse"], ["characters", "robot-combat"], ["characters", "droide-eclaireur"], ["characters", "mercenaire"], ["characters", "motard-ruines"], ["characters", "medecin-guerre"], ["characters", "alchimiste"], ["characters", "necromancien"], ["characters", "assassin-masque"], ["characters", "voleuse-toits"], ["characters", "docteur-peste"], ["characters", "chevalier-trepasse"], ["characters", "loup-garou"], ["characters", "dame-blanche"], ["characters", "sorcier-vaudou"], ["characters", "fermier-fou"], ["characters", "pecheur-marais"], ["characters", "cuisinier-maudit"], ["characters", "apiculteur"], ["characters", "gardien-tombeau"]] },
+  { id: "pack-empereur", label: "Pack Empereur des ténèbres", emblem: "👑", theme: "divin", description: "Le sommet absolu : tout ce que le jeu compte de divin, tenues, personnages, armes et pouvoirs.", price: 20000, items: [["skins", "vampire"], ["skins", "demon"], ["skins", "faucheuse"], ["skins", "cyborg"], ["skins", "krampus"], ["skins", "seigneur-aurore"], ["characters", "golem-pierre"], ["characters", "robot-combat"], ["characters", "necromancien"], ["characters", "chevalier-trepasse"], ["characters", "gardien-tombeau"], ["weapons", "arc-long"], ["weapons", "faux-spectrale"], ["weapons", "epee-lune-sanglante"], ["weapons", "canon-roi-ombres"], ["weapons", "blaster-neon"], ["weapons", "baguette-etoile"], ["activePowers", "flamme-infernale"], ["activePowers", "pacte-vampirique"], ["activePowers", "arret-du-temps"], ["activePowers", "colere-pere-noel"], ["activePowers", "hiver-eternel"]] },
+);
+// Caisses « Noël cauchemar » : objets du monde 2 uniquement (costumes, armes, pouvoirs).
+const noelCrateOdds = { commun: 0, "peu-commun": 38, rare: 36, legendaire: 18, divin: 8 };
+const noelRoyalCrateOdds = { commun: 0, "peu-commun": 0, rare: 45, legendaire: 38, divin: 17 };
+shopCrates.push(
+  { id: "caisse-noel-costumes", category: "skins", label: "Caisse Noël cauchemar · Costumes", description: "Huit costumes exclusifs : choriste maudite, patineur fantôme, casse-noisette, sorcier du gui, trappeur polaire, ange déchu, Krampus et Seigneur de l'Aurore.", price: 190, odds: noelCrateOdds, emblem: "🎄", style: "noel", noel: true, includes: (item) => item.noel },
+  { id: "caisse-noel-costumes-royale", category: "skins", label: "Caisse Noël cauchemar royale · Costumes", description: "Jamais de costume peu commun : 38 % de chances d'une tenue légendaire et 17 % d'une tenue divine.", price: 420, odds: noelRoyalCrateOdds, emblem: "🎅", style: "noel-royale", noel: true, premium: true, includes: (item) => item.noel },
+  { id: "caisse-noel-armes", category: "weapons", label: "Caisse Noël cauchemar · Armes", description: "Canne tranchante, pistolet à glaçons, arbalète du lutin, lance-cadeaux, épée de la Mère Froide… et la baguette de l'Étoile noire.", price: 200, odds: noelCrateOdds, emblem: "🎄", style: "noel", noel: true, includes: (item) => item.noel },
+  { id: "caisse-noel-armes-royale", category: "weapons", label: "Caisse Noël cauchemar royale · Armes", description: "Jamais d'arme peu commune : 38 % de chances d'une arme légendaire et 17 % de la baguette divine.", price: 440, odds: noelRoyalCrateOdds, emblem: "🎅", style: "noel-royale", noel: true, premium: true, includes: (item) => item.noel },
+  { id: "caisse-noel-pouvoirs", category: "activePowers", label: "Caisse Noël cauchemar · Pouvoirs", description: "Blizzard des Ténèbres, boule de neige explosive, pluie de cadeaux piégés, meute de rennes, hiver éternel…", price: 210, odds: noelCrateOdds, emblem: "🎄", style: "noel", noel: true, includes: (item) => item.noel },
+  { id: "caisse-noel-pouvoirs-royale", category: "activePowers", label: "Caisse Noël cauchemar royale · Pouvoirs", description: "Jamais de pouvoir peu commun : 38 % de chances d'un pouvoir légendaire et 17 % d'un pouvoir divin.", price: 450, odds: noelRoyalCrateOdds, emblem: "🎅", style: "noel-royale", noel: true, premium: true, includes: (item) => item.noel },
+);
 const crateShopTabs = { skins: "skins", activePowers: "activePowers", weapons: "weapons", coatings: "weapons" };
 const crateCategoryLabels = {
   skins: "Caisse de costumes",
@@ -554,6 +859,24 @@ const waves = [
   { bosses: ["epouvantail-automne"], minionPool: ["gargouille-epineuse"] },
   { bosses: ["maitre-des-cauchemars"], minionPool: ["ombre-rampante"] },
 ];
+const waves2 = [
+  { bosses: ["pere-noel-tordu"], minionPool: ["lutin-possede", "renne-squelette", "bonhomme-neige"] },
+  { bosses: ["mere-froide"], minionPool: ["flocon-vivant", "esprit-gele", "gardien-glace"] },
+  { bosses: ["grinch-demoniaque"], minionPool: ["lutin-voleur", "chien-neiges", "lutin-kamikaze"] },
+];
+const world2BossWaveBoss = "homme-pain-epices";
+const world2FinalBoss = "maitre-cadeaux-noirs";
+const world2MapNames = {
+  1: "LE VILLAGE ABANDONNÉ",
+  2: "LE PALAIS DE GLACE",
+  3: "LA MONTAGNE DU VOL",
+  4: "L'USINE DE BONBONS",
+  5: "LE MANOIR DES CADEAUX",
+};
+let currentWorld = 1;
+function activeWaves() { return currentWorld === 2 ? waves2 : waves; }
+function activeMapNames() { return currentWorld === 2 ? world2MapNames : bossMapNames; }
+function mapKey(number) { return currentWorld === 2 ? `w2-${number}` : String(number); }
 const enemyTypes = {
   grunt: { label: "Citrouille", health: 2, damage: 3, speed: 36, size: 28, color: "grunt", equipment: "cap" },
   scout: { label: "Citrouille vive", health: 3, damage: 5, speed: 56, size: 32, color: "scout", equipment: "dagger" },
@@ -565,6 +888,21 @@ const enemyTypes = {
   "archer-de-lombre": { label: "Archer de l'ombre", health: 7, damage: 7, speed: 39, size: 44, color: "minion", equipment: "archer-de-lombre" },
   "soldat-de-lombre": { label: "Soldat de l'ombre", health: 12, damage: 10, speed: 33, size: 48, color: "minion", equipment: "soldat-de-lombre" },
   "goule-de-lombre": { label: "Goule de l'ombre", health: 9, damage: 8, speed: 64, size: 46, color: "minion", equipment: "goule-de-lombre" },
+  "lutin-possede": { label: "Lutin possédé", health: 5, damage: 6, speed: 54, size: 38, color: "minion", equipment: "lutin-possede" },
+  "renne-squelette": { label: "Renne squelette", health: 7, damage: 8, speed: 60, size: 48, color: "minion", equipment: "renne-squelette" },
+  "bonhomme-neige": { label: "Bonhomme de neige démoniaque", health: 10, damage: 9, speed: 34, size: 46, color: "minion", equipment: "bonhomme-neige" },
+  "flocon-vivant": { label: "Flocon vivant", health: 4, damage: 6, speed: 58, size: 38, color: "minion", equipment: "flocon-vivant" },
+  "esprit-gele": { label: "Esprit gelé", health: 7, damage: 8, speed: 40, size: 44, color: "minion", equipment: "esprit-gele" },
+  "gardien-glace": { label: "Gardien de glace", health: 14, damage: 11, speed: 32, size: 52, color: "minion", equipment: "gardien-glace" },
+  "lutin-voleur": { label: "Lutin voleur", health: 5, damage: 7, speed: 62, size: 38, color: "minion", equipment: "lutin-voleur" },
+  "chien-neiges": { label: "Chien des neiges", health: 8, damage: 9, speed: 64, size: 46, color: "minion", equipment: "chien-neiges" },
+  "lutin-kamikaze": { label: "Lutin kamikaze", health: 4, damage: 10, speed: 68, size: 36, color: "minion", equipment: "lutin-kamikaze" },
+  "bonhomme-pain-epices": { label: "Bonhomme en pain d'épices", health: 9, damage: 9, speed: 42, size: 44, color: "minion", equipment: "bonhomme-pain-epices" },
+  "sucette-vivante": { label: "Sucette vivante", health: 6, damage: 7, speed: 48, size: 40, color: "minion", equipment: "sucette-vivante" },
+  "ours-sucre": { label: "Ours en sucre", health: 14, damage: 12, speed: 32, size: 52, color: "minion", equipment: "ours-sucre" },
+  "ombre-noel": { label: "Ombre de Noël", health: 6, damage: 7, speed: 56, size: 40, color: "minion", equipment: "ombre-noel" },
+  "cadeau-maudit": { label: "Cadeau maudit", health: 9, damage: 9, speed: 46, size: 42, color: "minion", equipment: "cadeau-maudit" },
+  "loup-noel": { label: "Loup de Noël", health: 9, damage: 10, speed: 68, size: 48, color: "minion", equipment: "loup-noel" },
 };
 const bossMinionPools = {
   "fossoyeur-maudit": ["serviteur-squelette"],
@@ -572,6 +910,11 @@ const bossMinionPools = {
   "maitre-des-cauchemars": ["ombre-rampante"],
   "bouffon-frondeur": ["petit-bouffon-frondeur"],
   "mega-cauchemar": ["archer-de-lombre", "soldat-de-lombre", "goule-de-lombre"],
+  "pere-noel-tordu": ["lutin-possede", "renne-squelette", "bonhomme-neige"],
+  "mere-froide": ["flocon-vivant", "esprit-gele", "gardien-glace"],
+  "grinch-demoniaque": ["lutin-voleur", "chien-neiges", "lutin-kamikaze"],
+  "homme-pain-epices": ["bonhomme-pain-epices", "sucette-vivante", "ours-sucre"],
+  "maitre-cadeaux-noirs": ["ombre-noel", "cadeau-maudit", "loup-noel"],
 };
 const enemySpawnZones = [
   { name: "forêt", weight: 0.65, bounds: [0.02, 0.18, 0.31, 0.91] },
@@ -586,13 +929,22 @@ const bossTypes = [
   { name: "maitre-des-cauchemars", label: "MAÎTRE DES CAUCHEMARS", health: 78, damage: 18, speed: 34, size: 104, behavior: "orbit" },
   { name: "bouffon-frondeur", label: "BOUFFON FRONDEUR", health: 72, damage: 18, speed: 54, size: 92, behavior: "swoop" },
   { name: "mega-cauchemar", label: "CHAMBELLAN SORCIER DU TRÔNE", health: 450, damage: 34, speed: 32, size: 150, behavior: "slam" },
+  { name: "pere-noel-tordu", label: "PÈRE NOËL TORDU", health: 90, damage: 12, speed: 36, size: 100, behavior: "charge" },
+  { name: "mere-froide", label: "MÈRE FROIDE", health: 100, damage: 12, speed: 36, size: 98, behavior: "orbit" },
+  { name: "grinch-demoniaque", label: "GRINCH DÉMONIAQUE", health: 105, damage: 12, speed: 56, size: 96, behavior: "swoop" },
+  { name: "homme-pain-epices", label: "HOMME DE PAIN D'ÉPICES", health: 140, damage: 14, speed: 33, size: 112, behavior: "charge" },
+  { name: "maitre-cadeaux-noirs", label: "MAÎTRE DES CADEAUX NOIRS", health: 260, damage: 18, speed: 38, size: 118, behavior: "orbit" },
 ];
-const maxPlayerLevel = 200;
+const maxPlayerLevel = 400;
+// À partir du niveau 250, une roue exclusive apparaît tous les 10 niveaux (250, 260, … 400).
+const wheelStartLevel = 250;
 const bossXpRewards = [60, 110, 180, 260, 600];
 
 const slowLevelingStart = 50;
 
 function getXpForLevel(level) {
+  // Au-delà du niveau 200 la courbe devient presque linéaire, pour que les niveaux 250 à 400 restent atteignables.
+  if (level > 200) return Math.round(getXpForLevel(200) * (1 + 0.006 * (level - 200)));
   const base = 20 + 6 * (level - 1) + 0.06 * (level - 1) ** 2;
   const slowdown = level >= slowLevelingStart ? 1.35 + 0.02 * (level - slowLevelingStart) : 1;
   return Math.round(base * slowdown);
@@ -600,15 +952,20 @@ function getXpForLevel(level) {
 
 function getLevelReward(level) {
   const tier = Math.floor(level / 10);
-  const reward = { coins: 10 * (tier + 1), boosts: {}, relic: false, milestone: level % 10 === 0 };
+  const reward = { coins: 10 * (tier + 1), boosts: {}, relic: false, milestone: level % 10 === 0, wheel: isWheelLevel(level) };
   if (reward.milestone) {
     reward.coins += 40 * tier;
     reward.boosts.soin = 1;
     reward.relic = true;
   }
   if (level % 50 === 0) reward.boosts.puissance = 1;
-  if (level === maxPlayerLevel) reward.coins += 1000;
+  if (level === 200) reward.coins += 1000;
+  if (level === maxPlayerLevel) reward.coins += 3000;
   return reward;
+}
+
+function isWheelLevel(level) {
+  return level >= wheelStartLevel && level <= maxPlayerLevel && level % 10 === 0;
 }
 
 function describeLevelReward(reward) {
@@ -619,6 +976,7 @@ function describeLevelReward(reward) {
     parts.push(`${boost.icon} ${boost.label}${count > 1 ? ` ×${count}` : ""}`);
   }
   if (reward.relic) parts.push("🔮 Relique de boss");
+  if (reward.wheel) parts.push("🎡 Roue exclusive");
   return parts;
 }
 
@@ -628,6 +986,9 @@ const defaultProgression = {
   xp: 0,
   playerName: "",
   playerNameChangedAt: 0,
+  world1Completed: false,
+  lastWorld: 1,
+  pendingWheels: [],
   improvements: { damage: 0, health: 0, defense: 0 },
   powers: structuredClone(defaultPowerLevels),
   weaponLevels: Object.fromEntries(loadoutOptions.weapons.map((weapon) => [weapon.id, 1])),
@@ -681,8 +1042,8 @@ const mapObstacles = [
   [0.356, 0.553, 0.402, 0.664],
   // Cryptes du cimetière.
   [[0.682, 0.6], [0.7, 0.565], [0.723, 0.6], [0.723, 0.655], [0.682, 0.655]],
-  [[0.853, 0.49], [0.872, 0.454], [0.892, 0.49], [0.892, 0.552], [0.853, 0.552]],
-  [[0.871, 0.625], [0.892, 0.59], [0.912, 0.625], [0.912, 0.69], [0.871, 0.69]],
+  [[0.886, 0.49], [0.905, 0.454], [0.925, 0.49], [0.925, 0.552], [0.886, 0.552]],
+  [[0.904, 0.625], [0.925, 0.59], [0.945, 0.625], [0.945, 0.69], [0.904, 0.69]],
   // Voitures et épaves.
   [[0.366, 0.243], [0.395, 0.218], [0.42, 0.21], [0.436, 0.225], [0.438, 0.25], [0.4, 0.264], [0.375, 0.278], [0.366, 0.262]],
   [[0.235, 0.355], [0.251, 0.37], [0.251, 0.395], [0.237, 0.43], [0.21, 0.42], [0.209, 0.405]],
@@ -760,6 +1121,11 @@ const bossSpawnPoints = {
   "maitre-des-cauchemars": { ...vortexPosition, style: "vortex" },
   "bouffon-frondeur": { x: 0.512, y: 0.5, style: "stage" },
   "mega-cauchemar": { x: 0.5, y: 0.3, style: "throne" },
+  "pere-noel-tordu": { x: 0.5, y: 0.8, style: "snow" },
+  "mere-froide": { x: 0.5, y: 0.46, style: "ice" },
+  "grinch-demoniaque": { x: 0.56, y: 0.5, style: "gift" },
+  "homme-pain-epices": { x: 0.53, y: 0.32, style: "candy" },
+  "maitre-cadeaux-noirs": { x: 0.5, y: 0.56, style: "mansion" },
 };
 const bossSpawnMessages = {
   grave: "sort de sa tombe au cimetière !",
@@ -767,6 +1133,11 @@ const bossSpawnMessages = {
   vortex: "surgit du vortex !",
   stage: "bondit de la scène du clown !",
   throne: "se matérialise sur son trône !",
+  snow: "surgit de la tempête de neige !",
+  ice: "se lève de son trône de glace !",
+  gift: "surgit de sa pile de cadeaux volés !",
+  candy: "sort de la fournaise de l'usine !",
+  mansion: "descend du manoir des cadeaux !",
 };
 const enemyGaits = {
   grunt: "waddle",
@@ -784,6 +1155,26 @@ const enemyGaits = {
   "maitre-des-cauchemars": "float",
   "bouffon-frondeur": "hop",
   "mega-cauchemar": "float",
+  "lutin-possede": "hop",
+  "renne-squelette": "skitter",
+  "bonhomme-neige": "stomp",
+  "flocon-vivant": "float",
+  "esprit-gele": "float",
+  "gardien-glace": "stomp",
+  "lutin-voleur": "skitter",
+  "chien-neiges": "skitter",
+  "lutin-kamikaze": "hop",
+  "bonhomme-pain-epices": "waddle",
+  "sucette-vivante": "hop",
+  "ours-sucre": "stomp",
+  "ombre-noel": "float",
+  "cadeau-maudit": "hop",
+  "loup-noel": "skitter",
+  "pere-noel-tordu": "stomp",
+  "mere-froide": "float",
+  "grinch-demoniaque": "hop",
+  "homme-pain-epices": "stomp",
+  "maitre-cadeaux-noirs": "float",
 };
 const weaponMotions = {
   fronde: { kind: "sling" },
@@ -818,6 +1209,17 @@ const weaponMotions = {
   "pistolet-givre": { kind: "gun" },
   "baguette-foudre": { kind: "magic" },
   "blaster-neon": { kind: "gun" },
+  "canne-sucre": { kind: "melee" },
+  "pistolet-glacon": { kind: "gun" },
+  "hache-glacee": { kind: "melee" },
+  "arbalete-lutin": { kind: "crossbow" },
+  "lance-cadeaux": { kind: "gun" },
+  "epee-mere-froide": { kind: "melee" },
+  "canon-boules-neige": { kind: "gun" },
+  "baguette-etoile": { kind: "magic" },
+  "canon-traineau-noir": { kind: "gun" },
+  "sceptre-roi-hiver": { kind: "melee" },
+  "fourche-krampus": { kind: "melee" },
 };
 // Prise en main : point tenu par la main avant (en % de l'image), rotation qui aligne l'arme sur le bras
 // tendu, hauteur relative au héros, proportions de l'image, nombre de mains et distance main → bouche
@@ -855,6 +1257,17 @@ const weaponGrips = {
   "pistolet-givre": { x: 30, y: 80, rotate: 90, size: 0.26, ratio: 1.587, hands: "one", muzzle: 1.11 },
   "baguette-foudre": { x: 10, y: 86, rotate: 128, size: 0.3, ratio: 1.143, hands: "one", muzzle: 1.23 },
   "blaster-neon": { x: 30, y: 80, rotate: 90, size: 0.26, ratio: 1.745, hands: "one", muzzle: 1.22 },
+  "canne-sucre": { x: 50, y: 80, rotate: 90, size: 0.52, ratio: 0.328, hands: "one", muzzle: 0.85 },
+  "pistolet-glacon": { x: 22, y: 78, rotate: 90, size: 0.27, ratio: 1.5, hands: "one", muzzle: 1.05 },
+  "hache-glacee": { x: 50, y: 74, rotate: 90, size: 0.5, ratio: 0.589, hands: "two", muzzle: 0.85 },
+  "arbalete-lutin": { x: 35, y: 60, rotate: 90, size: 0.34, ratio: 1.882, hands: "two", muzzle: 1.3 },
+  "lance-cadeaux": { x: 22, y: 80, rotate: 90, size: 0.3, ratio: 1.536, hands: "one", muzzle: 1.1 },
+  "epee-mere-froide": { x: 50, y: 84, rotate: 90, size: 0.54, ratio: 0.3125, hands: "one", muzzle: 0.85 },
+  "canon-boules-neige": { x: 16, y: 80, rotate: 90, size: 0.32, ratio: 1.714, hands: "two", muzzle: 1.2 },
+  "baguette-etoile": { x: 12, y: 52, rotate: 90, size: 0.26, ratio: 3.49, hands: "one", muzzle: 2.9 },
+  "canon-traineau-noir": { x: 20, y: 78, rotate: 90, size: 0.32, ratio: 1.94, hands: "two", muzzle: 1.35 },
+  "sceptre-roi-hiver": { x: 50, y: 70, rotate: 90, size: 0.62, ratio: 0.271, hands: "one", muzzle: 0.85 },
+  "fourche-krampus": { x: 50, y: 66, rotate: 90, size: 0.74, ratio: 0.224, hands: "two", muzzle: 0.85 },
 };
 const shotKinds = {
   fronde: "seed",
@@ -889,6 +1302,17 @@ const shotKinds = {
   "pistolet-givre": "bullet",
   "baguette-foudre": "rune",
   "blaster-neon": "bullet",
+  "canne-sucre": "slash",
+  "pistolet-glacon": "bullet",
+  "hache-glacee": "slash",
+  "arbalete-lutin": "bolt",
+  "lance-cadeaux": "candy",
+  "epee-mere-froide": "slash",
+  "canon-boules-neige": "pellet",
+  "baguette-etoile": "rune",
+  "canon-traineau-noir": "bullet",
+  "sceptre-roi-hiver": "slash",
+  "fourche-krampus": "slash",
 };
 // Chaque lame et chaque pistolet a sa signature : altération infligée, visuel et durée du geste (ms).
 const weaponEffects = {
@@ -912,6 +1336,17 @@ const weaponEffects = {
   "pistolet-givre": { fx: "frost", motion: 280, slow: 2, slowFactor: 0.45, freezeChance: 0.18, freeze: 1 },
   "baguette-foudre": { fx: "storm", motion: 340, chain: 2, chainRange: 170, stun: 0.4 },
   "blaster-neon": { fx: "neon", motion: 180, pierce: 1, critChance: 0.15, critMultiplier: 2, splash: 40, splashRatio: 0.35 },
+  "canne-sucre": { fx: "knight", motion: 320, knockback: 40, bleed: 2, bleedDuration: 3 },
+  "pistolet-glacon": { fx: "frost", motion: 280, slow: 1.8, slowFactor: 0.5, freezeChance: 0.12, freeze: 0.8 },
+  "hache-glacee": { fx: "axe", motion: 460, knockback: 40, slow: 2.5, slowFactor: 0.5 },
+  "arbalete-lutin": { fx: "sniper", motion: 420, pierce: 2, critChance: 0.2, critMultiplier: 2.2 },
+  "lance-cadeaux": { fx: "shadow", motion: 400, splash: 70, splashRatio: 0.6 },
+  "epee-mere-froide": { fx: "ghost", motion: 300, slow: 2, slowFactor: 0.45, echo: 0.5 },
+  "canon-boules-neige": { fx: "blunderbuss", motion: 460, knockback: 30, spread: 10, range: 0.7, slow: 1.5, slowFactor: 0.6 },
+  "baguette-etoile": { fx: "storm", motion: 300, chain: 3, chainRange: 190, stun: 0.5 },
+  "canon-traineau-noir": { fx: "shadow", motion: 380, splash: 70, splashRatio: 0.6, burn: 2, burnDuration: 3 },
+  "sceptre-roi-hiver": { fx: "moon", motion: 420, wave: 1.8, waveRatio: 0.6, slow: 2, slowFactor: 0.5 },
+  "fourche-krampus": { fx: "spear", motion: 340, thrust: true, knockback: 40, bleed: 3, bleedDuration: 4 },
 };
 // Millisecondes de vol par pixel : les balles et clous filent, la magie flotte davantage.
 const shotSpeeds = { seed: 1.05, candy: 1.1, arrow: 0.62, bolt: 0.58, pellet: 0.42, nail: 0.48, bat: 1.1, soul: 1, rune: 1, thorn: 0.8, bullet: 0.3 };
@@ -919,48 +1354,48 @@ const shotSparkCounts = { seed: 6, candy: 8, arrow: 5, bolt: 6, pellet: 9, nail:
 const lobbedShots = new Set(["seed", "candy"]);
 // Articulations en % de l'image : hanche, épaule, séparation des jambes, bord intérieur des bras, bas des mains.
 const rigProfiles = {
-  "boss-bouffon": [58.6, 22, 50, 29.1, 78.3, 68.5, 61],
-  "boss-chambellan": [75, 18, 50, 26.2, 84.2, 77.1, 78.6],
-  "boss-epouvantail": [75, 20.8, 55.1, 37.5, 76.6, 76.8, 79.4],
-  "boss-fossoyeur": [64.3, 20.8, 50, 17.2, 76.7, 74.2, 74.2],
-  "minion-archer-ombre": [66.8, 17.6, 49.8, 20.9, 76.1, 76.6, 76.6],
-  "minion-bouffon": [64.5, 33, 49.7, 22.2, 79, 66, 74.2],
-  "minion-gargouille": [69.6, 3, 50, 25.8, 75.4, 79.6, 79.6, 36],
-  "minion-goule-ombre": [65.6, 29.3, 50, 26.7, 72, 73.4, 75.4],
-  "minion-soldat-ombre": [75, 27, 45.9, 14.8, 60.7, 79.7, 79.7],
-  "minion-squelette": [75, 23.8, 50, 39.6, 83.8, 79.7, 75.8],
-  "heros/aventuriere": [51.9, 24.4, 50, 21.7, 78.3, 65.9, 61.9],
-  "heros/cendre": [57.2, 20, 50, 17.3, 81.6, 67.5, 63.1],
-  "heros/chevalier": [70, 23.1, 50, 17.9, 79.6, 71.9, 80],
-  "heros/citrouille": [53.1, 20.9, 50, 22.6, 76, 63.1, 63.1],
-  "heros/demon": [55.6, 18.4, 50, 25.4, 73.7, 65.6, 65.6],
-  "heros/epouvantail": [58.4, 27, 49.8, 26.8, 71.2, 68.4, 68.4],
-  "heros/fantome": [60.9, 27, 49.8, 25.1, 72.3, 70.9, 70.9],
-  "heros/feuillage": [61.2, 23.4, 49.7, 18.6, 80.3, 70.6, 71.6],
-  "heros/garde-forestier": [54.7, 22.2, 50, 18.5, 79.8, 65.3, 65.9],
-  "heros/loup": [58.4, 27, 50, 21.6, 76.1, 68.4, 68.4],
-  "heros/mecanicien": [53.4, 22.5, 49.7, 17.5, 80.7, 61.6, 65],
-  "heros/momie": [62.2, 27, 50, 31.2, 73.5, 72.2, 72.2],
-  "heros/nomade": [64.4, 27, 50, 12.8, 84.4, 77.5, 74.4],
-  "heros/pisteur": [51.6, 21.6, 50, 20.4, 79.6, 63.1, 65.3],
-  "heros/renard": [59.1, 27, 49.7, 21.8, 74.1, 69.1, 69.1],
-  "heros/secouriste": [56.2, 26, 50, 17.7, 82.3, 59, 60.6],
-  "heros/sentinelle": [66.2, 22.5, 49.8, 24.3, 77.4, 76.2, 76.2],
-  "heros/sorciere": [70, 20.9, 49.7, 18.1, 69.9, 80, 80],
-  "heros/squelette": [60.3, 27, 49.8, 18, 81.5, 70.3, 70.3],
-  "heros/survivant": [57.5, 18, 50, 14.7, 80.1, 60, 65.9],
-  "heros/vampire": [69.1, 26, 49.8, 11.7, 87.9, 79.1, 79.1],
-  "heros/cowboy": [56.9, 21.6, 49.7, 12.4, 85.7, 66.9, 66.9],
-  "heros/pirate": [71.2, 25.6, 49.7, 24, 77.7, 80, 80],
-  "heros/zombie": [52.8, 21.9, 50, 21.6, 76.3, 62.8, 62.8],
-  "heros/ninja": [66.9, 17.2, 50, 19.3, 62.2, 76.9, 76.9],
-  "heros/samourai": [58.8, 23.4, 50, 22.3, 79.5, 68.8, 68.8],
-  "heros/viking": [57.2, 16.9, 50, 15.8, 82.9, 58.1, 62.2],
-  "heros/clown": [57.5, 27, 49.8, 26.5, 73.5, 67.5, 67.5],
-  "heros/chasseur-vampires": [61.6, 27, 50, 16.2, 82.8, 71.6, 71.6],
-  "heros/astronaute": [53.1, 21.9, 49.8, 19.5, 79.5, 64.7, 63.1],
-  "heros/faucheuse": [75, 27, 50, 20.6, 75.7, 80, 80],
-  "heros/cyborg": [46.2, 17.8, 50, 22.9, 74.1, 56.2, 56.2],
+  "boss-bouffon": [63.0, 22, 49.8, 30.2, 83.4, 72.9, 63.8],
+  "boss-chambellan": [75.0, 18, 63.0, 26.7, 84.9, 79.9, 79.9],
+  "boss-epouvantail": [75.0, 20.8, 55.0, 36.3, 78.0, 79.9, 79.9],
+  "boss-fossoyeur": [75.0, 25.0, 50.0, 15.1, 85.3, 79.9, 79.2],
+  "minion-archer-ombre": [75.0, 19.9, 49.7, 22.6, 87.7, 79.7, 79.7],
+  "minion-bouffon": [67.2, 33, 50.0, 22.0, 75.6, 68.0, 77.0],
+  "minion-gargouille": [69.1, 3, 50.0, 23.4, 79.9, 78.9, 78.9, 36.0],
+  "minion-goule-ombre": [70.7, 30.5, 50.0, 26.8, 73.6, 74.6, 79.7],
+  "minion-soldat-ombre": [75.0, 35.2, 49.8, 14.4, 66.7, 79.7, 79.7],
+  "minion-squelette": [75.0, 27.0, 45.4, 40.2, 83.9, 79.7, 77.3],
+  "heros/aventuriere": [58.4, 33.8, 49.7, 22.4, 75.5, 70, 68.4],
+  "heros/cendre": [65.3, 28, 49.7, 17.3, 81.2, 70.9, 70.9],
+  "heros/chevalier": [75, 37.5, 40.6, 18.2, 81.2, 80, 80],
+  "heros/citrouille": [60, 30.3, 49.7, 25.1, 74.9, 70, 70],
+  "heros/demon": [65.9, 28, 49.8, 24.2, 75.4, 75.9, 75.9],
+  "heros/epouvantail": [62.5, 28, 49.8, 28, 71.1, 72.5, 72.5],
+  "heros/fantome": [75, 34.7, 56.8, 25.2, 77.7, 80, 80],
+  "heros/feuillage": [66.2, 31.9, 50, 20.3, 79.1, 76.2, 76.6],
+  "heros/garde-forestier": [61.6, 30.3, 49.7, 21, 77.9, 73.8, 74.1],
+  "heros/loup": [71.6, 28, 50, 21, 74.7, 80, 80],
+  "heros/mecanicien": [63.4, 33.4, 49.7, 16.8, 78.2, 74.1, 74.1],
+  "heros/momie": [63.4, 35.9, 50, 26.3, 74.2, 73.4, 73.4],
+  "heros/nomade": [75, 35.6, 50, 13.4, 85.1, 80, 80],
+  "heros/pisteur": [63.4, 30.3, 49.7, 20.4, 78.5, 73.1, 74.7],
+  "heros/renard": [75, 28, 50, 19.4, 74.7, 80, 80],
+  "heros/secouriste": [60.9, 35, 50, 19, 84.8, 67.2, 64.7],
+  "heros/sentinelle": [75, 28, 50, 22.6, 77.4, 80, 80],
+  "heros/sorciere": [75, 28, 49.7, 20.4, 78.4, 80, 80],
+  "heros/squelette": [71.6, 34.7, 49.7, 18.4, 80.5, 80, 80],
+  "heros/survivant": [70, 30, 50, 17.3, 75.3, 72.2, 74.1],
+  "heros/vampire": [75, 30, 53.2, 24.9, 74.7, 80, 80],
+  "heros/cowboy": [70, 30, 50, 15.2, 87.5, 80, 80],
+  "heros/pirate": [67.8, 31.2, 49.7, 19.3, 86.1, 77.8, 69.1],
+  "heros/zombie": [64.7, 28, 50, 23.2, 77.5, 74.7, 74.7],
+  "heros/ninja": [75, 31.9, 49.1, 17.3, 65.5, 77.5, 75.9],
+  "heros/samourai": [66.6, 32.8, 50, 18.5, 86.4, 76.6, 69.7],
+  "heros/viking": [67.2, 28, 49.7, 17.1, 81.2, 68.1, 71.6],
+  "heros/clown": [67.5, 28, 49.7, 25.1, 74.3, 77.5, 77.5],
+  "heros/chasseur-vampires": [74.1, 35.3, 49.7, 17.8, 81.7, 80, 80],
+  "heros/astronaute": [62.2, 30.3, 49.7, 21.5, 77.5, 74.1, 72.2],
+  "heros/faucheuse": [60.9, 31.6, 49.7, 11.6, 87.8, 74.4, 75],
+  "heros/cyborg": [60, 31.2, 49.7, 25.4, 74, 70, 70],
 };
 const rigWingArts = new Set(["minion-gargouille"]);
 const rigPartNames = ["leg-l", "leg-r", "torso", "arm-l", "arm-r"];
@@ -968,11 +1403,18 @@ const rigPartNames = ["leg-l", "leg-r", "torso", "arm-l", "arm-r"];
 const rigRatios = {};
 
 function buildRig(rig, artName) {
+  // Rendu 3D Three.js quand un modèle existe ; sinon (ou sans WebGL) on garde le sprite 2D découpé.
+  if (window.Actor3D?.ready && window.Actor3D.mount(rig, artName)) return;
+  if (rig.classList.contains("rig-3d")) {
+    rig.classList.remove("rig-3d");
+    delete rig.dataset.art;
+    delete rig.dataset.actor3d;
+  }
   if (rigRatios[artName]) rig.style.setProperty("--rig-ratio", rigRatios[artName]);
   if (rig.dataset.art === artName) return;
   rig.dataset.art = artName;
   const profile = rigProfiles[artName];
-  const source = `./assets/real/${artName}.png`;
+  const source = `./assets/real/${artName}.png?v=c2d1`;
   const parts = (profile ? rigPartNames : ["solo"]).map((name) => {
     const part = document.createElement("img");
     part.className = `rig-part rig-${name}`;
@@ -1000,6 +1442,17 @@ function buildRig(rig, artName) {
   Object.entries(values).forEach(([name, value]) => rig.style.setProperty(`--rig-${name}`, `${value}%`));
 }
 
+// Les modules 3D se chargent après ce script : on refait alors les rigs déjà créés (héros, aperçus du menu).
+function refreshActors3D() {
+  try {
+    updatePlayerLoadoutAppearance();
+    refreshLoadoutMenu();
+  } catch (error) {
+    console.warn("Actualisation 3D impossible", error);
+  }
+}
+window.addEventListener("actor3d-ready", refreshActors3D);
+
 function createRigArt(className, artName) {
   const art = document.createElement("span");
   art.className = className;
@@ -1026,6 +1479,41 @@ function createAtmosphereParticles(count) {
   atmosphereParticles.replaceChildren(...particles);
 }
 createAtmosphereParticles(26);
+
+// Chauves-souris qui traversent l'écran et feux follets qui flottent dans le brouillard.
+function createHalloweenExtras() {
+  const host = document.querySelector("#halloween-extras");
+  if (!host) return;
+  const bats = Array.from({ length: 5 }, (_, index) => {
+    const bat = document.createElement("span");
+    bat.className = "hw-bat";
+    const dur = 16 + Math.random() * 14;
+    bat.style.setProperty("--y", `${6 + Math.random() * 62}%`);
+    bat.style.setProperty("--size", `${26 + Math.random() * 20}px`);
+    bat.style.setProperty("--dur", `${dur.toFixed(1)}s`);
+    bat.style.setProperty("--delay", `${(-Math.random() * dur + index * 3).toFixed(1)}s`);
+    bat.style.setProperty("--sway", `${(40 + Math.random() * 90).toFixed(0)}px`);
+    bat.style.setProperty("--flap", `${(0.14 + Math.random() * 0.08).toFixed(2)}s`);
+    return bat;
+  });
+  const colors = ["120 255 150", "255 170 70", "190 120 255"];
+  const wisps = Array.from({ length: 14 }, (_, index) => {
+    const wisp = document.createElement("span");
+    wisp.className = "hw-wisp";
+    const dur = 5 + Math.random() * 6;
+    wisp.style.setProperty("--x", `${Math.random() * 100}%`);
+    wisp.style.setProperty("--y", `${15 + Math.random() * 80}%`);
+    wisp.style.setProperty("--size", `${5 + Math.random() * 6}px`);
+    wisp.style.setProperty("--dx", `${((Math.random() - 0.5) * 160).toFixed(0)}px`);
+    wisp.style.setProperty("--dy", `${((Math.random() - 0.5) * 110).toFixed(0)}px`);
+    wisp.style.setProperty("--dur", `${dur.toFixed(1)}s`);
+    wisp.style.setProperty("--delay", `${(-Math.random() * dur).toFixed(1)}s`);
+    wisp.style.setProperty("--wisp", colors[index % colors.length]);
+    return wisp;
+  });
+  host.replaceChildren(...bats, ...wisps);
+}
+createHalloweenExtras();
 let timeLeft = roundLength;
 let shootElapsed = 0;
 let shootInterval = 0.28;
@@ -1078,6 +1566,8 @@ let moveMomentum = 0;
 let runDustElapsed = 0;
 let aimHoldRemaining = 0;
 let aimFacingLeft = false;
+let aimTurn = Math.PI;
+let aimTurnWorld = 0;
 let runWeaponId = "";
 const runLoadout = { ranged: "", melee: "" };
 let activeWeaponSlot = "ranged";
@@ -1134,6 +1624,12 @@ function loadProgression(source) {
     loaded.bossLoot = bossRelicCatalog
       .filter((relic) => loaded.relicInventory[relic.id] > 0)
       .map((relic) => relic.id);
+    if (parsed.world1Completed === true) loaded.world1Completed = true;
+    if (loaded.world1Completed && parsed.lastWorld === 2) loaded.lastWorld = 2;
+    if (Array.isArray(parsed.pendingWheels)) {
+      loaded.pendingWheels = [...new Set(parsed.pendingWheels.filter((level) => Number.isSafeInteger(level) && isWheelLevel(level)))]
+        .sort((a, b) => a - b);
+    }
     if (typeof parsed.playerName === "string") loaded.playerName = parsed.playerName.trim().slice(0, 16);
     if (Number.isSafeInteger(parsed.playerNameChangedAt)
       && parsed.playerNameChangedAt >= 0
@@ -1305,11 +1801,11 @@ function getCurrentShopItems() {
 }
 
 const shopTabNotes = {
-  packs: "Packs complets : un costume, des armes et un pouvoir à prix réduit (-30 %). Tu ne paies que les objets que tu n'as pas encore.",
+  packs: "Plus de 110 packs triés du moins cher au plus cher : des mini-packs à quelques pièces, des collections mythiques, et les grands packs royaux de 5 000 à 20 000 pièces. Tu ne paies que les objets que tu n'as pas encore.",
   skins: "Caisses de costumes : chaque ouverture donne une tenue au hasard. Raretés : Commun, Peu commun, Rare, Légendaire, Divin. Un doublon te rembourse une partie du prix.",
   weapons: "Caisses d'armes : chaque ouverture donne un objet au hasard. Raretés : Commun, Peu commun, Rare, Légendaire, Divin. Un doublon d'arme l'améliore gratuitement d'un niveau.",
   activePowers: "Caisses de pouvoirs (touche O en partie) : un pouvoir au hasard. Un doublon fait monter ton pouvoir d'un niveau gratuitement.",
-  characters: "Change l'allure de ton survivant.",
+  characters: "54 personnages à collectionner. Un personnage s'affiche avec la tenue « Survivant » : l'équiper la remet automatiquement.",
   equipment: "Vêtements et sacs qui modifient tes statistiques.",
   boosts: "Consommables cumulables : chaque achat ajoute une utilisation (touche P).",
   improvements: "Améliorations permanentes : achète les niveaux dans l'ordre. Tes armes et pouvoirs s'améliorent dans le casier, onglet « Améliorations ».",
@@ -1424,10 +1920,9 @@ function createCharacterPreview(
   return preview;
 }
 
-const heroArtCharacters = ["pisteur", "secouriste", "sentinelle"];
-
+// Tout personnage autre que « survivant » a son propre sprite, affiché avec la tenue Survivant.
 function getHeroArtName(characterId, skinId) {
-  const name = skinId === "survivant" && heroArtCharacters.includes(characterId) ? characterId : skinId;
+  const name = skinId === "survivant" && characterId !== "survivant" && loadoutOptions.characters.some((item) => item.id === characterId) ? characterId : skinId;
   return `heros/${name}`;
 }
 
@@ -1440,6 +1935,9 @@ function updateHeroRealArt(container, characterId, skinId, weaponId, coatingId =
   const weapon = container.querySelector(".hero-real-weapon");
   const flash = container.querySelector(".hero-weapon-flash");
   if (rig) buildRig(rig, getHeroArtName(characterId, skinId));
+  const hero3d = Boolean(rig?.classList.contains("rig-3d"));
+  container.classList.toggle("hero-3d", hero3d);
+  if (hero3d) window.Actor3D.setWeapon(rig, weaponId, coatingId);
   if (weapon) {
     const weaponSource = getWeaponArtSource(weaponId);
     if (weapon.getAttribute("src") !== weaponSource) weapon.src = weaponSource;
@@ -1483,7 +1981,7 @@ function createShopPreviewIcon(item) {
   if (item.category !== "weapons") {
     const icon = document.createElement("span");
     icon.className = "shop-item-icon";
-    icon.textContent = item.icon;
+    setIcon(icon, item.icon);
     return icon;
   }
   const art = document.createElement("img");
@@ -1585,6 +2083,8 @@ function isLoadoutEquipped(category, itemId) {
 
 function equipLoadoutItem(category, itemId) {
   progression.equipped[getEquipSlot(category, itemId)] = itemId;
+  // Un personnage ne se voit qu'avec la tenue Survivant : on la remet pour qu'il apparaisse tout de suite.
+  if (category === "characters" && itemId !== "survivant") progression.equipped.skins = "survivant";
 }
 
 function getWeaponLevel(weaponId) {
@@ -1782,7 +2282,7 @@ function createCrateItemArt(crate, item) {
   }
   const icon = document.createElement("span");
   icon.className = "shop-item-icon crate-power-icon";
-  icon.textContent = item.icon;
+  setIcon(icon, item.icon);
   return icon;
 }
 
@@ -2067,18 +2567,37 @@ function getPackEntries(pack) {
   });
 }
 
+// Prix du pack complet (pour un joueur qui ne possède rien). Les grandes collections ont un prix fixe (`pack.price`).
+function getPackFullPrice(pack) {
+  if (pack.price) return pack.price;
+  const total = pack.items.reduce((sum, [category, id]) => sum + packTierValues[loadoutOptions[category].find((entry) => entry.id === id).tier], 0);
+  return Math.round((total * (1 - packDiscount)) / 10) * 10;
+}
+
 function getPackPricing(pack) {
-  const missing = getPackEntries(pack).filter((entry) => !entry.owned);
-  const value = missing.reduce((total, entry) => total + packTierValues[entry.item.tier], 0);
-  return { missing, value, price: Math.round((value * (1 - packDiscount)) / 10) * 10 };
+  const entries = getPackEntries(pack);
+  const missing = entries.filter((entry) => !entry.owned);
+  const missingValue = missing.reduce((total, entry) => total + packTierValues[entry.item.tier], 0);
+  if (pack.price) {
+    // Prix fixe : on ne paie que la part des objets manquants.
+    const totalValue = entries.reduce((total, entry) => total + packTierValues[entry.item.tier], 0);
+    const share = missingValue / totalValue;
+    return {
+      missing,
+      value: Math.round((pack.price / (1 - packDiscount)) * share / 10) * 10,
+      price: Math.round((pack.price * share) / 10) * 10,
+    };
+  }
+  return { missing, value: missingValue, price: Math.round((missingValue * (1 - packDiscount)) / 10) * 10 };
 }
 
 function createPackItemArt(category, item) {
   if (category === "skins") return createCharacterPreview(progression.equipped.characters, item.id, progression.equipped.equipment);
   if (category === "weapons") return createShopPreviewIcon({ ...item, category: "weapons" });
+  if (category === "characters") return createCharacterPreview(item.id, "survivant", progression.equipped.equipment);
   const icon = document.createElement("span");
   icon.className = "shop-item-icon crate-power-icon";
-  icon.textContent = item.icon;
+  setIcon(icon, item.icon);
   return icon;
 }
 
@@ -2094,7 +2613,7 @@ function createPackItemRow({ category, item, owned }) {
   const name = document.createElement("strong");
   name.textContent = item.label;
   const meta = document.createElement("small");
-  const kind = { skins: "Costume", weapons: item.melee ? "Mêlée" : "Distance", activePowers: "Pouvoir" }[category];
+  const kind = { characters: "Personnage", skins: "Costume", weapons: item.melee ? "Mêlée" : "Distance", activePowers: "Pouvoir" }[category];
   meta.textContent = [kind, getItemTypeLabel(category, item), crateTierLabels[item.tier]].filter(Boolean).join(" · ");
   text.append(name, meta);
   row.append(art, text);
@@ -2114,7 +2633,9 @@ function createPackCard(pack) {
   const topTier = entries.reduce((best, entry) =>
     crateTierOrder.indexOf(entry.item.tier) > crateTierOrder.indexOf(best) ? entry.item.tier : best, "commun");
   const card = document.createElement("article");
-  card.className = `shop-card store-card pack-card pack-theme-${pack.theme} tier-${topTier}${complete ? " is-complete" : ""}`;
+  const fullPrice = getPackFullPrice(pack);
+  const sizeClass = fullPrice >= 5000 ? " pack-mythic pack-royal" : fullPrice >= 1500 ? " pack-mythic" : fullPrice <= 130 ? " pack-mini" : "";
+  card.className = `shop-card store-card pack-card pack-theme-${pack.theme} tier-${topTier}${sizeClass}${complete ? " is-complete" : ""}`;
   const badges = document.createElement("div");
   badges.className = "store-badges";
   const addBadge = (text, kind) => {
@@ -2126,11 +2647,15 @@ function createPackCard(pack) {
   if (complete) addBadge("COMPLET", "owned");
   else addBadge(`-${Math.round(packDiscount * 100)} %`, "promo");
   addBadge(crateTierLabels[topTier].toUpperCase(), `tier tier-${topTier}`);
+  if (sizeClass.includes("pack-royal")) addBadge("PACK ROYAL", "pack-mythic");
+  else if (sizeClass.includes("pack-mythic")) addBadge("PACK MYTHIQUE", "pack-mythic");
+  else if (sizeClass === " pack-mini") addBadge("PETIT PRIX", "pack-mini");
 
   const preview = document.createElement("div");
   preview.className = "shop-preview store-preview pack-preview";
   preview.setAttribute("aria-hidden", "true");
   const skin = entries.find((entry) => entry.category === "skins")?.item;
+  const hero = entries.find((entry) => entry.category === "characters")?.item;
   const rangedWeapon = entries.find((entry) => entry.category === "weapons")?.item;
   const emblem = document.createElement("span");
   emblem.className = "pack-emblem";
@@ -2138,6 +2663,8 @@ function createPackCard(pack) {
   preview.append(emblem);
   if (skin) {
     preview.append(createCharacterPreview(progression.equipped.characters, skin.id, progression.equipped.equipment, rangedWeapon?.id));
+  } else if (hero) {
+    preview.append(createCharacterPreview(hero.id, "survivant", progression.equipped.equipment, rangedWeapon?.id));
   }
 
   const category = document.createElement("span");
@@ -2148,7 +2675,7 @@ function createPackCard(pack) {
   const description = document.createElement("p");
   description.textContent = pack.description;
   const list = document.createElement("ul");
-  list.className = "pack-items";
+  list.className = entries.length > 12 ? "pack-items is-long" : "pack-items";
   list.append(...entries.map(createPackItemRow));
 
   const footer = document.createElement("div");
@@ -2214,7 +2741,8 @@ function getPackOverlay() {
 
 function equipPack(pack) {
   const filled = new Set();
-  for (const [category, id] of pack.items) {
+  const ordered = [...pack.items].sort((a, b) => Number(b[0] === "characters") - Number(a[0] === "characters"));
+  for (const [category, id] of ordered) {
     if (!progression.unlocked[category].includes(id)) continue;
     const slot = getEquipSlot(category, id);
     if (filled.has(slot)) continue;
@@ -2283,7 +2811,7 @@ function renderShop() {
   shopTabNote.textContent = shopTabNotes[activeShopTab] ?? "";
   if (activeShopTab === "packs") {
     for (const filter of document.querySelectorAll(".store-filter")) filter.hidden = true;
-    shopCatalogItems.replaceChildren(...shopPacks.map(createPackCard));
+    shopCatalogItems.replaceChildren(...[...shopPacks].sort((a, b) => getPackFullPrice(a) - getPackFullPrice(b)).map(createPackCard));
     updateMenuBalance();
     return;
   }
@@ -2828,6 +3356,7 @@ function logoutAccount() {
 function showPreparationMenu() {
   arena.classList.remove("arena-throne-room");
   delete arena.dataset.wave;
+  updateWorldPicker();
   menuTitle.textContent = progression.playerName ? `Prépare-toi, ${progression.playerName}` : "Prépare ta survie";
   setMenuScreen("home");
   waveCountdownDisplay.hidden = true;
@@ -3036,7 +3565,7 @@ function getUpgradeStatRows(category, item, level) {
       item.melee ? ["Portée", item.melee.reach] : ["Projectiles", item.projectiles],
     ];
   }
-  const stats = powerLevelStats[item.effect](level);
+  const stats = getPowerStats(item, level);
   return [
     ["Dégâts", stats.damage],
     ["Brûlure par seconde", stats.burn],
@@ -3253,6 +3782,7 @@ function equipLockerChoice(category, itemId) {
     }
     if (item && category === "melee" && !item.melee) throw new Error(`Arme de mêlée attendue : ${item.id}`);
     progression.equipped[category] = item?.id ?? "";
+    if (category === "characters" && item && item.id !== "survivant") progression.equipped.skins = "survivant";
   }
   const message = item ? `${item.label} équipé depuis ton casier.` : "Emplacement vidé depuis ton casier.";
   saveProgression(message);
@@ -3311,7 +3841,7 @@ function renderCraftingRecipes() {
     card.className = "shop-card locker-recipe-card";
     const icon = document.createElement("span");
     icon.className = "shop-item-icon";
-    icon.textContent = item.icon;
+    setIcon(icon, item.icon);
     const category = document.createElement("span");
     category.className = "shop-item-category";
     category.textContent = recipe.type === "weapon" ? "Fusion · arme permanente" : "Fusion · consommable · touche P";
@@ -3517,9 +4047,12 @@ function shakeArena(strength = "") {
 
 let liveFxLayers = 0;
 
+let currentPowerFxFilter = "";
+let powerFxFilterTimer = 0;
 function createFxLayer(className, x, y, lifetime, parent = world) {
-  if (liveFxLayers >= 24) return { append() {} };
+  if (liveFxLayers >= 24) return { append() {}, animate() {}, style: { setProperty() {} } };
   const layer = document.createElement("span");
+  if (currentPowerFxFilter && className.includes("pfx")) layer.style.filter = currentPowerFxFilter;
   layer.className = `fx-layer ${className}`;
   layer.setAttribute("aria-hidden", "true");
   layer.style.left = `${x}px`;
@@ -4128,8 +4661,11 @@ function useActivePower() {
   if (!power) return;
   const scale = Math.max(0.48, Math.min(1, playWorldWidth() / 1160));
   const level = getPowerLevel(power.id);
-  const stats = powerLevelStats[power.effect](level);
+  const stats = getPowerStats(power, level);
   const radius = (stats.radius ?? 0) * scale;
+  window.clearTimeout(powerFxFilterTimer);
+  currentPowerFxFilter = power.fxHue ? `hue-rotate(${power.fxHue}deg) saturate(1.1)` : "";
+  if (currentPowerFxFilter) powerFxFilterTimer = window.setTimeout(() => { currentPowerFxFilter = ""; }, 2600);
 
   if (power.effect === "ice") {
     createPowerEffect("ice", center.x, center.y, radius);
@@ -4360,7 +4896,7 @@ function formatDamage(value) {
 function updateBoostButton() {
   const boost = boostOptions.find((item) => item.id === progression.equippedBoost);
   const count = boost ? progression.boostInventory[boost.id] : 0;
-  combatBoostIcon.textContent = boost?.icon ?? "＋";
+  setIcon(combatBoostIcon, boost?.icon ?? "＋");
   combatBoostName.textContent = boost && count > 0 ? boost.label : "Aucun boost";
   if (boostCooldown > 0) {
     combatBoostDetail.textContent = `Recharge : ${Math.ceil(boostCooldown)} s · ×${count}`;
@@ -4523,6 +5059,11 @@ const waveMusicUrl = "./assets/magnific-footsteps-in-the-dark.mp3";
 let waveMusic;
 let waveMusicSource;
 
+// Monde 2 : musique de Noël sinistre « Le Père Noël des Ténèbres » à la place de la musique du monde 1.
+const world2MusicUrl = "./assets/musique-noel-tenebres.mp3";
+let world2Music;
+let world2MusicSource;
+
 function ensureWaveMusic() {
   if (!audioContext || !musicMaster) return;
   if (!waveMusic) {
@@ -4532,11 +5073,23 @@ function ensureWaveMusic() {
     waveMusicSource = audioContext.createMediaElementSource(waveMusic);
     waveMusicSource.connect(musicMaster);
   }
-  if (gameActive && soundEnabled && musicEnabled) {
-    const playback = waveMusic.play();
-    if (playback) playback.catch(() => {});
-  } else {
-    waveMusic.pause();
+  if (!world2Music && currentWorld === 2) {
+    world2Music = new Audio(world2MusicUrl);
+    world2Music.loop = true;
+    world2Music.preload = "auto";
+    world2MusicSource = audioContext.createMediaElementSource(world2Music);
+    world2MusicSource.connect(musicMaster);
+  }
+  const playing = gameActive && soundEnabled && musicEnabled;
+  const active = currentWorld === 2 && world2Music ? world2Music : waveMusic;
+  for (const track of [waveMusic, world2Music]) {
+    if (!track) continue;
+    if (playing && track === active) {
+      const playback = track.play();
+      if (playback) playback.catch(() => {});
+    } else {
+      track.pause();
+    }
   }
 }
 
@@ -5142,6 +5695,26 @@ const creatureVoices = {
   "archer-de-lombre": { pitch: 210, vowel: "e", duration: 0.35, volume: 0.15, growl: 0.25, growlRate: 40, extra: "hiss" },
   "soldat-de-lombre": { pitch: 140, vowel: "a", duration: 0.48, volume: 0.19, growl: 0.45, growlRate: 34, drive: 0.4, extra: "armor" },
   "goule-de-lombre": { pitch: 165, vowel: "e", duration: 0.55, volume: 0.18, growl: 0.7, growlRate: 55, drive: 0.55, extra: "wet" },
+  "pere-noel-tordu": { pitch: 80, vowel: "o", duration: 1.3, volume: 0.34, growl: 0.6, growlRate: 26, drive: 0.55, extra: "bells" },
+  "mere-froide": { pitch: 420, vowel: "i", duration: 1.1, volume: 0.26, vibrato: 0.05, extra: "whisper" },
+  "grinch-demoniaque": { pitch: 150, vowel: "e", duration: 0.9, volume: 0.28, growl: 0.5, growlRate: 42, drive: 0.4, extra: "hiss" },
+  "homme-pain-epices": { pitch: 70, vowel: "u", duration: 1.3, volume: 0.34, growl: 0.5, growlRate: 24, drive: 0.6, extra: "stone" },
+  "maitre-cadeaux-noirs": { pitch: 58, vowel: "o", duration: 1.6, volume: 0.36, growl: 0.6, growlRate: 30, drive: 0.8, layers: [1.5, 2.02], extra: "roar" },
+  "lutin-possede": { pitch: 600, vowel: "i", duration: 0.4, volume: 0.14, laugh: 3, extra: "bells" },
+  "renne-squelette": { pitch: 230, vowel: "o", duration: 0.55, volume: 0.15, vibrato: 0.06, vibratoRate: 5, extra: "bones" },
+  "bonhomme-neige": { pitch: 120, vowel: "o", duration: 0.55, volume: 0.17, growl: 0.45, growlRate: 30, drive: 0.4 },
+  "flocon-vivant": { pitch: 880, vowel: "i", duration: 0.35, volume: 0.1, vibrato: 0.1, vibratoRate: 12 },
+  "esprit-gele": { pitch: 480, vowel: "u", duration: 0.75, volume: 0.12, vibrato: 0.09, vibratoRate: 4, extra: "hiss" },
+  "gardien-glace": { pitch: 100, vowel: "a", duration: 0.5, volume: 0.19, growl: 0.45, growlRate: 34, drive: 0.4, extra: "stone" },
+  "lutin-voleur": { pitch: 640, vowel: "e", duration: 0.35, volume: 0.13, laugh: 3 },
+  "chien-neiges": { pitch: 190, vowel: "a", duration: 0.5, volume: 0.17, growl: 0.7, growlRate: 50, drive: 0.5 },
+  "lutin-kamikaze": { pitch: 700, vowel: "i", duration: 0.3, volume: 0.13, vibrato: 0.08, vibratoRate: 18 },
+  "bonhomme-pain-epices": { pitch: 300, vowel: "o", duration: 0.45, volume: 0.15, growl: 0.3, growlRate: 36 },
+  "sucette-vivante": { pitch: 560, vowel: "a", duration: 0.4, volume: 0.13, laugh: 3, extra: "bells" },
+  "ours-sucre": { pitch: 95, vowel: "o", duration: 0.55, volume: 0.2, growl: 0.5, growlRate: 28, drive: 0.4 },
+  "ombre-noel": { pitch: 500, vowel: "u", duration: 0.7, volume: 0.12, vibrato: 0.09, vibratoRate: 4, extra: "hiss" },
+  "cadeau-maudit": { pitch: 260, vowel: "e", duration: 0.45, volume: 0.15, growl: 0.4, growlRate: 40, extra: "wet" },
+  "loup-noel": { pitch: 170, vowel: "a", duration: 0.55, volume: 0.18, growl: 0.7, growlRate: 52, drive: 0.55 },
 };
 const crySoundTimes = new Map();
 
@@ -5235,6 +5808,11 @@ const gunSounds = {
   "pistolet-givre": { crack: 3800, body: 1200, thump: 140, tail: 0.4, volume: 0.3, frost: true },
   "baguette-foudre": { crack: 2400, body: 900, thump: 60, tail: 0.5, volume: 0.22, zap: true },
   "blaster-neon": { crack: 2000, body: 1400, thump: 180, tail: 0.25, volume: 0.2, laser: true },
+  "pistolet-glacon": { crack: 3800, body: 1200, thump: 140, tail: 0.4, volume: 0.3, frost: true },
+  "lance-cadeaux": { crack: 1800, body: 420, thump: 70, tail: 0.9, volume: 0.42, fire: true },
+  "canon-boules-neige": { crack: 1500, body: 420, thump: 70, tail: 1.1, volume: 0.44, frost: true, scatter: true },
+  "baguette-etoile": { crack: 2400, body: 900, thump: 60, tail: 0.5, volume: 0.22, zap: true },
+  "canon-traineau-noir": { crack: 1700, body: 380, thump: 62, tail: 1, volume: 0.46, shadow: true, double: true },
 };
 
 function playGunshot(weaponId) {
@@ -5300,6 +5878,11 @@ const bladeSounds = {
   "marteau-guerre": { low: 140, high: 800, length: 0.42, volume: 0.3, extra: "heavy" },
   "dague-assassin": { low: 900, high: 4200, length: 0.12, volume: 0.16, extra: "venom" },
   "katana-ombre": { low: 600, high: 3800, length: 0.18, volume: 0.22, extra: "ring" },
+  "canne-sucre": { low: 420, high: 2400, length: 0.24, volume: 0.24, extra: "ring" },
+  "hache-glacee": { low: 220, high: 1200, length: 0.34, volume: 0.28, extra: "heavy" },
+  "epee-mere-froide": { low: 700, high: 3200, length: 0.17, volume: 0.2, extra: "ghost" },
+  "sceptre-roi-hiver": { low: 260, high: 2000, length: 0.34, volume: 0.28, extra: "moon" },
+  "fourche-krampus": { low: 500, high: 2600, length: 0.2, volume: 0.22, extra: "thrust" },
 };
 
 function playBladeSwing(weaponId) {
@@ -5515,25 +6098,57 @@ const specialShotSounds = {
   },
 };
 
+specialShotSounds["arbalete-lutin"] = () => specialShotSounds.arbalete();
+
 function playSpecialShot(weaponId) {
   const shot = specialShotSounds[weaponId];
   if (shot) shot();
   else playNoise({ type: "bandpass", frequency: 500, frequencyEnd: 1400, q: 2, duration: 0.1, volume: 0.2 });
 }
 
+// Répliques des boss, en français : une au hasard à l'arrivée, une à la mort (sous-titrées à l'écran).
 const bossLines = {
-  gardien: { text: "Turn back. This gate is mine.", pitch: 0.62, rate: 0.84 },
-  chasseur: { text: "Run. I already see you.", pitch: 0.9, rate: 1.02 },
-  colosse: { text: "Too small. I will break you.", pitch: 0.42, rate: 0.76 },
-  "fossoyeur-maudit": { text: "Dig deeper. The dead are not finished.", pitch: 0.5, rate: 0.8 },
-  "epouvantail-automne": { text: "Stay in my field. The crows are hungry.", pitch: 0.72, rate: 0.86 },
-  "maitre-des-cauchemars": { text: "Close your eyes. I live in the dark.", pitch: 0.46, rate: 0.78 },
-  "bouffon-frondeur": { text: "Smile wider. The crowd wants blood.", pitch: 1.25, rate: 1.08 },
-  "mega-cauchemar": { text: "Bow to the throne. Your night ends here.", pitch: 0.38, rate: 0.72 },
+  gardien: { lines: ["Fais demi-tour ! Cette porte m'appartient.", "Personne ne passe... personne ne repart."], death: "La porte... s'effondre...", pitch: 0.62, rate: 0.84 },
+  chasseur: { lines: ["Cours donc. Je te vois déjà.", "Ta peur a une odeur, petit."], death: "Ma proie... m'a échappé...", pitch: 0.9, rate: 1.02 },
+  colosse: { lines: ["Trop petit. Je vais te briser.", "Mes poings écraseront tes os !"], death: "Impossible... un si petit être...", pitch: 0.42, rate: 0.76 },
+  "fossoyeur-maudit": { lines: ["Creuse plus profond. Les morts n'ont pas fini.", "Ta tombe est déjà prête."], death: "Même moi... je retourne à la terre...", pitch: 0.5, rate: 0.8 },
+  "epouvantail-automne": { lines: ["Reste dans mon champ. Les corbeaux ont faim.", "Tu seras mon prochain épouvantail."], death: "Mes corbeaux... envolez-vous...", pitch: 0.72, rate: 0.86 },
+  "maitre-des-cauchemars": { lines: ["Ferme les yeux. Je vis dans le noir.", "Tes pires cauchemars ne font que commencer."], death: "Le rêve... se brise...", pitch: 0.46, rate: 0.78 },
+  "bouffon-frondeur": { lines: ["Souris plus fort ! La foule veut du sang.", "Hi hi hi ! Dansons, petit pantin !"], death: "Le spectacle... est fini...", pitch: 1.25, rate: 1.08 },
+  "mega-cauchemar": { lines: ["Incline-toi devant le trône. Ta nuit s'achève ici.", "Je suis le Chambellan. Nul ne défie la nuit."], death: "Le trône... s'éteint... la nuit... se lève...", pitch: 0.38, rate: 0.72 },
+  "pere-noel-tordu": { lines: ["Ho ho ho... Tu as été très, très vilain.", "Pas de cadeau pour toi cette année."], death: "Ho... ho... plus de Noël...", pitch: 0.4, rate: 0.78 },
+  "mere-froide": { lines: ["L'hiver ne pardonne jamais. Gèle avec moi.", "Mon souffle éteindra ton dernier feu."], death: "Le givre... fond... enfin...", pitch: 1.1, rate: 0.82 },
+  "grinch-demoniaque": { lines: ["Chaque cadeau est à moi. Chaque sourire, volé.", "Noël n'aura pas lieu !"], death: "Mes cadeaux... rendez-moi mes cadeaux...", pitch: 0.7, rate: 0.95 },
+  "homme-pain-epices": { lines: ["Fais de beaux rêves. Je vais te cuire au four.", "Croque-moi si tu l'oses... si tu le peux !"], death: "Je... m'émiette...", pitch: 0.45, rate: 0.8 },
+  "maitre-cadeaux-noirs": { lines: ["Ouvre les cadeaux noirs. La nuit de Noël m'appartient.", "Chaque cadeau cache ta fin."], death: "Le dernier cadeau... c'était moi...", pitch: 0.36, rate: 0.72 },
 };
 
+let bossSpeechTimer = 0;
+
+function showBossSpeech(name, text) {
+  const boss = bossTypes.find((item) => item.name === name);
+  let box = arena.querySelector(".boss-speech");
+  if (!box) {
+    box = document.createElement("div");
+    box.className = "boss-speech";
+    box.setAttribute("role", "status");
+    box.setAttribute("aria-live", "polite");
+    arena.append(box);
+  }
+  const title = document.createElement("strong");
+  title.textContent = boss?.label ?? name;
+  const quote = document.createElement("span");
+  quote.textContent = `« ${text} »`;
+  box.replaceChildren(title, quote);
+  box.classList.remove("is-visible");
+  void box.offsetWidth;
+  box.classList.add("is-visible");
+  window.clearTimeout(bossSpeechTimer);
+  bossSpeechTimer = window.setTimeout(() => box.classList.remove("is-visible"), 4300);
+}
+
 function playBossBoom(name) {
-  const heavy = name === "mega-cauchemar" || name === "colosse";
+  const heavy = name === "mega-cauchemar" || name === "colosse" || name === "maitre-cadeaux-noirs" || name === "homme-pain-epices";
   playNoise({ type: "lowpass", frequency: heavy ? 700 : 420, frequencyEnd: 40, duration: heavy ? 1.3 : 0.8, volume: heavy ? 0.55 : 0.4, attack: 0.01 });
   playPitch({ frequency: heavy ? 55 : 80, frequencyEnd: 28, duration: heavy ? 0.9 : 0.5, volume: heavy ? 0.5 : 0.32 });
   if (name === "epouvantail-automne") {
@@ -5552,17 +6167,21 @@ function playBossBoom(name) {
   }
 }
 
-function speakBossLine(name) {
+function speakBossLine(name, moment = "arrive") {
   const line = bossLines[name];
-  if (!line || !window.speechSynthesis || !soundEnabled || !effectsEnabled) return;
+  if (!line) return;
+  const text = moment === "death" ? line.death : line.lines[Math.floor(Math.random() * line.lines.length)];
+  showBossSpeech(name, text);
+  if (!window.speechSynthesis || !soundEnabled || !effectsEnabled) return;
   const { master, effects } = gameSettings.volumes;
   window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(line.text);
-  utterance.lang = "en-US";
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "fr-FR";
   utterance.pitch = line.pitch;
   utterance.rate = line.rate;
   utterance.volume = Math.max(0.15, (master / 100) * (effects / 100));
-  const voice = window.speechSynthesis.getVoices().find((item) => item.lang?.toLowerCase().startsWith("en"));
+  const voices = window.speechSynthesis.getVoices();
+  const voice = voices.find((item) => item.lang?.toLowerCase().replace("_", "-").startsWith("fr"));
   if (voice) utterance.voice = voice;
   window.speechSynthesis.speak(utterance);
 }
@@ -5645,6 +6264,7 @@ function playSound(name, type) {
     const pitch = type === "gardien" ? 240 : type === "chasseur" ? 300 : 125;
     playTone(pitch, 0.5, "triangle", 0.25, 2.2);
     playTone(pitch * 1.33, 0.65, "sine", 0.2, 1.7);
+    speakBossLine(type, "death");
   }
   if (name === "portal-open") {
     playTone(180, 0.7, "sine", 0.22, 3.2);
@@ -5976,7 +6596,7 @@ function updateAutoShootControl() {
   const shootKey = keyLabel("shoot").toLowerCase();
   controlsHint.textContent = `${move} / flèches · ${keyLabel("dodge")} esquive · ${keyLabel("ranged")}/${keyLabel("melee")} ou ${keyLabel("swap")} changer d'arme · ${keyLabel("pickup")} ramasser · ${keyLabel("power")} pouvoir · ${keyLabel("boost")} boost · ${autoShootEnabled
     ? `Tir auto (clic ou ${shootKey} pour viser)`
-    : `Clic ou ${shootKey} pour tirer`} · Échap paramètres`;
+    : `Clic ou ${shootKey} pour tirer`}${camera.tps && chosenDevice !== "phone" ? " · Clic = caméra à la souris (X/C pour tourner)" : ""} · Échap paramètres`;
   const character = loadoutOptions.characters.find((item) => item.id === progression.equipped.characters);
   player.setAttribute(
     "aria-label",
@@ -6022,6 +6642,58 @@ function playFootsteps(delta, running = false) {
   }
 }
 
+// Champ de maïs de la carte 2 : en le traversant, le joueur couche les tiges, fait bruisser les feuilles et en arrache quelques-unes.
+const cornFields = { 2: [[0.69, 0.28, 0.91, 0.8]] };
+let cornRustle = 0;
+let cornSoundElapsed = 0;
+
+function isInCornField() {
+  const fields = cornFields[arena.dataset.wave];
+  if (!fields || stage === "ultimate") return false;
+  const center = playerCenter();
+  const u = center.x / playWorldWidth();
+  const v = center.y / playWorldHeight();
+  return fields.some(([u0, v0, u1, v1]) => u >= u0 && u <= u1 && v >= v0 && v <= v1);
+}
+
+function playCornRustle() {
+  const base = 2300 + Math.random() * 900;
+  playNoise({ duration: 0.24 + Math.random() * 0.08, volume: 0.05 + Math.random() * 0.025, type: "bandpass", frequency: base, frequencyEnd: base * 0.55, q: 0.9, attack: 0.04 });
+  playNoise({ duration: 0.16, volume: 0.032, type: "highpass", frequency: 5200, frequencyEnd: 3000, q: 0.6, attack: 0.03, delay: 0.05 });
+}
+
+function createCornLeaf() {
+  const center = playerCenter();
+  const leaf = document.createElement("span");
+  leaf.className = "corn-leaf";
+  leaf.setAttribute("aria-hidden", "true");
+  leaf.style.left = `${center.x + (Math.random() - 0.5) * 26}px`;
+  leaf.style.top = `${center.y + (Math.random() - 0.2) * 22}px`;
+  leaf.style.setProperty("--dx", `${((Math.random() - 0.5) * 46).toFixed(1)}px`);
+  leaf.style.setProperty("--dy", `${(-18 - Math.random() * 30).toFixed(1)}px`);
+  leaf.style.setProperty("--rot", `${((Math.random() - 0.5) * 540).toFixed(0)}deg`);
+  world.append(leaf);
+  window.setTimeout(() => leaf.remove(), 950);
+}
+
+function updateCornRustle(delta, moving) {
+  const inside = isInCornField();
+  // force envoyée au shader : les tiges plient autour du joueur, plus fort quand il avance
+  const target = inside || moving ? (moving ? 1 : 0.4) : 0.4;
+  cornRustle += (target - cornRustle) * Math.min(1, delta * 8);
+  if (inside && moving) {
+    cornSoundElapsed += delta;
+    if (cornSoundElapsed >= 0.2) {
+      cornSoundElapsed = 0.04 * Math.random();
+      playCornRustle();
+      createCornLeaf();
+      if (Math.random() < 0.6) createCornLeaf();
+    }
+  } else {
+    cornSoundElapsed = 0.14;
+  }
+}
+
 function createRunDust() {
   const center = playerCenter();
   const scale = scaleActor();
@@ -6042,21 +6714,34 @@ function formatClock(totalSeconds) {
 
 function getBossArrivalTime() {
   if (stage === "waves" || stage === "boss-wave") return bossArrivalTimeLeft;
-  if (stage === "portal" || stage === "ultimate") return finalBossArrivalTimeLeft;
+  if (stage === "portal" || stage === "ultimate" || stage === "final2") return finalBossArrivalTimeLeft;
   return Infinity;
 }
 
+// Le Cauchemar de Noël est nettement plus dur que le monde 1 : monstres plus nombreux, plus rapides, plus costauds.
+const world2Tuning = {
+  enemyHealth: 2.1, enemyDamage: 1.3, enemySpeed: 1.12,
+  bossHealth: 2.0, bossDamage: 1.25, bossSpeed: 1.1,
+  spawnRate: 1.3, capBonus: 6, extraMinions: 1,
+};
+
 function getEnemyCap() {
-  if (stage === "portal" || stage === "ultimate") return finalWaveMaxEnemies;
-  if (stage === "boss-wave" || waveNumber >= 3) return maxEnemiesOnField + 8;
-  return maxEnemiesOnField;
+  const bonus = currentWorld === 2 ? world2Tuning.capBonus : 0;
+  if (stage === "portal" || stage === "ultimate" || stage === "final2") return finalWaveMaxEnemies + bonus;
+  if (stage === "boss-wave" || waveNumber >= 3) return maxEnemiesOnField + 8 + bonus;
+  return maxEnemiesOnField + bonus;
 }
 
 function getMinionSpawnPlan() {
-  if (stage === "portal" || stage === "ultimate") return { interval: 1.5, count: 4 };
-  if (stage === "boss-wave") return { interval: 1.3, count: 5 };
-  if (waveNumber >= 3) return { interval: 1.6, count: 4 };
-  return { interval: 2.5, count: 3 };
+  let plan;
+  if (stage === "portal" || stage === "ultimate" || stage === "final2") plan = { interval: 1.5, count: 4 };
+  else if (stage === "boss-wave") plan = { interval: 1.3, count: 5 };
+  else if (waveNumber >= 3) plan = { interval: 1.6, count: 4 };
+  else plan = { interval: 2.5, count: 3 };
+  if (currentWorld === 2) {
+    plan = { interval: plan.interval / world2Tuning.spawnRate, count: Math.min(8, plan.count + world2Tuning.extraMinions) };
+  }
+  return plan;
 }
 
 /* Le texte du chrono ne change qu'une fois par seconde : on évite de réécrire
@@ -6117,10 +6802,11 @@ function getPlayerBody() {
 const obstacleShapeCache = { key: "", shapes: [] };
 
 function getObstacleShapes() {
-  if (stage === "ultimate") return [];
+  // Salle du trône : seuls les piliers de la carte 2D bloquent (le mode 3D n'a pas d'obstacles ici).
+  if (stage === "ultimate" && (window.OV_3D || !window.OBSTACLES_2D)) return [];
   const width = playWorldWidth();
   const height = playWorldHeight();
-  const key = `${arena.dataset.wave}|${width}x${height}`;
+  const key = `${stage === "ultimate" ? "throne" : arena.dataset.wave}|${width}x${height}`;
   if (obstacleShapeCache.key === key) return obstacleShapeCache.shapes;
   obstacleShapeCache.key = key;
   obstacleShapeCache.shapes = currentMapObstacles().map((obstacle) => {
@@ -6279,8 +6965,16 @@ function updatePlayer() {
   player.style.left = `${x}px`;
   player.style.top = `${y}px`;
   player.style.setProperty("--hero-angle", `${Math.atan2(facing.y, facing.x) + Math.PI / 2}rad`);
+  const facingView = worldToView(facing.x, facing.y);
   if (aimHoldRemaining > 0) player.classList.toggle("is-facing-left", aimFacingLeft);
-  else if (Math.abs(facing.x) > 0.2) player.classList.toggle("is-facing-left", facing.x < 0);
+  else if (Math.abs(facingView.x) > 0.2) player.classList.toggle("is-facing-left", facingView.x < 0);
+  // modèle 3D posé dans la carte : cap absolu du monde ; sinon sticker 2D : cap relatif à la caméra
+  if (camera.tps) {
+    const inWorld = player.classList.contains("is-world");
+    const turn = aimHoldRemaining > 0 ? (inWorld ? aimTurnWorld : aimTurn) : (inWorld ? Math.atan2(facing.x, facing.y) : Math.atan2(facingView.x, facingView.y));
+    player.dataset.turn = turn.toFixed(3);
+  }
+  else delete player.dataset.turn;
   updateFog();
 }
 
@@ -6291,8 +6985,49 @@ function playerCenter() {
   };
 }
 
+// Obstacles de la carte : bâtiments et véhicules, plus les troncs d'arbres (tree-obstacles.js).
+// Seuls les troncs bloquent : on passe librement entre les arbres et sous leur feuillage.
+// Sur les cartes 1 à 4 (îles), les bâtiments sont rétrécis pour élargir les passages ; la vague 5 reste inchangée.
+// Même règle que widenPoly() dans three/maps.js : le décor 3D est construit sur ces mêmes polygones.
+const obstacleListCache = {};
+const obstacleWiden = 0.8;
+
+function widenObstacle(obstacle) {
+  const poly = typeof obstacle[0] === "number"
+    ? [[obstacle[0], obstacle[1]], [obstacle[2], obstacle[1]], [obstacle[2], obstacle[3]], [obstacle[0], obstacle[3]]]
+    : obstacle;
+  const us = poly.map((point) => point[0]);
+  const vs = poly.map((point) => point[1]);
+  const centerU = (Math.min(...us) + Math.max(...us)) / 2;
+  const centerV = (Math.min(...vs) + Math.max(...vs)) / 2;
+  const scaled = poly.map(([u, v]) => [centerU + (u - centerU) * obstacleWiden, centerV + (v - centerV) * obstacleWiden]);
+  const shift = (values, low, high) => {
+    const lo = Math.min(...values);
+    const hi = Math.max(...values);
+    if (hi - lo > high - low) return 0;
+    if (lo < low) return low - lo;
+    if (hi > high) return high - hi;
+    return 0;
+  };
+  const du = shift(scaled.map((point) => point[0]), 0.04, 0.96);
+  const dv = shift(scaled.map((point) => point[1]), 0.06, 0.95);
+  return scaled.map(([u, v]) => [Number((u + du).toFixed(4)), Number((v + dv).toFixed(4))]);
+}
+
 function currentMapObstacles() {
-  return bossMapObstacles[arena.dataset.wave] ?? mapObstacles;
+  // Mode 2D : collisions tracées sur les cartes cartoon sombres (obstacles-2d.js).
+  if (!window.OV_3D && window.OBSTACLES_2D) {
+    const key2d = stage === "ultimate" ? "throne" : arena.dataset.wave;
+    return window.OBSTACLES_2D[key2d] ?? window.OBSTACLES_2D[1];
+  }
+  const wave = arena.dataset.wave;
+  if (obstacleListCache[wave]) return obstacleListCache[wave];
+  const base = bossMapObstacles[wave] ?? mapObstacles;
+  const island = wave !== "5";
+  const treeSets = typeof treeObstacles === "undefined" ? {} : treeObstacles;
+  const trees = treeSets[wave === "5" ? "5" : (treeSets[wave] ? wave : "1")] ?? [];
+  obstacleListCache[wave] = [...(island ? base.map(widenObstacle) : base), ...trees];
+  return obstacleListCache[wave];
 }
 
 function findFreeSpot(x, y, radius, footDrop = radius * footDropRatio, footRadius = radius * footRadiusRatio) {
@@ -6361,6 +7096,7 @@ function startDodge() {
   if (isActionHeld("right")) dx += 1;
   if (isActionHeld("up")) dy -= 1;
   if (isActionHeld("down")) dy += 1;
+  if (camera.tps && camera.yaw !== 0 && (dx !== 0 || dy !== 0)) ({ x: dx, y: dy } = viewToWorld(dx, dy));
   const length = Math.hypot(dx, dy);
   dodgeDirection.x = length > 0 ? dx / length : facing.x;
   dodgeDirection.y = length > 0 ? dy / length : facing.y;
@@ -6534,9 +7270,9 @@ function moveEnemyToward(enemy, targetX, targetY, distance, delta) {
   const step = Math.min(distance, enemy.speed * enrageBoost * delta);
   const baseAngle = Math.atan2(targetY - enemy.y, targetX - enemy.x);
   const offsets = [0, 0.55, -0.55, 1.05, -1.05, 1.57, -1.57, Math.PI];
-  if (Math.abs(targetX - enemy.x) > 6) {
-    enemy.element.classList.toggle("enemy-facing-left", targetX < enemy.x);
-  }
+  const heading = worldToView(targetX - enemy.x, targetY - enemy.y);
+  if (Math.abs(heading.x) > 6) enemy.element.classList.toggle("enemy-facing-left", heading.x < 0);
+  faceEnemyWorld(enemy, targetX - enemy.x, targetY - enemy.y);
 
   for (const offset of offsets) {
     const angle = baseAngle + offset;
@@ -6614,44 +7350,171 @@ function motionScale() {
   return Math.max(0.32, Math.min(1, visible / (1400 / 1.6)));
 }
 
+// cap d'un ennemi (modèle 3D posé dans la carte) : tourné vers sa cible, en repère monde
+function faceEnemyWorld(enemy, dx, dy) {
+  if (!camera.tps || Math.hypot(dx, dy) < 4) return;
+  enemy.element.dataset.turn = Math.atan2(dx, dy).toFixed(2);
+}
+
 function updateFog() {
   syncPhoneView();
   const center = playerCenter();
   const scale = scaleActor();
   arena.style.setProperty("--world-scale", String(scale));
   arena.style.setProperty("--actor-scale", String(scale * characterScale));
+  arena.style.setProperty("--actor-s", String(scale * characterScale));
   const focus = cameraFocus();
   const viewW = arena.clientWidth;
   const viewH = arena.clientHeight;
   arena.style.setProperty("--cam-x", `${viewW / 2 - focus.x * camera.zoom}px`);
   arena.style.setProperty("--cam-y", `${viewH / 2 - focus.y * camera.zoom}px`);
   arena.style.setProperty("--cam-zoom", String(camera.zoom));
-  arena.style.setProperty("--fog-x", `${50 + (center.x - focus.x) * camera.zoom / viewW * 100}%`);
-  arena.style.setProperty("--fog-y", `${50 + (center.y - focus.y) * camera.zoom / viewH * 100}%`);
-  const fogScreen = chosenDevice === "phone"
+  arena.style.setProperty("--cam-mid-x", `${viewW / 2}px`);
+  arena.style.setProperty("--cam-mid-y", `${viewH / 2}px`);
+  arena.style.setProperty("--cam-focus-x", `${-focus.x * camera.zoom}px`);
+  arena.style.setProperty("--cam-focus-y", `${-focus.y * camera.zoom}px`);
+  arena.style.setProperty("--cam-tilt", `${camera.tilt}deg`);
+  arena.style.setProperty("--cam-yaw", `${camera.yaw}deg`);
+  arena.style.setProperty("--cam-persp", `${cameraPerspective()}px`);
+  arena.classList.toggle("cam-tps", camera.tps);
+  updateBillboardRotation();
+  const onScreen = projectView((center.x - focus.x) * camera.zoom, (center.y - focus.y) * camera.zoom);
+  arena.style.setProperty("--fog-x", `${50 + onScreen.x / viewW * 100}%`);
+  arena.style.setProperty("--fog-y", `${50 + onScreen.y / viewH * 100}%`);
+  const fogScreen = (chosenDevice === "phone"
     ? Math.min(viewW, viewH) * 0.46
-    : fogRadius * scale * camera.zoom;
+    : fogRadius * scale * camera.zoom) * (chosenDevice === "phone" ? 1 : onScreen.scale);
   arena.style.setProperty("--fog-radius", `${fogScreen}px`);
+  // carte en vrai relief : rendue tout de suite avec la même caméra que le CSS (pas de décalage avec les personnages)
+  window.MapLive?.frame({
+    viewW,
+    viewH,
+    zoom: camera.zoom,
+    tilt: camera.tilt,
+    yaw: camera.yaw,
+    tps: camera.tps,
+    persp: cameraPerspective(),
+    fx: focus.x,
+    fy: focus.y,
+    mapW: playWorldWidth(),
+    mapH: playWorldHeight(),
+    px: center.x,
+    py: center.y,
+    rustle: cornRustle,
+    actorS: scale * characterScale,
+  });
+}
+
+// Perspective de la caméra (même valeur que dans le CSS du monde).
+function cameraPerspective() {
+  return Math.max(arena.clientWidth, arena.clientHeight) * 1.4;
+}
+
+// Plan du monde (px écran, centré sur le point suivi) -> écran, avec inclinaison et perspective.
+function projectView(u, v) {
+  const tilt = (camera.tilt * Math.PI) / 180;
+  const yaw = (camera.yaw * Math.PI) / 180;
+  const persp = cameraPerspective();
+  const cos = Math.cos(yaw);
+  const sin = Math.sin(yaw);
+  const ru = u * cos - v * sin;      // le monde tourne autour du point suivi avant de s'incliner
+  const rv = u * sin + v * cos;
+  const k = persp / (persp - rv * Math.sin(tilt));
+  return { x: ru * k, y: rv * Math.cos(tilt) * k, scale: k };
+}
+
+// Écran (décalage par rapport au centre) -> plan du monde : inverse de projectView.
+function unprojectView(sx, sy) {
+  const tilt = (camera.tilt * Math.PI) / 180;
+  const persp = cameraPerspective();
+  const rv = (sy * persp) / (persp * Math.cos(tilt) + sy * Math.sin(tilt));
+  const ru = (sx * (persp - rv * Math.sin(tilt))) / persp;
+  const yaw = (camera.yaw * Math.PI) / 180;
+  const cos = Math.cos(yaw);
+  const sin = Math.sin(yaw);
+  return { u: ru * cos + rv * sin, v: -ru * sin + rv * cos };
+}
+
+// Zone du monde visible autour du point suivi : plus large vers le haut (le fond s'éloigne), plus courte vers le bas.
+function cameraExtents() {
+  const halfW = arena.clientWidth / 2;
+  const halfH = arena.clientHeight / 2;
+  const topCorner = unprojectView(halfW, -halfH);
+  const bottom = unprojectView(0, halfH);
+  return {
+    half: Math.abs(topCorner.u) / camera.zoom,
+    top: -topCorner.v / camera.zoom,
+    bottom: bottom.v / camera.zoom,
+  };
+}
+
+// Direction « droit devant » de la caméra dans le plan du monde (px).
+function cameraForward() {
+  const yaw = (camera.yaw * Math.PI) / 180;
+  return { x: -Math.sin(yaw), y: -Math.cos(yaw) };
+}
+
+// Vecteur du monde -> écran (même rotation que la caméra) et son inverse : déplacements, orientation des sprites.
+function worldToView(dx, dy) {
+  const yaw = (camera.yaw * Math.PI) / 180;
+  return { x: dx * Math.cos(yaw) - dy * Math.sin(yaw), y: dx * Math.sin(yaw) + dy * Math.cos(yaw) };
+}
+
+function viewToWorld(dx, dy) {
+  const yaw = (camera.yaw * Math.PI) / 180;
+  return { x: dx * Math.cos(yaw) + dy * Math.sin(yaw), y: -dx * Math.sin(yaw) + dy * Math.cos(yaw) };
+}
+
+// Rotation « face à l'écran » des sprites : annule la rotation et l'inclinaison du plan du monde (quaternion -> axe/angle CSS).
+let billboardRotation = "";
+function updateBillboardRotation() {
+  const tilt = (camera.tilt * Math.PI) / 180;
+  const yaw = (camera.yaw * Math.PI) / 180;
+  const bx = -Math.sin(tilt / 2);
+  const bw = Math.cos(tilt / 2);
+  const sz = -Math.sin(yaw / 2);
+  const cz = Math.cos(yaw / 2);
+  const w = cz * bw;
+  const x = cz * bx;
+  const y = sz * bx;
+  const z = sz * bw;
+  const length = Math.hypot(x, y, z);
+  const value = length < 1e-6
+    ? "0 0 1 0deg"
+    : `${(x / length).toFixed(5)} ${(y / length).toFixed(5)} ${(z / length).toFixed(5)} ${((2 * Math.acos(Math.max(-1, Math.min(1, w))) * 180) / Math.PI).toFixed(3)}deg`;
+  if (value === billboardRotation) return;
+  billboardRotation = value;
+  arena.style.setProperty("--bb-rot", value);
 }
 
 function cameraFocus() {
   const center = playerCenter();
-  const halfWidth = arena.clientWidth / (2 * camera.zoom);
-  const halfHeight = arena.clientHeight / (2 * camera.zoom);
+  if (camera.tps) {
+    // le point regardé est un peu devant le joueur : il apparaît dans le bas de l'écran, comme dans Fortnite
+    const forward = cameraForward();
+    return { x: center.x + forward.x * camera.lead, y: center.y + forward.y * camera.lead };
+  }
+  const extents = cameraExtents();
   const worldW = playWorldWidth();
   const worldH = playWorldHeight();
+  const clampAxis = (value, low, high) => (low > high ? (low + high) / 2 : Math.max(low, Math.min(high, value)));
+  // cartes 1 à 4 en relief : la caméra peut dépasser un peu le bord pour montrer la mer autour de l'île (jamais de vide)
+  const sea = stage !== "ultimate" && arena.dataset.wave !== "5" && arena.classList.contains("map-relief");
+  const marginX = sea ? worldW * 0.09 : 0;
+  const marginY = sea ? worldH * 0.09 : 0;
   return {
-    x: Math.max(halfWidth, Math.min(worldW - halfWidth, center.x)),
-    y: Math.max(halfHeight, Math.min(worldH - halfHeight, center.y)),
+    x: clampAxis(center.x, extents.half - marginX, worldW - extents.half + marginX),
+    y: clampAxis(center.y, extents.top - marginY, worldH - extents.bottom + marginY),
   };
 }
 
 function screenToWorld(clientX, clientY) {
   const bounds = arena.getBoundingClientRect();
   const focus = cameraFocus();
+  const plane = unprojectView(clientX - bounds.left - bounds.width / 2, clientY - bounds.top - bounds.height / 2);
   return {
-    x: focus.x + (clientX - bounds.left - bounds.width / 2) / camera.zoom,
-    y: focus.y + (clientY - bounds.top - bounds.height / 2) / camera.zoom,
+    x: focus.x + plane.u / camera.zoom,
+    y: focus.y + plane.v / camera.zoom,
   };
 }
 
@@ -6707,8 +7570,11 @@ function createImpact(x, y, kind = "seed", angle = 0, hitTarget = true, variant 
   });
 }
 
-function aimWeaponToward(directionX, directionY) {
+function aimWeaponToward(worldDirectionX, worldDirectionY) {
+  const { x: directionX, y: directionY } = worldToView(worldDirectionX, worldDirectionY);
   if (Math.abs(directionX) > 4) aimFacingLeft = directionX < 0;
+  aimTurn = Math.atan2(directionX, directionY);
+  aimTurnWorld = Math.atan2(worldDirectionX, worldDirectionY);
   const angle = Math.atan2(directionY, Math.abs(directionX)) * 180 / Math.PI;
   const armAim = Math.max(-70, Math.min(70, angle)) - 90;
   player.style.setProperty("--arm-aim", `${armAim.toFixed(1)}deg`);
@@ -7204,8 +8070,9 @@ function spawnBossMinion(bossName, count = 1) {
   if (!Number.isSafeInteger(count) || count < 1 || count > 8) throw new Error(`Nombre de sbires invalide : ${count}`);
   if (bossName && !bossMinionPools[bossName]) throw new Error(`Boss sans famille de sbires : ${bossName}`);
   const currentBossName = bossName ?? (stage === "boss-wave"
-    ? "bouffon-frondeur"
-    : stage === "portal" || stage === "ultimate" ? "mega-cauchemar" : waves[waveNumber - 1]?.bosses[0]);
+    ? (currentWorld === 2 ? world2BossWaveBoss : "bouffon-frondeur")
+    : stage === "final2" ? world2FinalBoss
+      : stage === "portal" || stage === "ultimate" ? "mega-cauchemar" : activeWaves()[waveNumber - 1]?.bosses[0]);
   const availableTypes = currentBossName ? bossMinionPools[currentBossName] : undefined;
   if (!availableTypes) throw new Error(`Aucune famille de sbires pour la vague ${waveNumber}.`);
   const firstType = Math.floor(Math.random() * availableTypes.length);
@@ -7238,13 +8105,16 @@ function createEnemy(typeName, isMinion = false, spawnFromEdge = false) {
   const lateWave = waveNumber >= 3 && stage !== "ultimate";
   const healthScaling = (1 + waveProgress * 0.32) * (lateWave ? 1.2 : 1);
   const damageScaling = (1 + waveProgress * 0.28) * (lateWave ? 1.18 : 1);
-  const minionScale = isMinion ? 0.9 : 1;
+  const minionScale = (isMinion ? 0.9 : 1) * (currentWorld === 2 ? 1.0 : 1);
+  const worldHealth = currentWorld === 2 ? world2Tuning.enemyHealth : 1;
+  const worldDamage = currentWorld === 2 ? world2Tuning.enemyDamage : 1;
+  const worldSpeed = currentWorld === 2 ? world2Tuning.enemySpeed : 1;
   const hits = isMinion ? 4 + Math.floor(waveProgress) : 5 + waveProgress * 2;
   const enemy = createCharacter(typeName, {
     ...base,
-    health: threatHealth(base.health * healthScaling * minionScale, hits),
-    damage: Math.ceil(base.damage * damageScaling * minionScale * 1.35),
-    speed: base.speed + Math.min(22, waveProgress * 3) + (lateWave ? 5 : 0),
+    health: threatHealth(base.health * healthScaling * minionScale * worldHealth, hits * worldHealth),
+    damage: Math.ceil(base.damage * damageScaling * minionScale * 1.35 * worldDamage),
+    speed: Math.round((base.speed + Math.min(22, waveProgress * 3) + (lateWave ? 5 : 0)) * worldSpeed),
     size: Math.round(base.size * (isMinion ? 0.9 : 1)),
   }, isMinion ? "enemy-minion" : "", spawnFromEdge);
   enemy.isMinion = isMinion;
@@ -7252,7 +8122,7 @@ function createEnemy(typeName, isMinion = false, spawnFromEdge = false) {
 }
 
 function getBossTier() {
-  if (stage === "ultimate") return 4;
+  if (stage === "ultimate" || stage === "final2") return 4;
   if (stage === "boss-wave") return 3;
   return Math.max(0, Math.min(2, waveNumber - 1));
 }
@@ -7265,9 +8135,9 @@ function createBoss(profileName) {
   const type = {
     ...profile,
     label: `${profile.label} ${"★".repeat(tier + 1)}`,
-    health: threatHealth(profile.health * (1 + tier * 0.6) * (lateBoss ? 1.22 : 1), profile.name === "mega-cauchemar" ? 48 : 18 + tier * 8),
-    damage: Math.round(profile.damage * (1 + tier * 0.38) * (lateBoss ? 1.32 : 1.15)),
-    speed: profile.speed + tier * 4 + (lateBoss ? 5 : 0),
+    health: threatHealth(profile.health * (1 + tier * 0.6) * (lateBoss ? 1.22 : 1) * (currentWorld === 2 ? world2Tuning.bossHealth : 1), (profile.name === "mega-cauchemar" ? 48 : 18 + tier * 8) * (currentWorld === 2 ? world2Tuning.bossHealth : 1)),
+    damage: Math.round(profile.damage * (1 + tier * 0.38) * (lateBoss ? 1.32 : 1.15) * (currentWorld === 2 ? world2Tuning.bossDamage : 1)),
+    speed: Math.round((profile.speed + tier * 4 + (lateBoss ? 5 : 0)) * (currentWorld === 2 ? world2Tuning.bossSpeed : 1)),
     size: profile.size + tier * 3,
     color: "boss",
     equipment: profile.name,
@@ -7401,6 +8271,11 @@ function createCharacter(typeName, type, extraClass = "", spawnFromEdge = false)
     "maitre-des-cauchemars": "boss-cauchemars.png",
     "bouffon-frondeur": "boss-bouffon.png",
     "mega-cauchemar": "boss-chambellan.png",
+    "pere-noel-tordu": "w2-boss-pere-noel.png",
+    "mere-froide": "w2-boss-mere-froide.png",
+    "grinch-demoniaque": "w2-boss-grinch.png",
+    "homme-pain-epices": "w2-boss-pain-epices.png",
+    "maitre-cadeaux-noirs": "w2-boss-maitre-cadeaux.png",
   };
   const bossArtFile = typeName === "boss" ? bossArtFiles[type.equipment] : undefined;
   const bossArt = bossArtFile ? createRigArt("enemy-boss-art", bossArtFile.replace(".png", "")) : undefined;
@@ -7415,6 +8290,21 @@ function createCharacter(typeName, type, extraClass = "", spawnFromEdge = false)
     "archer-de-lombre": "minion-archer-ombre.png",
     "soldat-de-lombre": "minion-soldat-ombre.png",
     "goule-de-lombre": "minion-goule-ombre.png",
+    "lutin-possede": "w2-min-lutin-possede.png",
+    "renne-squelette": "w2-min-renne-squelette.png",
+    "bonhomme-neige": "w2-min-bonhomme-neige.png",
+    "flocon-vivant": "w2-min-flocon.png",
+    "esprit-gele": "w2-min-esprit-gele.png",
+    "gardien-glace": "w2-min-gardien-glace.png",
+    "lutin-voleur": "w2-min-lutin-voleur.png",
+    "chien-neiges": "w2-min-chien-neiges.png",
+    "lutin-kamikaze": "w2-min-lutin-kamikaze.png",
+    "bonhomme-pain-epices": "w2-min-bonhomme-pain-epices.png",
+    "sucette-vivante": "w2-min-sucette.png",
+    "ours-sucre": "w2-min-ours-sucre.png",
+    "ombre-noel": "w2-min-ombre-noel.png",
+    "cadeau-maudit": "w2-min-cadeau-maudit.png",
+    "loup-noel": "w2-min-loup-noel.png",
   };
   const minionArtFile = minionArtFiles[typeName];
   const minionArt = minionArtFile
@@ -7494,12 +8384,13 @@ function findEnemySpawnPoint(radius, minPlayerDistance, spawnFromEdge = false) {
     if (stage === "ultimate") {
       return { name: "salle du trône", weight: 1, bounds: [0.08, 0.12, 0.92, 0.82] };
     }
-    const totalWeight = enemySpawnZones.reduce((total, zone) => total + zone.weight, 0);
+    const zones = currentWorld === 2 ? [{ name: "terrain", weight: 1, bounds: [0.04, 0.08, 0.96, 0.94] }] : enemySpawnZones;
+    const totalWeight = zones.reduce((total, zone) => total + zone.weight, 0);
     let selection = Math.random() * totalWeight;
-    return enemySpawnZones.find((zone) => {
+    return zones.find((zone) => {
       selection -= zone.weight;
       return selection < 0;
-    }) ?? enemySpawnZones[0];
+    }) ?? zones[0];
   };
   const isValid = (x, y) => {
     const center = playerCenter();
@@ -7522,7 +8413,7 @@ function findEnemySpawnPoint(radius, minPlayerDistance, spawnFromEdge = false) {
       ? [{ name: "bord droit", bounds: [0.55, 0.025, 0.98, 0.975] }]
       : spawnFromEdge
         ? [{ name: "terrain", bounds: [0.02, 0.025, 0.98, 0.975] }]
-        : enemySpawnZones;
+        : currentWorld === 2 ? [{ name: "terrain", bounds: [0.04, 0.08, 0.96, 0.94] }] : enemySpawnZones;
   for (const zone of fallbackZones) {
     const [left, top, right, bottom] = zone.bounds;
     const columns = [];
@@ -7562,7 +8453,7 @@ function damageEnemy(enemy, rawDamage, { knockback = true } = {}) {
     if (enemy.typeName === "boss") {
       bossAlive = false;
       bossSpawnElapsed = 0;
-      const isMegaBoss = enemy.profileName === "mega-cauchemar";
+      const isMegaBoss = enemy.profileName === "mega-cauchemar" || enemy.profileName === world2FinalBoss;
       const isWaveFourBoss = stage === "boss-wave";
       const bossXp = bossXpRewards[enemy.bossTier ?? 0];
       if (isMegaBoss) {
@@ -7606,13 +8497,15 @@ function damageEnemy(enemy, rawDamage, { knockback = true } = {}) {
         createHealthPickup(enemy.x + 14, enemy.y + 8, Math.max(1, Math.ceil(maxPlayerHealth * 0.5)));
       }
     }
-    if (enemy.typeName === "boss" && enemy.profileName === "mega-cauchemar") {
+    if (enemy.typeName === "boss" && (enemy.profileName === "mega-cauchemar" || enemy.profileName === world2FinalBoss)) {
       enemies.delete(enemy);
       setBossAnimationState(enemy, "defeated");
       for (const projectile of bossProjectiles) projectile.element.remove();
       bossProjectiles.clear();
       window.setTimeout(() => enemy.element.remove(), 650);
-      showGameOver(`Victoire ! Le Chambellan sorcier est vaincu : +55 pièces et l'arme dorée « ${goldenWeaponName} » conservée dans ton casier.`, true);
+      showGameOver(enemy.profileName === world2FinalBoss
+        ? `Victoire ! Le Maître des Cadeaux Noirs est vaincu : +55 pièces et l'arme dorée « ${goldenWeaponName} » conservée dans ton casier. Le Cauchemar de Noël est terminé !`
+        : `Victoire ! Le Chambellan sorcier est vaincu : +55 pièces et l'arme dorée « ${goldenWeaponName} » conservée dans ton casier.`, true);
     } else {
       createEnemyDeathEffect(enemy);
       removeEnemy(enemy);
@@ -7682,7 +8575,7 @@ function collectBossRelic(relicId) {
 }
 
 function chooseWeaponDrop(rarity) {
-  const matchingWeapons = loadoutOptions.weapons.filter((weapon) => weapon.rarity === rarity && !weapon.crate);
+  const matchingWeapons = loadoutOptions.weapons.filter((weapon) => weapon.rarity === rarity && !weapon.crate && !weapon.noel && !weapon.exclusive);
   const unownedWeapons = rarity === "doree"
     ? matchingWeapons.filter((weapon) => !progression.unlocked.weapons.includes(weapon.id))
     : matchingWeapons;
@@ -7701,6 +8594,37 @@ function unlockGoldenBossWeapon(weapon) {
     saveProgression(`Le boss a rapporté 55 pièces ; ${weapon.label} est déjà dans ton casier.`);
   }
   if (!lockerScreen.hidden) renderLocker();
+}
+
+function startFinalWave2() {
+  restoreHealthForNextWave();
+  for (const enemy of enemies) enemy.element.remove();
+  enemies.clear();
+  clearPowerFields();
+  arena.querySelectorAll(".stone, .impact-burst, .hit-fx, .muzzle-fx, .mega-shockwave").forEach((effect) => effect.remove());
+  waveCleared = false;
+  stage = "final2";
+  waveNumber = 5;
+  bossesRemaining = [world2FinalBoss];
+  bossSpawnElapsed = 99;
+  bossWarningShown = false;
+  bossAlive = false;
+  minionSpawnElapsed = 0;
+  timeLeft = finalWaveLength;
+  fogRadius = 150;
+  arena.dataset.wave = mapKey(5);
+  arena.dataset.world = String(currentWorld);
+  settleOnCurrentMap();
+  waveDisplay.textContent = `Vague 5 · ${world2MapNames[5]}`;
+  waveCountdown = waveCountdownLength;
+  waveCountdownNumber.textContent = String(waveCountdownLength);
+  waveCountdownLabel.textContent = `VAGUE 5 — ${world2MapNames[5]}`;
+  waveCountdownDisplay.setAttribute("aria-label", `La vague finale commence dans ${waveCountdownLength} secondes`);
+  waveCountdownDisplay.hidden = false;
+  updateTimer();
+  updateFog();
+  updateCombatLoadout();
+  syncSoundtrack();
 }
 
 function startPortalWave() {
@@ -7784,7 +8708,9 @@ function spawnPortal(destination, point) {
   part("portal-plinth portal-plinth-left", gate);
   part("portal-plinth portal-plinth-right", gate);
   const sparks = part("portal-sparks", gate);
-  for (let index = 0; index < 10; index += 1) {
+  const orbit = part("portal-orbit", gate);
+  for (let index = 0; index < 3; index += 1) part("portal-orb", orbit).style.setProperty("--i", String(index));
+  for (let index = 0; index < 16; index += 1) {
     const spark = part("portal-spark", sparks);
     spark.style.setProperty("--x", `${randomBetween(18, 82).toFixed(1)}%`);
     spark.style.setProperty("--drift", `${randomBetween(-14, 14).toFixed(1)}px`);
@@ -7811,7 +8737,7 @@ function enterPortal() {
   if (!gameActive || !portalElement) return;
   if (portalDestination === "throne" && stage !== "portal") return;
   const center = playerCenter();
-  if (Math.hypot(center.x - playWorldWidth() * portalPoint.x, center.y - playWorldHeight() * portalPoint.y) > 115) {
+  if (Math.hypot(center.x - playWorldWidth() * portalPoint.x, center.y - playWorldHeight() * portalPoint.y) > 135) {
     roundMessage.textContent = "Approche-toi du portail pour entrer.";
     roundMessage.hidden = false;
     window.setTimeout(() => { roundMessage.hidden = true; }, 1200);
@@ -7825,8 +8751,10 @@ function enterPortal() {
   removePortal();
   waveCleared = false;
   collectRemainingPickups();
-  if (stage === "boss-wave") startPortalWave();
-  else advanceWave();
+  if (stage === "boss-wave") {
+    if (currentWorld === 2) startFinalWave2();
+    else startPortalWave();
+  } else advanceWave();
 }
 
 function collectRemainingPickups() {
@@ -7857,11 +8785,28 @@ function clearWaveAfterBoss(boss) {
   }, 650);
   window.setTimeout(() => {
     if (clearedRound !== roundId || !gameActive || !waveCleared) return;
-    spawnPortal("next-wave", boss.spawnPoint ?? { x: boss.x / playWorldWidth(), y: boss.y / playWorldHeight() });
+    spawnPortal("next-wave", safePortalPoint(boss.spawnPoint ?? { x: boss.x / playWorldWidth(), y: boss.y / playWorldHeight() }));
     roundMessage.textContent = `Le portail est ouvert : entre dedans (ou appuie sur ${keyLabel("portal")}) pour la vague suivante.`;
     roundMessage.hidden = false;
     window.setTimeout(() => { if (clearedRound === roundId) roundMessage.hidden = true; }, 3200);
   }, 900);
+}
+
+// Un portail ne doit jamais apparaître dans un décor : on le décale sur un point praticable proche.
+function safePortalPoint(preferred) {
+  const width = playWorldWidth();
+  const height = playWorldHeight();
+  const clear = (x, y) => canOccupy(x * width, y * height, 44);
+  if (clear(preferred.x, preferred.y)) return { x: preferred.x, y: preferred.y };
+  for (let ring = 1; ring <= 8; ring += 1) {
+    for (let step = 0; step < 12; step += 1) {
+      const angle = (step / 12) * Math.PI * 2;
+      const x = preferred.x + Math.cos(angle) * ring * 0.04;
+      const y = preferred.y + Math.sin(angle) * ring * 0.05;
+      if (x > 0.06 && x < 0.94 && y > 0.1 && y < 0.9 && clear(x, y)) return { x, y };
+    }
+  }
+  return { x: 0.5, y: 0.5 };
 }
 
 function banishMinions() {
@@ -7878,6 +8823,7 @@ function createEnemyDeathEffect(enemy) {
   const corpse = enemy.element.cloneNode(true);
   corpse.classList.remove("enemy-hit", "enemy-attacking", "enemy-winding-up", "enemy-aiming", "enemy-firing", "enemy-burning", "enemy-frozen");
   corpse.classList.add("enemy-dying");
+  window.Actor3D?.freezeClone(enemy.element, corpse);
   corpse.removeAttribute("role");
   corpse.setAttribute("aria-hidden", "true");
   corpse.querySelectorAll(".enemy-health, .enemy-label, .enemy-burn-flames, .enemy-fx").forEach((part) => part.remove());
@@ -8037,7 +8983,232 @@ function grantLevelReward(level) {
     progression.relicInventory[relic.id] += 1;
     if (!progression.bossLoot.includes(relic.id)) progression.bossLoot.push(relic.id);
   }
+  if (reward.wheel && !progression.pendingWheels.includes(level)) progression.pendingWheels.push(level);
   return reward;
+}
+
+// ===== Roue exclusive (niveau 250 et plus, tous les 10 niveaux) =====
+const wheelExclusiveWeapons = ["canon-traineau-noir", "sceptre-roi-hiver", "fourche-krampus"];
+const wheelColors = ["#b3202a", "#1f6b3a", "#1d2a55", "#c9972b", "#2b6fa8", "#5b2a86", "#9a3b12", "#14575e"];
+let wheelOverlay = null;
+let wheelState = null;
+
+function getWheelSegments(level) {
+  const index = Math.max(0, Math.round((level - wheelStartLevel) / 10));
+  const weapon = loadoutOptions.weapons.find((item) => item.id === wheelExclusiveWeapons[index % wheelExclusiveWeapons.length]);
+  const boost = boostOptions[index % boostOptions.length];
+  const relic = bossRelicCatalog[index % bossRelicCatalog.length];
+  const coins = 200 + index * 60;
+  const need = getXpForLevel(Math.min(level, maxPlayerLevel - 1));
+  // Un costume de Noël une fois sur deux, sinon un pouvoir de Noël : chaque roue a son contenu.
+  const noelPool = index % 2 === 0
+    ? loadoutOptions.skins.filter((item) => item.noel && (item.tier === "legendaire" || item.tier === "divin"))
+    : loadoutOptions.activePowers.filter((item) => item.noel && (item.tier === "legendaire" || item.tier === "divin"));
+  const noelItem = noelPool[Math.floor(index / 2) % noelPool.length];
+  const noelCategory = index % 2 === 0 ? "skins" : "activePowers";
+  return [
+    { kind: "weapon", weaponId: weapon.id, icon: weapon.icon, art: getWeaponArtSource(weapon.id), title: weapon.label, detail: "Arme exclusive", weight: index === 0 ? 24 : 14 },
+    { kind: "coins", amount: coins, icon: "◉", title: `${coins} pièces`, detail: "Pièces", weight: index === 0 ? 14 : 20 },
+    { kind: "xp", amount: Math.round(need * 0.35), icon: "✨", title: `${Math.round(need * 0.35)} XP`, detail: "Expérience", weight: 18 },
+    { kind: "coins", amount: coins * 3, icon: "💰", title: `${coins * 3} pièces`, detail: "Gros trésor", weight: 6 },
+    { kind: "boost", boostId: boost.id, count: 2 + Math.floor(index / 4), icon: boost.icon, title: `${boost.label} ×${2 + Math.floor(index / 4)}`, detail: "Boost", weight: 14 },
+    { kind: "relic", relicId: relic.id, count: 2, icon: relic.icon, title: `${relic.label} ×2`, detail: "Relique", weight: 10 },
+    { kind: "item", category: noelCategory, itemId: noelItem.id, icon: noelItem.icon, title: noelItem.label, detail: noelCategory === "skins" ? "Costume de Noël" : "Pouvoir de Noël", weight: 8 },
+    { kind: "xp", amount: Math.round(need * 1.2), icon: "🌟", title: `${Math.round(need * 1.2)} XP`, detail: "Gros bonus d'XP", weight: 6 },
+  ];
+}
+
+function rollWheelSegment(segments) {
+  const total = segments.reduce((sum, segment) => sum + segment.weight, 0);
+  let roll = Math.random() * total;
+  const index = segments.findIndex((segment) => (roll -= segment.weight) < 0);
+  return index === -1 ? segments.length - 1 : index;
+}
+
+function grantWheelPrize(segment) {
+  if (segment.kind === "coins") {
+    progression.coins += segment.amount;
+    updateMenuBalance();
+    return `+${segment.amount} pièces ajoutées à ton solde.`;
+  }
+  if (segment.kind === "xp") {
+    if (progression.level >= maxPlayerLevel) {
+      progression.coins += 400;
+      updateMenuBalance();
+      return "Niveau maximum : l'XP est convertie en 400 pièces.";
+    }
+    gainXp(segment.amount);
+    return `+${segment.amount} XP : niveau ${progression.level} !`;
+  }
+  if (segment.kind === "boost") {
+    progression.boostInventory[segment.boostId] += segment.count;
+    if (!progression.equippedBoost) progression.equippedBoost = segment.boostId;
+    updateBoostButton();
+    return `Ajouté à ton inventaire : ${segment.title}.`;
+  }
+  if (segment.kind === "relic") {
+    progression.relicInventory[segment.relicId] += segment.count;
+    if (!progression.bossLoot.includes(segment.relicId)) progression.bossLoot.push(segment.relicId);
+    return `Ajouté à ton casier : ${segment.title}.`;
+  }
+  if (segment.kind === "weapon") {
+    if (!progression.unlocked.weapons.includes(segment.weaponId)) {
+      progression.unlocked.weapons.push(segment.weaponId);
+      return "NOUVELLE ARME EXCLUSIVE ! Ajoutée à ton casier.";
+    }
+    if (getWeaponLevel(segment.weaponId) < weaponMaxLevel) {
+      progression.weaponLevels[segment.weaponId] = getWeaponLevel(segment.weaponId) + 1;
+      return `Arme déjà possédée : elle passe au niveau ${progression.weaponLevels[segment.weaponId]} !`;
+    }
+    progression.coins += 500;
+    updateMenuBalance();
+    return "Arme déjà au niveau maximum : +500 pièces à la place.";
+  }
+  const owned = progression.unlocked[segment.category];
+  if (!owned.includes(segment.itemId)) {
+    owned.push(segment.itemId);
+    return "NOUVEAU ! Ajouté à ton casier.";
+  }
+  if (segment.category === "activePowers" && getPowerLevel(segment.itemId) < powerMaxLevel) {
+    progression.powers[segment.itemId] = getPowerLevel(segment.itemId) + 1;
+    return `Pouvoir déjà possédé : il passe au niveau ${progression.powers[segment.itemId]} !`;
+  }
+  progression.coins += 300;
+  updateMenuBalance();
+  return "Déjà possédé : +300 pièces à la place.";
+}
+
+function getWheelOverlay() {
+  if (wheelOverlay) return wheelOverlay;
+  const overlay = document.createElement("div");
+  overlay.className = "wheel-overlay";
+  overlay.hidden = true;
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-modal", "true");
+  overlay.setAttribute("aria-label", "Roue exclusive");
+  overlay.innerHTML = `
+    <div class="wheel-panel">
+      <p class="wheel-kicker">🎡 ROUE EXCLUSIVE</p>
+      <h2 class="wheel-title"></h2>
+      <p class="wheel-sub">Une arme exclusive, des pièces, de l'XP et bien plus : tourne la roue !</p>
+      <div class="wheel-stage">
+        <span class="wheel-pointer" aria-hidden="true"></span>
+        <div class="wheel-disc"></div>
+        <span class="wheel-hub" aria-hidden="true">🎄</span>
+      </div>
+      <div class="wheel-result" hidden aria-live="polite">
+        <strong class="wheel-result-name"></strong>
+        <span class="wheel-result-note"></span>
+      </div>
+      <div class="wheel-actions">
+        <button type="button" class="shop-buy-button wheel-spin" data-wheel-action="spin">TOURNER LA ROUE</button>
+        <button type="button" class="menu-secondary" data-wheel-action="close" hidden>Continuer</button>
+      </div>
+    </div>`;
+  document.body.append(overlay);
+  overlay.addEventListener("click", (event) => {
+    if (!(event.target instanceof Element)) return;
+    const button = event.target.closest("[data-wheel-action]");
+    if (!(button instanceof HTMLButtonElement) || button.disabled) return;
+    if (button.dataset.wheelAction === "spin") spinWheel();
+    else if (button.dataset.wheelAction === "close") closeWheel();
+  });
+  wheelOverlay = overlay;
+  return overlay;
+}
+
+function showWheel(level) {
+  const overlay = getWheelOverlay();
+  const segments = getWheelSegments(level);
+  wheelState = { level, segments, spinning: false, done: false };
+  overlay.querySelector(".wheel-title").textContent = `Niveau ${level} atteint !`;
+  const step = 360 / segments.length;
+  const disc = overlay.querySelector(".wheel-disc");
+  disc.style.transition = "none";
+  disc.style.transform = "rotate(0deg)";
+  disc.style.background = `conic-gradient(from ${-step / 2}deg, ${segments
+    .map((_, index) => `${wheelColors[index % wheelColors.length]} ${index * step}deg ${(index + 1) * step}deg`).join(", ")})`;
+  disc.replaceChildren(...segments.map((segment, index) => {
+    const slot = document.createElement("div");
+    slot.className = `wheel-slot wheel-slot-${segment.kind}`;
+    slot.style.setProperty("--a", `${index * step}deg`);
+    const content = document.createElement("span");
+    const icon = document.createElement("b");
+    if (segment.art) {
+      const art = document.createElement("img");
+      art.src = segment.art;
+      art.alt = "";
+      art.draggable = false;
+      icon.append(art);
+    } else {
+      icon.textContent = segment.icon;
+    }
+    const label = document.createElement("i");
+    label.textContent = segment.kind === "coins" || segment.kind === "xp" ? String(segment.amount) : segment.detail;
+    content.append(icon, label);
+    slot.append(content);
+    slot.title = segment.title;
+    return slot;
+  }));
+  overlay.querySelector(".wheel-result").hidden = true;
+  overlay.querySelector('[data-wheel-action="spin"]').hidden = false;
+  overlay.querySelector('[data-wheel-action="spin"]').disabled = false;
+  overlay.querySelector('[data-wheel-action="close"]').hidden = true;
+  overlay.hidden = false;
+  overlay.querySelector('[data-wheel-action="spin"]').focus();
+}
+
+function spinWheel() {
+  if (!wheelState || wheelState.spinning || wheelState.done) return;
+  wheelState.spinning = true;
+  const overlay = getWheelOverlay();
+  const { level, segments } = wheelState;
+  const winnerIndex = rollWheelSegment(segments);
+  const segment = segments[winnerIndex];
+  // Le gain est attribué et sauvegardé tout de suite : fermer la page pendant l'animation ne fait rien perdre.
+  progression.pendingWheels = progression.pendingWheels.filter((entry) => entry !== level);
+  const note = grantWheelPrize(segment);
+  saveProgression(`Roue du niveau ${level} : ${segment.title}. ${note}`);
+  if (!lockerScreen.hidden) renderLocker();
+  overlay.querySelector('[data-wheel-action="spin"]').disabled = true;
+  const step = 360 / segments.length;
+  const jitter = (Math.random() - 0.5) * step * 0.6;
+  const target = 360 * 6 - winnerIndex * step + jitter;
+  const disc = overlay.querySelector(".wheel-disc");
+  const duration = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 300 : 5200;
+  disc.style.transition = `transform ${duration}ms cubic-bezier(0.1, 0.72, 0.08, 1)`;
+  void disc.offsetWidth;
+  disc.style.transform = `rotate(${target}deg)`;
+  window.setTimeout(() => {
+    wheelState.spinning = false;
+    wheelState.done = true;
+    overlay.querySelector(".wheel-result-name").textContent = segment.title;
+    overlay.querySelector(".wheel-result-note").textContent = note;
+    overlay.querySelector(".wheel-result").hidden = false;
+    overlay.querySelector('[data-wheel-action="spin"]').hidden = true;
+    const close = overlay.querySelector('[data-wheel-action="close"]');
+    close.hidden = false;
+    close.textContent = progression.pendingWheels.length > 0 ? "Roue suivante" : "Continuer";
+    close.focus();
+    playSound("upgrade");
+  }, duration + 150);
+}
+
+function closeWheel() {
+  if (!wheelOverlay || (wheelState?.spinning)) return;
+  wheelOverlay.hidden = true;
+  wheelState = null;
+  updateXpDisplays();
+  if (!lockerScreen.hidden) renderLocker();
+  window.setTimeout(maybeShowWheel, 250);
+}
+
+// Affiche la prochaine roue en attente, jamais pendant une partie.
+function maybeShowWheel() {
+  if (gameActive || (wheelOverlay && !wheelOverlay.hidden)) return;
+  const level = progression.pendingWheels[0];
+  if (level === undefined) return;
+  showWheel(level);
 }
 
 function gainXp(amount) {
@@ -8062,6 +9233,7 @@ function gainXp(amount) {
     saveProgression(`+${amount} XP`);
   }
   updateXpDisplays();
+  if (!gameActive && progression.pendingWheels.length > 0) window.setTimeout(maybeShowWheel, 400);
 }
 
 function updateXpDisplays() {
@@ -8076,7 +9248,7 @@ function updateXpDisplays() {
   menuXpFill.style.width = `${percent}%`;
   menuXpText.textContent = atMax ? "NIVEAU MAX" : `${progression.xp} / ${needed} XP`;
   if (atMax) {
-    menuNextReward.textContent = "🏆 Niveau 200 atteint : toutes les récompenses sont débloquées !";
+    menuNextReward.textContent = `🏆 Niveau ${maxPlayerLevel} atteint : toutes les récompenses sont débloquées !`;
   } else {
     const nextLevel = progression.level + 1;
     const milestone = Math.min(maxPlayerLevel, Math.ceil(nextLevel / 10) * 10);
@@ -8091,7 +9263,7 @@ function updateXpDisplays() {
 function renderRewards() {
   const nextMilestone = Math.min(maxPlayerLevel, Math.floor(progression.level / 10) * 10 + 10);
   rewardsSummary.textContent = progression.level >= maxPlayerLevel
-    ? "Niveau 200 atteint : tu as tout débloqué !"
+    ? `Niveau ${maxPlayerLevel} atteint : tu as tout débloqué !`
     : `Niveau ${progression.level} · chaque niveau rapporte une récompense, et elle grossit tous les 10 niveaux. Prochain palier : niveau ${nextMilestone}. À partir du niveau ${slowLevelingStart}, chaque niveau demande beaucoup plus d'XP.`;
   const nodes = [];
   for (let level = 2; level <= maxPlayerLevel; level += 1) {
@@ -8102,6 +9274,7 @@ function renderRewards() {
     node.classList.toggle("is-next", level === progression.level + 1);
     node.classList.toggle("is-milestone", reward.milestone);
     node.classList.toggle("is-major", level % 50 === 0);
+    node.classList.toggle("is-wheel", reward.wheel);
     node.dataset.level = String(level);
     const badge = document.createElement("span");
     badge.className = "reward-level";
@@ -8142,6 +9315,7 @@ function setMenuScreen(name) {
   frontMenu.hidden = false;
   frontMenu.dataset.screen = name;
   syncSoundtrack();
+  if (progression.pendingWheels.length > 0) window.setTimeout(maybeShowWheel, 500);
   const activeNav = name === "locker" && activeLockerTab === "upgrades" ? "upgrades" : name;
   for (const button of menuNavButtons) {
     const isActive = button.dataset.nav === activeNav;
@@ -8312,7 +9486,7 @@ function startWave(number) {
   waveCleared = false;
   stage = "waves";
   waveNumber = number;
-  const wave = waves[number - 1];
+  const wave = activeWaves()[number - 1];
   bossesRemaining = [...wave.bosses];
   bossSpawnElapsed = 99;
   bossWarningShown = false;
@@ -8321,8 +9495,9 @@ function startWave(number) {
   waveCountdown = waveCountdownLength;
   timeLeft = roundLength;
   fogRadius = [285, 225, 175][number - 1];
-  arena.dataset.wave = String(number);
-  if (number === 3) {
+  arena.dataset.wave = mapKey(number);
+  arena.dataset.world = String(currentWorld);
+  if (number === 3 && currentWorld === 1) {
     const start = playerCenter();
     const vortexX = playWorldWidth() * vortexPosition.x;
     const vortexY = playWorldHeight() * vortexPosition.y;
@@ -8336,7 +9511,7 @@ function startWave(number) {
   updateTimer();
   updateFog();
   waveCountdownNumber.textContent = String(waveCountdownLength);
-  waveCountdownLabel.textContent = `VAGUE ${number} — ${bossMapNames[number] ?? "PRÉPARE-TOI"}`;
+  waveCountdownLabel.textContent = `VAGUE ${number} — ${activeMapNames()[number] ?? "PRÉPARE-TOI"}`;
   waveCountdownDisplay.setAttribute("aria-label", `La vague ${number} commence dans ${waveCountdownLength} secondes`);
   waveCountdownDisplay.hidden = false;
   updateCombatLoadout();
@@ -8362,19 +9537,20 @@ function startBossWave() {
   waveCleared = false;
   stage = "boss-wave";
   waveNumber = 4;
-  bossesRemaining = ["bouffon-frondeur"];
+  bossesRemaining = [currentWorld === 2 ? world2BossWaveBoss : "bouffon-frondeur"];
   bossSpawnElapsed = 99;
   bossWarningShown = false;
   bossAlive = false;
   minionSpawnElapsed = 0;
   timeLeft = bossWaveLength;
   fogRadius = 155;
-  arena.dataset.wave = "4";
+  arena.dataset.wave = mapKey(4);
+  arena.dataset.world = String(currentWorld);
   settleOnCurrentMap();
   waveDisplay.textContent = `Vague 4 · BOSS · Arme ${weaponLevel}`;
   waveCountdown = waveCountdownLength;
   waveCountdownNumber.textContent = String(waveCountdownLength);
-  waveCountdownLabel.textContent = `VAGUE 4 — ${bossMapNames[4]}`;
+  waveCountdownLabel.textContent = `VAGUE 4 — ${activeMapNames()[4]}`;
   waveCountdownDisplay.setAttribute("aria-label", `La vague de boss commence dans ${waveCountdownLength} secondes`);
   waveCountdownDisplay.hidden = false;
   updateTimer();
@@ -8385,7 +9561,7 @@ function startBossWave() {
 
 function advanceWave() {
   restoreHealthForNextWave();
-  if (waveNumber >= waves.length) {
+  if (waveNumber >= activeWaves().length) {
     startBossWave();
     return;
   }
@@ -8414,6 +9590,7 @@ function showGameOver(message, won = false) {
   arena.querySelectorAll(".boss-attack-warning, .enemy-attack-warning, .enemy-attack-slash, .enemy-attack-slam")
     .forEach((effect) => effect.remove());
   absorbXpPickups();
+  if (won && currentWorld === 1) progression.world1Completed = true;
   const completionBonus = won ? 20 : 5;
   progression.coins += completionBonus;
   runCoinsEarned += completionBonus;
@@ -8424,14 +9601,40 @@ function showGameOver(message, won = false) {
   gameOverXp.textContent = progression.level >= maxPlayerLevel
     ? `${coinsLabel} · +${runXpEarned} XP · Niveau MAX ${maxPlayerLevel} atteint`
     : `${coinsLabel} · +${runXpEarned} XP · Niveau ${progression.level} (${progression.xp}/${getXpForLevel(progression.level)} XP)`;
+  // Le monde 2 se débloque en terminant le monde 1 ; ensuite ce bouton permet de passer de l'un à l'autre.
+  nextWorldButton.hidden = !progression.world1Completed;
+  nextWorldButton.textContent = currentWorld === 1 ? "Monde 2 · Le Cauchemar de Noël" : "Monde 1 · Nuit d'Halloween";
+  retryButton.textContent = "Rejouer";
   gameOver.hidden = false;
   frontMenu.hidden = true;
   if (!won) progressionFeedback.textContent = `Défaite : +${completionBonus} pièces. Elles sont conservées pour tes prochains achats.`;
   syncSoundtrack();
+  if (progression.pendingWheels.length > 0) window.setTimeout(maybeShowWheel, 1200);
+}
+
+function setWorld(world) {
+  if (world === 2 && !progression.world1Completed) return;
+  currentWorld = world === 2 ? 2 : 1;
+  progression.lastWorld = currentWorld;
+  arena.dataset.world = String(currentWorld);
+  updateWorldPicker();
+}
+
+function updateWorldPicker() {
+  currentWorld = progression.world1Completed && progression.lastWorld === 2 ? 2 : 1;
+  const kicker = document.querySelector(".sio-chapter-kicker");
+  const title = document.querySelector(".sio-chapter-title");
+  const sub = document.querySelector(".sio-chapter-sub");
+  if (kicker && title && sub) {
+    kicker.textContent = `CHAPITRE ${currentWorld}`;
+    title.textContent = currentWorld === 2 ? "Le Cauchemar de Noël" : "Nuit d'Halloween";
+    sub.textContent = currentWorld === 2 ? "5 vagues · 5 boss · Noël maudit" : "5 vagues · 4 boss · Salle du trône";
+  }
 }
 
 function restartRound() {
   roundId += 1;
+  arena.dataset.world = String(currentWorld);
   for (const enemy of enemies) enemy.element.remove();
   enemies.clear();
   clearPowerFields();
@@ -8535,6 +9738,7 @@ function damagePlayer(amount, source) {
   damageVignette.classList.remove("is-active");
   arena.classList.remove("is-shaking");
   void player.offsetWidth;
+  player.dataset.hurtAt = String(performance.now());
   player.classList.add("player-hurt");
   damageVignette.classList.add("is-active");
   arena.classList.add("is-shaking");
@@ -8717,9 +9921,9 @@ function updateEnemies(delta) {
 
     if (playerDistance <= attackRange) {
       enemy.element.dataset.ai = "attack";
-      if (Math.abs(center.x - enemy.x) > 6) {
-        enemy.element.classList.toggle("enemy-facing-left", center.x < enemy.x);
-      }
+      const heading = worldToView(center.x - enemy.x, center.y - enemy.y);
+      if (Math.abs(heading.x) > 6) enemy.element.classList.toggle("enemy-facing-left", heading.x < 0);
+      faceEnemyWorld(enemy, center.x - enemy.x, center.y - enemy.y);
       if (!(enemy.frozenRemaining > 0) && enemy.attackCooldown === 0) beginEnemyAttack(enemy, attackProfile);
       continue;
     }
@@ -8767,6 +9971,26 @@ function getEnemyAttackProfile(enemy) {
     "archer-de-lombre": { kind: "projectile", windup: 0.72, cooldown: 2.7, range: 330, radius: 0, damage: 0.9 },
     "soldat-de-lombre": { kind: "slam", windup: 0.68, cooldown: 2.5, range: 100, radius: 52, damage: 1 },
     "goule-de-lombre": { kind: "lunge", windup: 0.38, cooldown: 1.65, range: 125, radius: 44, damage: 0.95 },
+    "pere-noel-tordu": { kind: "slam", windup: 0.85, cooldown: 3.0, range: 165, radius: 110, damage: 1.25 },
+    "mere-froide": { kind: "projectile", windup: 0.7, cooldown: 2.6, range: 350, radius: 0, damage: 1.1 },
+    "grinch-demoniaque": { kind: "lunge", windup: 0.5, cooldown: 2.1, range: 165, radius: 56, damage: 1.2 },
+    "homme-pain-epices": { kind: "slam", windup: 0.95, cooldown: 3.3, range: 175, radius: 125, damage: 1.4 },
+    "maitre-cadeaux-noirs": { kind: "projectile", windup: 0.6, cooldown: 2.2, range: 380, radius: 0, damage: 1.25 },
+    "lutin-possede": { kind: "lunge", windup: 0.4, cooldown: 1.7, range: 110, radius: 42, damage: 0.85 },
+    "renne-squelette": { kind: "lunge", windup: 0.42, cooldown: 1.8, range: 125, radius: 46, damage: 0.95 },
+    "bonhomme-neige": { kind: "slam", windup: 0.7, cooldown: 2.5, range: 100, radius: 56, damage: 1.0 },
+    "flocon-vivant": { kind: "bite", windup: 0.35, cooldown: 1.6, range: 80, radius: 36, damage: 0.8 },
+    "esprit-gele": { kind: "projectile", windup: 0.65, cooldown: 2.6, range: 300, radius: 0, damage: 0.85 },
+    "gardien-glace": { kind: "slam", windup: 0.8, cooldown: 2.8, range: 110, radius: 70, damage: 1.1 },
+    "lutin-voleur": { kind: "lunge", windup: 0.36, cooldown: 1.6, range: 120, radius: 42, damage: 0.8 },
+    "chien-neiges": { kind: "lunge", windup: 0.38, cooldown: 1.65, range: 130, radius: 46, damage: 0.95 },
+    "lutin-kamikaze": { kind: "lunge", windup: 0.3, cooldown: 1.4, range: 110, radius: 50, damage: 1.2 },
+    "bonhomme-pain-epices": { kind: "bite", windup: 0.45, cooldown: 1.8, range: 80, radius: 40, damage: 0.9 },
+    "sucette-vivante": { kind: "projectile", windup: 0.6, cooldown: 2.3, range: 280, radius: 0, damage: 0.8 },
+    "ours-sucre": { kind: "slam", windup: 0.75, cooldown: 2.6, range: 105, radius: 60, damage: 1.05 },
+    "ombre-noel": { kind: "bite", windup: 0.38, cooldown: 1.7, range: 95, radius: 40, damage: 0.85 },
+    "cadeau-maudit": { kind: "bite", windup: 0.45, cooldown: 1.9, range: 85, radius: 44, damage: 1.0 },
+    "loup-noel": { kind: "lunge", windup: 0.36, cooldown: 1.55, range: 135, radius: 46, damage: 1.0 },
   };
   const profileName = enemy.typeName === "boss" ? enemy.profileName : enemy.typeName;
   const profile = profiles[profileName];
@@ -9031,6 +10255,10 @@ const enemyShotStyles = {
   gardien: "spirit",
   "maitre-des-cauchemars": "nightmare",
   "mega-cauchemar": "hellfire",
+  "mere-froide": "ice",
+  "esprit-gele": "ice",
+  "sucette-vivante": "candy",
+  "maitre-cadeaux-noirs": "gift",
 };
 const enemyShotProfiles = {
   arrow: { speed: 430, radius: 9, muzzle: 30 },
@@ -9038,6 +10266,9 @@ const enemyShotProfiles = {
   spirit: { speed: 250, radius: 12, muzzle: 22 },
   nightmare: { speed: 270, radius: 13, muzzle: 34 },
   hellfire: { speed: 300, radius: 14, muzzle: 48 },
+  ice: { speed: 290, radius: 12, muzzle: 30 },
+  candy: { speed: 310, radius: 11, muzzle: 24 },
+  gift: { speed: 300, radius: 14, muzzle: 40 },
 };
 
 function getEnemyShotStyle(enemy) {
@@ -9175,7 +10406,7 @@ function updateGame(delta) {
       waveCountdownLabel.textContent = stage === "ultimate"
         ? "LE CHAMBELLAN APPROCHE"
         : stage === "portal" ? "VAGUE 5 — LA SALLE DU TRÔNE"
-        : `VAGUE ${waveNumber} — ${bossMapNames[waveNumber] ?? "PRÉPARE-TOI"}`;
+        : `VAGUE ${waveNumber} — ${activeMapNames()[waveNumber] ?? "PRÉPARE-TOI"}`;
       waveCountdownDisplay.setAttribute("aria-label", `Début dans ${countdownNumber} secondes`);
       updateTimer();
     }
@@ -9190,15 +10421,14 @@ function updateGame(delta) {
   runElapsed += delta;
   if (!waveCleared) timeLeft = Math.max(0, timeLeft - delta);
   updateTimer();
-  if (timeLeft === 0) {
-    if (stage === "waves") {
-      advanceWave();
-    } else {
-      showGameOver(stage === "ultimate"
-        ? "Le Chambellan sorcier t'a vaincu."
-        : stage === "portal" ? "Le portail s'est refermé avant ton entrée."
-        : "La vague de boss est terminée.", false);
-    }
+  // Temps écoulé sans avoir vaincu le boss de la vague : défaite, avec les boutons Rejouer / Retour au menu.
+  if (timeLeft === 0 && !waveCleared) {
+    showGameOver(stage === "ultimate"
+      ? "Le Chambellan sorcier t'a vaincu."
+      : stage === "final2" ? "Le Maître des Cadeaux Noirs t'a vaincu."
+      : stage === "portal" ? "Le portail s'est refermé avant ton entrée."
+      : stage === "boss-wave" ? "Temps écoulé : le boss de la vague 4 n'a pas été vaincu."
+      : `Temps écoulé : le boss de la vague ${waveNumber} n'a pas été vaincu.`, false);
     return;
   }
 
@@ -9229,7 +10459,7 @@ function updateGame(delta) {
     }
   }
 
-  const isFinalWave = stage === "portal" || stage === "ultimate";
+  const isFinalWave = stage === "portal" || stage === "ultimate" || stage === "final2";
   const minionsCanSpawn = isFinalWave || ((stage === "waves" || stage === "boss-wave") && !waveCleared);
   if (minionsCanSpawn && enemies.size < getEnemyCap()) {
     minionSpawnElapsed += delta;
@@ -9265,11 +10495,41 @@ function updateGame(delta) {
     portalElement.classList.toggle("is-armed", portalArmRemaining === 0);
     const center = playerCenter();
     if (portalArmRemaining === 0
-      && Math.hypot(center.x - playWorldWidth() * portalPoint.x, center.y - playWorldHeight() * portalPoint.y) < 78) {
+      && Math.hypot(center.x - playWorldWidth() * portalPoint.x, center.y - playWorldHeight() * portalPoint.y) < 92) {
       enterPortal();
     }
   }
 }
+
+// Caméra à la souris (façon Fortnite) : un clic capture le curseur, la souris tourne la caméra, le viseur est au centre de l'écran.
+let cameraLocked = false;
+let cameraDirty = false;
+const cameraSensitivity = { yaw: 0.14, tilt: 0.07 };
+const cameraTiltRange = [50, 80];
+
+function turnCamera(yawDelta, tiltDelta) {
+  if (yawDelta) camera.yaw = ((((camera.yaw + yawDelta) + 180) % 360) + 360) % 360 - 180;
+  if (tiltDelta) camera.tilt = Math.max(cameraTiltRange[0], Math.min(cameraTiltRange[1], camera.tilt + tiltDelta));
+  cameraDirty = true;
+}
+
+function pointerAim(event) {
+  return cameraLocked ? cameraFocus() : screenToWorld(event.clientX, event.clientY);
+}
+
+document.addEventListener("pointerlockchange", () => {
+  const wasLocked = cameraLocked;
+  cameraLocked = document.pointerLockElement === arena;
+  arena.classList.toggle("cam-locked", cameraLocked);
+  // Échap libère le curseur : on ouvre aussi le menu pause, comme avant
+  if (wasLocked && !cameraLocked && gameActive && gameOver.hidden && settingsPanel.hidden
+    && !document.querySelector(".crate-opening:not([hidden])")) openSettings();
+});
+
+document.addEventListener("mousemove", (event) => {
+  if (!cameraLocked) return;
+  turnCamera(-event.movementX * cameraSensitivity.yaw, -event.movementY * cameraSensitivity.tilt);
+});
 
 arena.addEventListener("pointerdown", (event) => {
   if (event.target instanceof Element
@@ -9277,13 +10537,21 @@ arena.addEventListener("pointerdown", (event) => {
   if (event.button !== 0) return;
   event.preventDefault();
   initializeAudio();
-  Object.assign(aim, screenToWorld(event.clientX, event.clientY));
+  if (camera.tps && chosenDevice !== "phone" && !cameraLocked && gameActive && event.pointerType === "mouse") {
+    try {
+      const request = arena.requestPointerLock?.();
+      request?.catch?.(() => {});
+    } catch {
+      // le navigateur refuse la capture : on garde la visée au pointeur
+    }
+  }
+  Object.assign(aim, pointerAim(event));
   startShooting(true);
 });
 
 arena.addEventListener("pointermove", (event) => {
   if (!shootingWithPointer) return;
-  Object.assign(aim, screenToWorld(event.clientX, event.clientY));
+  Object.assign(aim, pointerAim(event));
 });
 
 window.addEventListener("pointerup", stopShooting);
@@ -9343,6 +10611,9 @@ window.addEventListener("keydown", (event) => {
   if (isActionKey("portal", key) && !event.repeat && portalElement) {
     event.preventDefault();
     enterPortal();
+  }
+  if (camera.tps && (key === "x" || key === "c") && !isActionKey("pickup", key)) {
+    keys.add(key);
   }
   if (isMovementKey(key)) {
     event.preventDefault();
@@ -9415,6 +10686,11 @@ window.addEventListener("orientationchange", () => {
 window.visualViewport?.addEventListener("resize", refreshPhoneLayout);
 startButton.addEventListener("click", () => {
   restartRound();
+});
+nextWorldButton.addEventListener("click", () => {
+  setWorld(currentWorld === 1 ? 2 : 1);
+  restartRound();
+  initializeAudio();
 });
 retryButton.addEventListener("click", () => {
   restartRound();
@@ -9730,6 +11006,13 @@ function gameLoop(time) {
     return;
   }
 
+  if (cameraLocked && (!gameActive || !settingsPanel.hidden || !gameOver.hidden)) document.exitPointerLock?.();
+  if (cameraLocked && shootingWithPointer) Object.assign(aim, cameraFocus());
+  if (cameraDirty) {
+    cameraDirty = false;
+    updateFog();
+  }
+
   if (gameActive && restartLock === 0 && waveCountdown === 0) {
     let dx = 0;
     let dy = 0;
@@ -9739,6 +11022,14 @@ function gameLoop(time) {
     if (isActionHeld("down")) dy += 1;
     dx += touchMove.x;
     dy += touchMove.y;
+    if (camera.tps && camera.yaw !== 0 && (dx !== 0 || dy !== 0)) {
+      // les touches sont relatives à la caméra : « avancer » = droit devant, quelle que soit l'orientation
+      ({ x: dx, y: dy } = viewToWorld(dx, dy));
+    }
+    if (camera.tps && chosenDevice !== "phone") {
+      const turn = (keys.has("x") ? 1 : 0) - (keys.has("c") ? 1 : 0);
+      if (turn) turnCamera(turn * 130 * delta, 0);
+    }
 
     if (dodgeRemaining > 0) {
       const dashTime = Math.min(delta, dodgeRemaining);
@@ -9777,6 +11068,7 @@ function gameLoop(time) {
       stepSoundElapsed = 0;
       runDustElapsed = 0;
     }
+    updateCornRustle(delta, dodgeRemaining > 0 || dx !== 0 || dy !== 0);
   }
   if (aimHoldRemaining > 0) {
     aimHoldRemaining = Math.max(0, aimHoldRemaining - delta);

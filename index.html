@@ -8,7 +8,17 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <title>Mon petit jeu</title>
-    <link rel="stylesheet" href="style.css?v=64" />
+    <link rel="stylesheet" href="style.css?v=87" />
+    <link rel="stylesheet" href="toon3d.css?v=8" />
+    <script>
+      // Le jeu est en 2D par défaut. ?3d=1 réactive le rendu 3D (personnages, relief, caméra 3e personne), ?3d=0 revient en 2D.
+      (function () {
+        var q = new URLSearchParams(location.search);
+        if (q.has("3d")) localStorage.setItem("ov3d", q.get("3d") === "1" ? "1" : "0");
+        window.OV_3D = localStorage.getItem("ov3d") === "1";
+        if (window.OV_3D) document.documentElement.setAttribute("data-look", "toon");
+      })();
+    </script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -24,7 +34,14 @@
         measurementId: "G-2T6S7JB2Y1"
       });
     </script>
-    <script src="script.js?v=72" defer></script>
+    <script>
+      if (window.OV_3D) {
+        import("./three/index.js?v=53");
+        document.write('<script src="tree-obstacles.js?v=2"><\/script>');
+      }
+    </script>
+    <script src="obstacles-2d.js?v=1"></script>
+    <script src="script.js?v=96" defer></script>
   </head>
   <body>
     <main class="arena" aria-label="Terrain de jeu">
@@ -36,7 +53,7 @@
       </header>
       <div class="hud-timer" aria-label="Temps de la partie">
         <span class="timer-label">TEMPS</span>
-        <span class="timer" id="timer" role="timer" aria-live="off">01:30</span>
+        <span class="timer" id="timer" role="timer" aria-live="off">02:50</span>
         <span class="run-time" id="run-time">Partie 00:00</span>
         <span class="boss-eta" id="boss-eta" hidden></span>
       </div>
@@ -130,6 +147,13 @@
         <div class="atmosphere-light"></div>
         <div class="atmosphere-mist"></div>
         <div class="atmosphere-mist atmosphere-mist-front"></div>
+        <div class="halloween-moon"></div>
+        <div class="halloween-fog halloween-fog-back"></div>
+        <div class="halloween-fog halloween-fog-mid"></div>
+        <div class="halloween-fog-ground"></div>
+        <div class="halloween-extras" id="halloween-extras"></div>
+        <div class="halloween-fog halloween-fog-front"></div>
+        <div class="halloween-flash"></div>
         <div class="atmosphere-particles" id="atmosphere-particles"></div>
         <div class="atmosphere-vignette"></div>
         <div class="atmosphere-grain"></div>
@@ -139,8 +163,9 @@
         <p class="game-over-title" id="game-over-title"></p>
         <p class="game-over-xp" id="game-over-xp"></p>
         <div class="game-over-actions">
-          <button class="restart-button" id="retry-button" type="button">Rejouer</button>
           <button class="restart-button restart-button-secondary" id="shop-button" type="button">Retour au menu</button>
+          <button class="restart-button" id="retry-button" type="button">Rejouer</button>
+          <button class="restart-button restart-button-world" id="next-world-button" type="button" hidden>Monde 2 · Le Cauchemar de Noël</button>
         </div>
       </div>
       <section class="account-gate" id="account-gate" aria-label="Connexion au jeu">
@@ -261,7 +286,7 @@
           </div>
           <div class="menu-screen rewards-screen" id="rewards-screen" hidden>
             <p class="rewards-summary" id="rewards-summary"></p>
-            <ol class="rewards-track" id="rewards-track" aria-label="Récompenses des niveaux 1 à 200"></ol>
+            <ol class="rewards-track" id="rewards-track" aria-label="Récompenses des niveaux 1 à 400"></ol>
             <button class="menu-secondary" id="back-from-rewards-button" type="button">Retour à la préparation</button>
           </div>
           <div class="menu-screen" id="shop-screen" hidden>

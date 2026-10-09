@@ -33,7 +33,8 @@ body {
   --fog-radius: 250px;
   overflow: hidden;
   background-color: #18151a;
-  --map-image: url("./assets/halloween-map-realiste.jpg");
+  --map-image: url("./assets/map-1-3d.jpg?v=3");
+  --map-base: url("./assets/map-1-base.jpg?v=3");
   background-position: center;
   background-repeat: no-repeat;
   background-size: 100% 100%;
@@ -44,16 +45,26 @@ body {
 }
 
 .arena[data-wave="2"] {
-  --map-image: url("./assets/map-epouvantail-realiste.jpg");
+  --map-image: url("./assets/map-2-3d.jpg?v=3");
+  --map-base: url("./assets/map-2-base.jpg?v=3");
   --ambient-top: rgb(120 70 40 / 0.4);
   --ambient-bottom: rgb(40 34 70 / 0.5);
   --lantern: rgb(255 180 100 / 0.8);
   --mist: rgb(235 200 160 / 0.18);
 }
 
+.arena[data-wave="3"] {
+  --map-image: url("./assets/map-3-3d.jpg?v=3");
+  --map-base: url("./assets/map-3-base.jpg?v=3");
+}
+
+.arena[data-wave="5"] {
+  --map-image: url("./assets/map-5-3d.jpg?v=1");
+  --map-base: url("./assets/map-5-base.jpg?v=1");
+}
+
 .arena[data-wave="3"],
 .arena[data-wave="5"] {
-  --map-image: url("./assets/map-cauchemars-realiste.jpg");
   --ambient-top: rgb(96 46 150 / 0.5);
   --ambient-bottom: rgb(30 18 70 / 0.55);
   --lantern: rgb(255 190 150 / 0.7);
@@ -61,7 +72,8 @@ body {
 }
 
 .arena[data-wave="4"] {
-  --map-image: url("./assets/map-bouffon-realiste.jpg");
+  --map-image: url("./assets/map-4-3d.jpg?v=3");
+  --map-base: url("./assets/map-4-base.jpg?v=3");
   --ambient-top: rgb(40 70 140 / 0.5);
   --ambient-bottom: rgb(20 26 64 / 0.55);
   --lantern: rgb(255 200 120 / 0.8);
@@ -76,7 +88,10 @@ body {
   --mist: rgb(220 180 230 / 0.16);
   --map-image:
     linear-gradient(180deg, rgb(13 10 20 / 9%), rgb(13 10 20 / 0%) 44%, rgb(13 10 20 / 16%)),
-    url("./assets/throne-chamber-realiste.jpg");
+    url("./assets/map-throne-3d.jpg");
+  --map-base:
+    linear-gradient(180deg, rgb(13 10 20 / 9%), rgb(13 10 20 / 0%) 44%, rgb(13 10 20 / 16%)),
+    url("./assets/map-throne-base.jpg");
   background-position: center;
   background-repeat: no-repeat;
   background-size: 100% 100%;
@@ -10728,7 +10743,14 @@ body {
   background-repeat: no-repeat;
   background-size: 100% 100%;
   transform-origin: 0 0;
-  transform: translate(var(--cam-x, 0px), var(--cam-y, 0px)) scale(var(--cam-zoom, 1));
+  /* Caméra 3D : le point suivi reste au centre de l'écran, le monde s'incline en perspective. */
+  transform:
+    translate(var(--cam-mid-x, 0px), var(--cam-mid-y, 0px))
+    perspective(var(--cam-persp, 1400px))
+    rotateX(var(--cam-tilt, 0deg))
+    rotateZ(var(--cam-yaw, 0deg))
+    translate(var(--cam-focus-x, 0px), var(--cam-focus-y, 0px))
+    scale3d(var(--cam-zoom, 1), var(--cam-zoom, 1), var(--cam-zoom, 1));
   pointer-events: none;
 }
 
@@ -14072,6 +14094,47 @@ body {
 .pack-theme-neon { --pack-a: #102f3a; --pack-b: #08121a; --pack-trim: #00ffe6; }
 .pack-theme-faucheuse { --pack-a: #26132e; --pack-b: #0a050e; --pack-trim: #ff5cf0; }
 
+/* Thèmes des 50 packs supplémentaires */
+.pack-theme-bonbon { --pack-a: #6a2a52; --pack-b: #2a0f26; --pack-trim: #ff9ad9; }
+.pack-theme-braise { --pack-a: #5a2412; --pack-b: #220d07; --pack-trim: #ff8a3d; }
+.pack-theme-desert { --pack-a: #5a4524; --pack-b: #241b0e; --pack-trim: #f0cf7a; }
+.pack-theme-divin { --pack-a: #4a3a12; --pack-b: #1a1305; --pack-trim: #ffe27a; }
+.pack-theme-foret { --pack-a: #23442c; --pack-b: #0f2014; --pack-trim: #9be37a; }
+.pack-theme-glace { --pack-a: #1f4560; --pack-b: #0c1b28; --pack-trim: #aee6ff; }
+.pack-theme-mystique { --pack-a: #3a2468; --pack-b: #150d2a; --pack-trim: #c9a2ff; }
+.pack-theme-ocean { --pack-a: #16405a; --pack-b: #08171f; --pack-trim: #5fd0e8; }
+.pack-theme-ombre { --pack-a: #2d2638; --pack-b: #0e0b14; --pack-trim: #b9a8d6; }
+.pack-theme-or { --pack-a: #5a4a1a; --pack-b: #231c08; --pack-trim: #ffd45a; }
+.pack-theme-orage { --pack-a: #26305a; --pack-b: #0d1124; --pack-trim: #8fb4ff; }
+.pack-theme-sang { --pack-a: #5a1426; --pack-b: #1f070d; --pack-trim: #ff4d6a; }
+.pack-theme-spectre { --pack-a: #25405a; --pack-b: #0b1622; --pack-trim: #a8f0ff; }
+.pack-theme-toxique { --pack-a: #35501a; --pack-b: #12200a; --pack-trim: #b6f04a; }
+
+.pack-card.pack-mythic {
+  border-width: 3px;
+  background:
+    radial-gradient(circle at 85% 8%, color-mix(in srgb, var(--pack-trim) 38%, transparent), transparent 46%),
+    linear-gradient(150deg, var(--pack-a), var(--pack-b));
+  box-shadow: 0 0 28px color-mix(in srgb, var(--pack-trim) 55%, transparent), 0 8px 20px rgb(0 0 0 / 0.5);
+}
+
+.pack-card.pack-mini .pack-emblem { filter: saturate(0.9); }
+
+.store-badge-pack-mythic {
+  background: linear-gradient(90deg, #ffe27a, #ff8a3d, #ff4d9d);
+  color: #1c0a05;
+}
+
+.store-badge-pack-mini {
+  background: #7fe0a0;
+  color: #06220f;
+}
+
+.pack-opening-panel {
+  max-height: 92vh;
+  overflow-y: auto;
+}
+
 .store-badge-tier {
   background: var(--tier);
   color: #140c18;
@@ -14803,4 +14866,918 @@ html[data-editing-controls] [data-control].is-selected {
   font-size: 0.68rem;
   font-weight: 900;
   touch-action: manipulation;
+}
+
+/* Maïs de la carte 2 : feuilles arrachées quand on traverse le champ. */
+.corn-leaf {
+  position: absolute;
+  z-index: 4;
+  width: 9px;
+  height: 4px;
+  border-radius: 80% 20% 80% 20%;
+  background: linear-gradient(90deg, #6f9c34, #d7e27a);
+  box-shadow: 0 0 0 1px #3d5a1c88;
+  pointer-events: none;
+  animation: corn-leaf-fly 0.9s ease-out forwards;
+}
+
+@keyframes corn-leaf-fly {
+  0% { opacity: 0.95; transform: translate(0, 0) rotate(0deg) scale(0.6); }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(1.1); }
+}
+
+/* Caméra à la 3e personne : le monde est un vrai plan 3D ; les personnages sont des « billboards » debout, face à l'écran.
+   --bb-rot (rotation inverse de la caméra) est calculé par le script. Le pivot est l'ancre du sprite (origine 0 0) :
+   l'échelle des acteurs passe par la propriété `scale` pour que l'ancre ne bouge pas. */
+.arena.cam-tps .world {
+  transform-style: preserve-3d;
+}
+
+.arena.cam-tps .world > :is(.player, .enemy) {
+  --actor-scale: 1;
+  scale: var(--actor-s, 0.72);
+  transform-origin: 0 0;
+  rotate: var(--bb-rot, none);
+}
+
+/* le voile de lumière en mix-blend-mode aplatit le contexte 3D et couche les personnages au sol : retiré en vue 3e personne */
+html[data-look="toon"] .arena.cam-tps .world::after {
+  display: none;
+}
+
+/* Vue à la 3e personne : tout ce qui a du volume reste debout face à la caméra, les marquages restent à plat au sol. */
+.arena.cam-tps .world > :is(.dmg-num, .heal-num, .crit-num) {
+  transform-origin: 50% 100%;
+  rotate: var(--bb-rot, none);
+}
+
+.arena.cam-tps .world > .xp-gain-text {
+  rotate: var(--bb-rot, none);
+}
+
+.arena.cam-tps .world > :is(.loot-pickup, .weapon-pickup) {
+  transform-origin: 0 0;
+  rotate: var(--bb-rot, none);
+}
+
+.arena.cam-tps .world > :is(.boss-projectile:not(.enemy-shot-arrow), .impact-burst) {
+  rotate: var(--bb-rot, none);
+}
+
+.arena.cam-tps .world > .boss-projectile::before {
+  display: none;
+}
+
+/* les tirs volent à hauteur de buste plutôt que collés au sol */
+.arena.cam-tps .world > :is(.stone.shot, .boss-projectile.enemy-shot-arrow) {
+  translate: 0 0 30px;
+}
+
+.arena.cam-tps .world > .boss-portal {
+  transform-style: preserve-3d;
+}
+
+.arena.cam-tps .world > .boss-portal .portal-gate {
+  rotate: var(--bb-rot, none);
+}
+
+/* le héros se tourne vraiment (de dos quand il avance) : plus de miroir gauche/droite */
+.arena.cam-tps .player.is-facing-left .hero-real {
+  scale: 1;
+}
+
+.cam-crosshair {
+  position: absolute;
+  z-index: 6;
+  top: 50%;
+  left: 50%;
+  display: none;
+  width: 26px;
+  height: 26px;
+  border: 2px solid rgb(255 255 255 / 0.85);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.55), inset 0 0 0 1px rgb(0 0 0 / 0.35);
+  pointer-events: none;
+  translate: -50% -50%;
+}
+
+.cam-crosshair::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.6);
+  content: "";
+  translate: -50% -50%;
+}
+
+.arena.cam-locked .cam-crosshair {
+  display: block;
+}
+
+.arena.cam-locked {
+  cursor: none;
+}
+
+/* Personnage posé dans la carte (vrai modèle 3D) : le canvas sert seulement de repère de taille, la barre de vie suit la tête. */
+canvas.actor3d-canvas.in-world {
+  visibility: hidden;
+}
+
+.arena.cam-tps .world > :is(.player, .enemy).is-world {
+  translate: 0 0 var(--lift, 0px);
+}
+
+.arena.cam-tps .world > .player.is-world::before,
+.arena.cam-tps .world > .enemy.is-world .enemy-shadow {
+  display: none;
+}
+
+/* un filtre CSS aplatit le contexte 3D et dessinait un rectangle noir : le flash des personnages 3D est fait dans WebGL */
+.enemy.is-world,
+.player.is-world,
+.enemy.is-world .rig {
+  filter: none !important;
+}
+
+/* Mode 2D (par défaut) : cartes dessinées à plat en cartoon. Le mode 3D (?3d=1) garde les rendus en relief. */
+html:not([data-look="toon"]) .arena { --map-image: url("./assets/map-1-2d.jpg?v=2"); }
+html:not([data-look="toon"]) .arena[data-wave="2"] { --map-image: url("./assets/map-2-2d.jpg?v=2"); }
+html:not([data-look="toon"]) .arena[data-wave="3"] { --map-image: url("./assets/map-3-2d.jpg?v=2"); }
+html:not([data-look="toon"]) .arena[data-wave="4"] { --map-image: url("./assets/map-4-2d.jpg?v=2"); }
+html:not([data-look="toon"]) .arena[data-wave="5"] { --map-image: url("./assets/map-5-2d.jpg?v=2"); }
+html:not([data-look="toon"]) .arena-throne-room {
+  --map-image:
+    linear-gradient(180deg, rgb(13 10 20 / 9%), rgb(13 10 20 / 0%) 44%, rgb(13 10 20 / 16%)),
+    url("./assets/map-throne-2d.jpg?v=2");
+}
+
+/* Ambiance Halloween : brouillard dérivant, rais de lune, chauves-souris, feux follets et éclairs lointains. */
+.arena {
+  --hw-fog-a: 150 120 210;
+  --hw-fog-b: 110 190 150;
+  --hw-moon: 170 190 255;
+}
+
+.arena[data-wave="2"] { --hw-fog-a: 225 150 95; --hw-fog-b: 150 110 200; --hw-moon: 255 200 150; }
+.arena[data-wave="3"] { --hw-fog-a: 200 120 230; --hw-fog-b: 120 90 190; --hw-moon: 210 170 255; }
+.arena[data-wave="4"] { --hw-fog-a: 130 150 235; --hw-fog-b: 190 120 220; --hw-moon: 170 200 255; }
+.arena[data-wave="5"] { --hw-fog-a: 225 105 150; --hw-fog-b: 150 100 225; --hw-moon: 255 170 190; }
+.arena-throne-room { --hw-fog-a: 175 100 235; --hw-fog-b: 90 205 130; --hw-moon: 200 150 255; }
+
+.atmosphere > .halloween-fog {
+  --fog-tile: 520px;
+  inset: auto;
+  left: calc(var(--fog-tile) * -1);
+  top: 0;
+  width: calc(100% + var(--fog-tile));
+  height: 100%;
+  z-index: 5;
+  background: rgb(var(--hw-fog-a) / 0.46);
+  -webkit-mask-image: url("./assets/fog-1.png");
+  mask-image: url("./assets/fog-1.png");
+  -webkit-mask-size: var(--fog-tile) var(--fog-tile);
+  mask-size: var(--fog-tile) var(--fog-tile);
+  -webkit-mask-repeat: repeat;
+  mask-repeat: repeat;
+  will-change: transform;
+  animation: hw-fog-slide-x 80s linear infinite;
+}
+
+.atmosphere > .halloween-fog-mid {
+  --fog-tile: 400px;
+  left: 0;
+  top: calc(var(--fog-tile) * -1);
+  width: 100%;
+  height: calc(100% + var(--fog-tile));
+  background: rgb(var(--hw-fog-b) / 0.36);
+  -webkit-mask-image: url("./assets/fog-2.png");
+  mask-image: url("./assets/fog-2.png");
+  animation: hw-fog-slide-y 58s linear infinite;
+}
+
+.atmosphere > .halloween-fog-front {
+  --fog-tile: 640px;
+  left: calc(var(--fog-tile) * -1);
+  top: calc(var(--fog-tile) * -1);
+  width: calc(100% + var(--fog-tile));
+  height: calc(100% + var(--fog-tile));
+  z-index: 6;
+  background: rgb(var(--hw-fog-a) / 0.28);
+  -webkit-mask-image: url("./assets/fog-2.png");
+  mask-image: url("./assets/fog-2.png");
+  animation: hw-fog-slide-diag 46s linear infinite;
+}
+
+.atmosphere > .halloween-fog-ground {
+  inset: auto 0 0 0;
+  height: 42%;
+  z-index: 5;
+  background:
+    radial-gradient(ellipse 60% 55% at 22% 100%, rgb(var(--hw-fog-a) / 0.34), transparent 70%),
+    radial-gradient(ellipse 55% 50% at 78% 100%, rgb(var(--hw-fog-b) / 0.26), transparent 70%),
+    linear-gradient(0deg, rgb(var(--hw-fog-a) / 0.2), transparent 75%);
+  animation: hw-fog-breathe 11s ease-in-out infinite alternate;
+}
+
+.atmosphere > .halloween-moon {
+  z-index: 5;
+  mix-blend-mode: screen;
+  background:
+    radial-gradient(ellipse 55% 45% at 14% -8%, rgb(var(--hw-moon) / 0.26), transparent 70%),
+    linear-gradient(112deg, transparent 18%, rgb(var(--hw-moon) / 0.1) 27%, transparent 36%),
+    linear-gradient(112deg, transparent 38%, rgb(var(--hw-moon) / 0.07) 45%, transparent 53%),
+    linear-gradient(112deg, transparent 60%, rgb(var(--hw-moon) / 0.06) 66%, transparent 73%);
+  animation: hw-rays-sway 14s ease-in-out infinite alternate;
+}
+
+.atmosphere > .halloween-flash {
+  z-index: 7;
+  background: radial-gradient(ellipse at 30% 0%, rgb(235 225 255 / 0.55), rgb(150 110 255 / 0.2) 55%, transparent 80%);
+  mix-blend-mode: screen;
+  opacity: 0;
+  animation: hw-lightning 31s linear 9s infinite;
+}
+
+.atmosphere > .halloween-extras {
+  z-index: 6;
+  overflow: hidden;
+}
+
+.hw-bat {
+  position: absolute;
+  left: 0;
+  top: var(--y);
+  width: var(--size);
+  height: calc(var(--size) * 0.5);
+  opacity: 0.9;
+  filter: drop-shadow(0 0 3px rgb(190 110 255 / 0.65));
+  animation: hw-bat-fly var(--dur) linear var(--delay) infinite;
+}
+
+.hw-bat::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 32'%3E%3Cpath fill='%2308040e' d='M32 9c2 0 3 2 4 4 3-4 9-9 17-9-3 3-4 6-4 9 4 0 8 2 11 7-5-2-8-1-11 1-1-3-3-4-6-4 1 3 0 6-3 8l-4 5-3-5c-3-2-4-5-3-8-3 0-5 1-6 4-3-2-6-3-11-1 3-5 7-7 11-7 0-3-1-6-4-9 8 0 14 5 17 9 1-2 2-4 4-4z'/%3E%3Ccircle cx='29.5' cy='12' r='1' fill='%23ff4040'/%3E%3Ccircle cx='34.5' cy='12' r='1' fill='%23ff4040'/%3E%3C/svg%3E") center / contain no-repeat;
+  transform-origin: 50% 60%;
+  animation: hw-bat-flap var(--flap) ease-in-out infinite alternate;
+}
+
+.hw-wisp {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(var(--wisp) / 0.95), rgb(var(--wisp) / 0.35) 45%, transparent 72%);
+  box-shadow: 0 0 10px rgb(var(--wisp) / 0.7), 0 0 22px rgb(var(--wisp) / 0.35);
+  animation: hw-wisp-float var(--dur) ease-in-out var(--delay) infinite alternate, hw-wisp-glow calc(var(--dur) / 3) ease-in-out var(--delay) infinite alternate;
+}
+
+@keyframes hw-fog-slide-x {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(var(--fog-tile), 0, 0); }
+}
+
+@keyframes hw-fog-slide-y {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(0, var(--fog-tile), 0); }
+}
+
+@keyframes hw-fog-slide-diag {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(var(--fog-tile), var(--fog-tile), 0); }
+}
+
+@keyframes hw-fog-breathe {
+  from { opacity: 0.55; transform: translate3d(-2%, 0, 0); }
+  to { opacity: 1; transform: translate3d(2%, -3%, 0); }
+}
+
+@keyframes hw-rays-sway {
+  from { opacity: 0.6; transform: translate3d(-2%, 0, 0); }
+  to { opacity: 1; transform: translate3d(3%, 0, 0); }
+}
+
+@keyframes hw-lightning {
+  0%, 94%, 100% { opacity: 0; }
+  95% { opacity: 0.85; }
+  96% { opacity: 0.1; }
+  97% { opacity: 0.6; }
+  99% { opacity: 0; }
+}
+
+@keyframes hw-bat-fly {
+  0% { translate: -12vw 0; }
+  25% { translate: 22vw calc(var(--sway) * -1); }
+  50% { translate: 55vw var(--sway); }
+  75% { translate: 85vw calc(var(--sway) * -0.6); }
+  100% { translate: 118vw 0; }
+}
+
+@keyframes hw-bat-flap {
+  from { transform: scaleY(1) rotate(-3deg); }
+  to { transform: scaleY(0.45) rotate(3deg); }
+}
+
+@keyframes hw-wisp-float {
+  from { translate: 0 0; }
+  to { translate: var(--dx) var(--dy); }
+}
+
+@keyframes hw-wisp-glow {
+  from { opacity: 0.35; scale: 0.8; }
+  to { opacity: 1; scale: 1.15; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atmosphere > .halloween-fog,
+  .atmosphere > .halloween-fog-ground,
+  .atmosphere > .halloween-moon,
+  .atmosphere > .halloween-flash,
+  .hw-wisp {
+    animation: none;
+  }
+
+  .hw-bat,
+  .atmosphere > .halloween-flash {
+    display: none;
+  }
+}
+
+/* ===== Ramassables cartoon (pièces, XP, soin) ===== */
+.loot-pickup.loot-coin,
+.loot-pickup.loot-health,
+.loot-pickup.loot-xp {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 0;
+  background: transparent center / contain no-repeat;
+  box-shadow: none;
+  color: transparent;
+  font-size: 0;
+}
+.loot-pickup.loot-coin { background-image: url("./assets/icons/coin.png?v=1"); filter: drop-shadow(0 2px 0 #1a0e08) drop-shadow(0 0 6px #ffd24acc); }
+.loot-pickup.loot-health { width: 32px; height: 32px; background-image: url("./assets/icons/heal.png?v=1"); filter: drop-shadow(0 2px 0 #1a0e08) drop-shadow(0 0 7px #ff5a5acc); }
+.loot-pickup.loot-xp { width: 24px; height: 24px; background-image: url("./assets/icons/xp.png?v=1"); filter: drop-shadow(0 2px 0 #08201a) drop-shadow(0 0 7px #3dffb0cc); }
+.loot-pickup.loot-xp.is-large { width: 34px; height: 34px; }
+.loot-pickup.loot-xp.is-magnet { filter: drop-shadow(0 0 9px #9dffd8) drop-shadow(0 0 3px #fff); }
+.loot-pickup.loot-coin::before,
+.loot-pickup.loot-coin::after,
+.loot-pickup.loot-health::before,
+.loot-pickup.loot-health::after,
+.loot-pickup.loot-xp::before,
+.loot-pickup.loot-xp::after { content: none; display: none; }
+.collect-xp .collect-spark { background: #b8ffe4; box-shadow: 0 0 6px #3dffb0; }
+.potion-icon-img { width: 1.4em; height: 1.4em; vertical-align: -0.3em; object-fit: contain; }
+
+/* ===== Monde 2 : Le Cauchemar de Noël ===== */
+.restart-button-world {
+  border-color: #cfeeff;
+  background: linear-gradient(#e24a4a, #8a1620);
+  box-shadow: 0 4px 0 #2a0a10, 0 0 18px #6fd0ff99;
+  color: #fff;
+}
+.restart-button-world:hover { background: linear-gradient(#ff6a6a, #a82230); }
+.restart-button[hidden] { display: none; }
+
+/* Cartes du monde 2 */
+html:not([data-look="toon"]) .arena[data-wave="w2-1"] { --map-image: url("./assets/map-w2-1-2d.jpg?v=1"); }
+html:not([data-look="toon"]) .arena[data-wave="w2-2"] { --map-image: url("./assets/map-w2-2-2d.jpg?v=1"); }
+html:not([data-look="toon"]) .arena[data-wave="w2-3"] { --map-image: url("./assets/map-w2-3-2d.jpg?v=1"); }
+html:not([data-look="toon"]) .arena[data-wave="w2-4"] { --map-image: url("./assets/map-w2-4-2d.jpg?v=1"); }
+html:not([data-look="toon"]) .arena[data-wave="w2-5"] { --map-image: url("./assets/map-w2-5-2d.jpg?v=1"); }
+
+/* Brouillard et lune : bleu glacé, rouge pour le manoir et l'usine. */
+.arena[data-wave="w2-1"] { --hw-fog-a: 190 205 255; --hw-fog-b: 255 150 120; --hw-moon: 210 225 255; }
+.arena[data-wave="w2-2"] { --hw-fog-a: 150 220 255; --hw-fog-b: 200 170 255; --hw-moon: 200 240 255; }
+.arena[data-wave="w2-3"] { --hw-fog-a: 120 230 190; --hw-fog-b: 160 200 255; --hw-moon: 190 255 220; }
+.arena[data-wave="w2-4"] { --hw-fog-a: 255 120 190; --hw-fog-b: 190 110 255; --hw-moon: 255 180 220; }
+.arena[data-wave="w2-5"] { --hw-fog-a: 255 90 100; --hw-fog-b: 120 150 255; --hw-moon: 255 140 150; }
+
+/* Neige qui tombe à la place des feuilles. */
+.arena[data-world="2"] .atmosphere-particle {
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #fff 0 35%, #dff1ff 60%, rgb(200 230 255 / 0) 72%);
+  box-shadow: 0 0 6px #cfeaffcc;
+  opacity: 0.9;
+}
+.arena[data-world="2"] .atmosphere-particle:nth-child(3n) { background: radial-gradient(circle at 40% 35%, #fff 0 30%, #bfe4ff 62%, rgb(190 225 255 / 0) 72%); }
+.arena[data-world="2"] .atmosphere-particle:nth-child(4n) { width: calc(var(--size) * 0.6); height: calc(var(--size) * 0.6); }
+.arena[data-world="2"] .hw-bat { display: none; }
+.arena[data-world="2"] .hw-wisp { --wisp: 190 230 255 !important; }
+.arena[data-world="2"] .hw-wisp:nth-child(3n) { --wisp: 255 120 120 !important; }
+
+/* Apparition des boss du monde 2. */
+.boss-spawn-fx-snow { --fx-color: #e8f4ff; --fx-glow: rgb(130 200 255 / 0.55); }
+.boss-spawn-fx-ice { --fx-color: #9fe3ff; --fx-glow: rgb(120 210 255 / 0.55); }
+.boss-spawn-fx-gift { --fx-color: #6dff9a; --fx-glow: rgb(80 255 150 / 0.5); }
+.boss-spawn-fx-candy { --fx-color: #ff7ab8; --fx-glow: rgb(255 120 190 / 0.5); }
+.boss-spawn-fx-mansion { --fx-color: #ff4040; --fx-glow: rgb(255 60 60 / 0.55); }
+.enemy-realistic.boss-spawning.boss-spawn-snow .enemy-boss-art,
+.enemy-realistic.boss-spawning.boss-spawn-candy .enemy-boss-art { animation: boss-spawn-scarecrow 1.6s cubic-bezier(0.25, 0.9, 0.3, 1.1) both; }
+.enemy-realistic.boss-spawning.boss-spawn-ice .enemy-boss-art,
+.enemy-realistic.boss-spawning.boss-spawn-mansion .enemy-boss-art { animation: boss-spawn-throne 1.6s ease-out both; }
+.enemy-realistic.boss-spawning.boss-spawn-gift .enemy-boss-art { animation: boss-spawn-stage 1.6s cubic-bezier(0.35, 0.1, 0.4, 1) both; }
+
+/* Lueurs des boss et sbires du monde 2. */
+.enemy-boss-pere-noel-tordu .enemy-boss-art { filter: drop-shadow(0 3px 0 #1a0a0a) drop-shadow(0 0 8px #ff4a4acc); }
+.enemy-boss-mere-froide .enemy-boss-art { filter: drop-shadow(0 3px 0 #0a1a2a) drop-shadow(0 0 10px #8fe0ffcc); }
+.enemy-boss-grinch-demoniaque .enemy-boss-art { filter: drop-shadow(0 3px 0 #0a1a0a) drop-shadow(0 0 8px #5aff7acc); }
+.enemy-boss-homme-pain-epices .enemy-boss-art { filter: drop-shadow(0 3px 0 #2a1408) drop-shadow(0 0 8px #ff9a4acc); }
+.enemy-boss-maitre-cadeaux-noirs .enemy-boss-art { width: 140%; height: 140%; filter: drop-shadow(0 4px 0 #0a0510) drop-shadow(0 0 12px #ff3a4acc); }
+.enemy-minion-art-lutin-possede, .enemy-minion-art-lutin-voleur, .enemy-minion-art-lutin-kamikaze { filter: drop-shadow(0 2px 0 #140a0a) drop-shadow(0 0 4px #ff5a5a88); }
+.enemy-minion-art-renne-squelette, .enemy-minion-art-bonhomme-neige, .enemy-minion-art-chien-neiges, .enemy-minion-art-loup-noel { filter: drop-shadow(0 2px 0 #0a1020) drop-shadow(0 0 4px #9fdcff88); }
+.enemy-minion-art-flocon-vivant, .enemy-minion-art-esprit-gele, .enemy-minion-art-gardien-glace { filter: drop-shadow(0 2px 0 #0a1a2a) drop-shadow(0 0 6px #8fe8ffcc); }
+.enemy-minion-art-bonhomme-pain-epices, .enemy-minion-art-sucette-vivante, .enemy-minion-art-ours-sucre { filter: drop-shadow(0 2px 0 #2a1008) drop-shadow(0 0 4px #ff8ac888); }
+.enemy-minion-art-ombre-noel, .enemy-minion-art-cadeau-maudit { filter: drop-shadow(0 2px 0 #100510) drop-shadow(0 0 5px #ff3a4a99); }
+
+/* Tirs des boss et sbires du monde 2. */
+.enemy-aim-ice, .enemy-charge-ice, .enemy-muzzle-ice, .enemy-impact-ice { --shot-color: #e6f8ff; --shot-glow: #5ac8ff; }
+.enemy-aim-candy, .enemy-charge-candy, .enemy-muzzle-candy, .enemy-impact-candy { --shot-color: #ffe0ee; --shot-glow: #ff4f9a; }
+.enemy-aim-gift, .enemy-charge-gift, .enemy-muzzle-gift, .enemy-impact-gift { --shot-color: #ffd0d0; --shot-glow: #ff2a3a; }
+.boss-projectile.enemy-shot-ice {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: radial-gradient(circle at 55% 45%, #fff 0 14%, #d6f4ff 30%, #52c4ff 56%, #1a6fb0 72%, transparent 76%);
+  box-shadow: 0 0 14px #7fd8ff, 0 0 28px #3a9cf0aa;
+  animation: enemy-orb-pulse 0.22s ease-in-out infinite alternate;
+}
+.boss-projectile.enemy-shot-candy {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: repeating-conic-gradient(#ff3b7a 0 30deg, #fff 30deg 60deg);
+  border: 2px solid #5a0e2a;
+  box-shadow: 0 0 10px #ff6aa8;
+  animation: enemy-orb-pulse 0.2s ease-in-out infinite alternate;
+}
+.boss-projectile.enemy-shot-gift {
+  width: 24px; height: 24px; border-radius: 4px;
+  background: linear-gradient(90deg, transparent 0 40%, #ff2a3a 40% 60%, transparent 60%), linear-gradient(0deg, transparent 0 40%, #ff2a3a 40% 60%, transparent 60%), #1a1020;
+  border: 2px solid #ff4a5a;
+  box-shadow: 0 0 14px #ff2a3a, 0 0 28px #8a0a1aaa;
+  animation: enemy-orb-pulse 0.18s ease-in-out infinite alternate;
+}
+
+/* ===== Caisses « Noël cauchemar » ===== */
+.crate-style-noel {
+  --crate-lid: repeating-linear-gradient(90deg, #b3202a 0 14px, #f5efe6 14px 28px);
+  --crate-body: linear-gradient(90deg, #1f5a35 0 44%, #c9a227 44% 56%, #1f5a35 56%);
+  --crate-trim: #e8c24a;
+  --crate-badge: radial-gradient(circle, #b3202a, #4a0d12);
+  --crate-glow: rgb(120 220 255 / 0.6);
+}
+
+.crate-style-noel-royale {
+  --crate-lid: conic-gradient(from 45deg, #1a1030, #8fe9ff, #b3202a, #e8c24a, #1a1030);
+  --crate-body: linear-gradient(180deg, #151a3a, #07091c);
+  --crate-trim: #8fe9ff;
+  --crate-badge: radial-gradient(circle, #e8c24a, #5a1018);
+  --crate-glow: rgb(143 233 255 / 0.8);
+}
+
+.crate-card-noel .crate-preview,
+.crate-card-noel-royale .crate-preview {
+  background: radial-gradient(circle at 50% 30%, rgb(143 233 255 / 0.28), transparent 70%);
+}
+
+/* ===== Répliques des boss (sous-titres) ===== */
+.boss-speech {
+  position: absolute;
+  z-index: 12;
+  left: 50%;
+  bottom: 13%;
+  display: grid;
+  gap: 2px;
+  max-width: min(78%, 620px);
+  padding: 10px 18px 11px;
+  border: 2px solid #ffb44d;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgb(26 10 18 / 0.93), rgb(10 4 10 / 0.93));
+  box-shadow: 0 0 22px rgb(255 120 40 / 0.45), 0 6px 0 rgb(0 0 0 / 0.5);
+  color: #fff1dc;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, 14px);
+}
+
+.boss-speech strong {
+  color: #ffb44d;
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.boss-speech span {
+  font-size: 1.05rem;
+  font-style: italic;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.boss-speech.is-visible {
+  animation: boss-speech-pop 4.3s ease-out forwards;
+}
+
+.arena[data-world="2"] .boss-speech {
+  border-color: #8fe9ff;
+  box-shadow: 0 0 22px rgb(120 220 255 / 0.5), 0 6px 0 rgb(0 0 0 / 0.5);
+}
+
+.arena[data-world="2"] .boss-speech strong {
+  color: #8fe9ff;
+}
+
+@keyframes boss-speech-pop {
+  0% { opacity: 0; transform: translate(-50%, 14px) scale(0.96); }
+  8% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  88% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -6px) scale(0.98); }
+}
+
+/* ===== Récompenses : niveaux de roue ===== */
+.reward-node.is-wheel {
+  border-color: #8fe9ff;
+  box-shadow: 0 0 14px rgb(143 233 255 / 0.45);
+}
+
+/* ===== Roue exclusive (niveau 250 et plus) ===== */
+.wheel-overlay {
+  position: fixed;
+  z-index: 1100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 40%, rgb(20 40 80 / 0.82), rgb(3 4 12 / 0.95));
+  animation: crate-fade 0.25s ease-out;
+}
+
+.wheel-overlay[hidden] {
+  display: none;
+}
+
+.wheel-panel {
+  width: min(560px, 94vw);
+  box-sizing: border-box;
+  padding: 18px 22px 20px;
+  border: 2px solid #e8c24a;
+  border-radius: 18px;
+  background: linear-gradient(160deg, #1b2a48, #0b1020);
+  box-shadow: 0 0 46px rgb(143 233 255 / 0.4), 0 20px 50px rgb(0 0 0 / 0.65);
+  color: #fff6e6;
+  text-align: center;
+}
+
+.wheel-kicker {
+  margin: 0;
+  color: #8fe9ff;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+}
+
+.wheel-title {
+  margin: 4px 0 2px;
+  color: #ffd86b;
+  font-size: 1.6rem;
+}
+
+.wheel-sub {
+  margin: 0 0 8px;
+  color: #cfe3ff;
+  font-size: 0.92rem;
+}
+
+.wheel-stage {
+  position: relative;
+  width: min(360px, 78vw);
+  aspect-ratio: 1;
+  margin: 6px auto 12px;
+}
+
+.wheel-disc {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border: 6px solid #e8c24a;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px #5a1018, 0 0 34px rgb(255 216 107 / 0.45), inset 0 0 40px rgb(0 0 0 / 0.5);
+  will-change: transform;
+}
+
+.wheel-slot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  transform: rotate(var(--a));
+}
+
+.wheel-slot span {
+  position: absolute;
+  top: calc(min(360px, 78vw) * -0.42);
+  left: -34px;
+  display: grid;
+  width: 68px;
+  justify-items: center;
+  gap: 1px;
+  text-shadow: 0 2px 3px #000;
+}
+
+.wheel-slot b {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  font-size: 1.7rem;
+  line-height: 1;
+}
+
+.wheel-slot b img {
+  max-width: 42px;
+  max-height: 42px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 2px #000);
+  transform: rotate(0deg);
+}
+
+.wheel-slot i {
+  color: #fff;
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+.wheel-slot-weapon i {
+  color: #ffd86b;
+}
+
+.wheel-pointer {
+  position: absolute;
+  z-index: 3;
+  top: -14px;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-right: 15px solid transparent;
+  border-left: 15px solid transparent;
+  border-top: 30px solid #ff4a4a;
+  filter: drop-shadow(0 3px 2px #000);
+  transform: translateX(-50%);
+}
+
+.wheel-hub {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  width: 64px;
+  height: 64px;
+  place-items: center;
+  border: 4px solid #e8c24a;
+  border-radius: 50%;
+  background: radial-gradient(circle, #b3202a, #4a0d12);
+  box-shadow: 0 0 14px rgb(0 0 0 / 0.6);
+  font-size: 1.7rem;
+  transform: translate(-50%, -50%);
+}
+
+.wheel-result {
+  display: grid;
+  gap: 2px;
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  border: 1px solid rgb(255 216 107 / 0.6);
+  border-radius: 10px;
+  background: rgb(255 216 107 / 0.1);
+}
+
+.wheel-result[hidden] {
+  display: none;
+}
+
+.wheel-result-name {
+  color: #ffd86b;
+  font-size: 1.25rem;
+}
+
+.wheel-result-note {
+  color: #dff1ff;
+  font-size: 0.9rem;
+}
+
+.wheel-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.wheel-spin {
+  min-width: 220px;
+  font-size: 1.05rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boss-speech.is-visible {
+    animation: none;
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* ===== Portails embellis : plus grands, halo lumineux, ondes au sol, orbes et thème de Noël ===== */
+.boss-portal {
+  --portal-zoom: 1.45;
+}
+
+.portal-ground {
+  transform: scale(calc(var(--world-scale, 1) * var(--portal-zoom)));
+}
+
+.portal-gate {
+  transform: scale(calc(var(--world-scale, 1) * var(--portal-zoom)));
+}
+
+/* ondes d'énergie qui s'étalent depuis le pied du portail */
+.portal-ground::before,
+.portal-ground::after {
+  position: absolute;
+  inset: 24px;
+  border: 2px solid color-mix(in srgb, var(--pa) 80%, transparent);
+  border-radius: 50%;
+  box-shadow: 0 0 14px var(--pb), inset 0 0 14px var(--pb);
+  content: "";
+  opacity: 0;
+  animation: portal-ripple 2.8s ease-out infinite;
+}
+
+.portal-ground::after {
+  animation-delay: 1.4s;
+}
+
+/* colonne de lumière qui monte au-dessus de l'arche */
+.portal-gate::after {
+  position: absolute;
+  top: -150px;
+  left: 50%;
+  width: 90px;
+  height: 200px;
+  background: linear-gradient(0deg, color-mix(in srgb, var(--pb) 75%, transparent), color-mix(in srgb, var(--pb) 28%, transparent) 45%, transparent);
+  content: "";
+  filter: blur(5px);
+  mask: linear-gradient(90deg, transparent, #000 35% 65%, transparent);
+  mix-blend-mode: screen;
+  opacity: 0.7;
+  pointer-events: none;
+  translate: -50% 0;
+  animation: portal-beam 2.2s ease-in-out infinite alternate;
+}
+
+.portal-vortex {
+  box-shadow: inset 0 0 22px var(--pb), inset 0 0 6px var(--pa), inset 0 -10px 16px #0009;
+}
+
+.portal-arch {
+  filter: drop-shadow(0 0 7px var(--pb)) drop-shadow(0 0 16px color-mix(in srgb, var(--pb) 60%, transparent));
+}
+
+/* orbes lumineux en orbite autour de la porte */
+.portal-orbit {
+  position: absolute;
+  inset: -8px -20px;
+  pointer-events: none;
+  animation: portal-orbit-angle 5.5s linear infinite;
+}
+
+.portal-orb {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0 30%, var(--pa) 55%, var(--pb));
+  box-shadow: 0 0 8px 3px var(--pb);
+  translate: calc(cos(var(--oa) + var(--i) * 120deg) * 82px - 50%) calc(sin(var(--oa) + var(--i) * 120deg) * 26px - 50% - 4px);
+  animation: portal-orb-pulse 1.1s ease-in-out calc(var(--i) * -0.35s) infinite alternate;
+}
+
+.portal-caption {
+  top: -44px;
+  padding: 4px 14px;
+  border-width: 2px;
+  background: linear-gradient(180deg, rgb(26 18 40 / 0.92), rgb(8 6 14 / 0.92));
+  font-size: 0.62rem;
+  animation: portal-caption-float 2s ease-in-out infinite alternate;
+}
+
+/* Monde 2 : portail de glace et de givre, avec des cristaux et un flocon pour clé de voûte */
+.arena[data-world="2"] .boss-portal-next-wave {
+  --pa: #f2fbff;
+  --pb: #6fd2ff;
+  --pc: #12407a;
+}
+
+.arena[data-world="2"] .boss-portal-next-wave .portal-runes {
+  border-color: color-mix(in srgb, #ff5d6c 70%, transparent);
+  box-shadow: 0 0 12px #ff5d6c, inset 0 0 12px var(--pb);
+}
+
+.arena[data-world="2"] .boss-portal-next-wave .portal-orb:nth-child(2) {
+  background: radial-gradient(circle, #fff 0 30%, #ffd0d4 55%, #ff5d6c);
+  box-shadow: 0 0 8px 3px #ff5d6c;
+}
+
+.arena[data-world="2"] .boss-portal-next-wave .portal-orb:nth-child(3) {
+  background: radial-gradient(circle, #fff 0 30%, #d2ffd8 55%, #3fd96a);
+  box-shadow: 0 0 8px 3px #3fd96a;
+}
+
+.arena[data-world="2"] .boss-portal-next-wave .portal-arch {
+  background:
+    radial-gradient(circle at 20% 70%, #ffffffd0 0 3px, transparent 4px),
+    radial-gradient(circle at 82% 30%, #ffffffc0 0 2px, transparent 3px),
+    radial-gradient(ellipse 62% 56% at 50% 56%, color-mix(in srgb, var(--pb) 55%, transparent), transparent 74%),
+    linear-gradient(90deg, rgb(10 30 60 / 0.5), transparent 28% 72%, rgb(10 30 60 / 0.55)),
+    repeating-conic-gradient(from -90deg at 50% 100%, rgb(20 50 90 / 0.6) 0 1.4deg, transparent 1.4deg 15deg) top / 100% 38% no-repeat border-box,
+    repeating-linear-gradient(135deg, #ffffff 0 7px, #e5384f 7px 14px) bottom / 100% 62% no-repeat border-box,
+    linear-gradient(180deg, #f2fbff, #a9d6f2 46%, #5d86ad);
+  background-origin: border-box;
+}
+
+.arena[data-world="2"] .boss-portal-next-wave .portal-arch::after {
+  background: linear-gradient(180deg, #ffffff, #8cc9ee);
+  content: "❄";
+  color: #2a6fa8;
+  text-shadow: 0 0 6px #fff, 0 0 10px var(--pb);
+}
+
+.arena[data-world="2"] .boss-portal-next-wave .portal-plinth {
+  background: linear-gradient(180deg, #ffffff, #8fb8d6);
+}
+
+.arena[data-world="2"] .boss-portal-next-wave .portal-spark {
+  width: 4px;
+  height: 4px;
+  background: #fff;
+  box-shadow: 0 0 6px 2px var(--pb);
+}
+
+@keyframes portal-ripple {
+  0% { opacity: 0.9; scale: 0.35; }
+  100% { opacity: 0; scale: 1.15; }
+}
+
+@keyframes portal-beam {
+  from { opacity: 0.45; scale: 0.9 1; }
+  to { opacity: 0.85; scale: 1.1 1.08; }
+}
+
+@property --oa {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0deg;
+}
+
+@keyframes portal-orbit-angle {
+  from { --oa: 0deg; }
+  to { --oa: 360deg; }
+}
+
+@keyframes portal-orb-pulse {
+  from { scale: 0.7; opacity: 0.7; }
+  to { scale: 1.2; opacity: 1; }
+}
+
+@keyframes portal-caption-float {
+  from { translate: -50% 0; }
+  to { translate: -50% -4px; }
+}
+
+/* Packs royaux (5 000 pièces et plus) et longues listes */
+.pack-items.is-long {
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.pack-card.pack-royal {
+  box-shadow: 0 0 0 2px #ffd54a, 0 0 28px rgba(255, 213, 74, 0.45), 0 12px 30px rgba(0, 0, 0, 0.5);
+  background-image: linear-gradient(160deg, rgba(255, 213, 74, 0.16), transparent 55%);
+}
+
+.pack-card.pack-royal .store-price strong {
+  color: #ffd54a;
+  font-size: 1.35em;
+  text-shadow: 0 0 12px rgba(255, 213, 74, 0.7);
 }
