@@ -4050,7 +4050,7 @@ function shakeArena(strength = "") {
   void arena.offsetWidth;
   const className = strength === "light" ? "arena-quake-light" : "arena-quake";
   arena.classList.add(className);
-  window.setTimeout(() => arena.classList.remove(className), 420);
+  window.setTimeout(() => arena.classList.remove(className), 280);
 }
 
 let liveFxLayers = 0;
