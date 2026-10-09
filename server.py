@@ -30,11 +30,16 @@ CATALOG = {
         {"id": "puissance", "label": "Braise maudite", "icon": "🔥"},
     ],
     "relics": [
-        {"id": "medaille-du-gardien", "label": "Médaille du Gardien", "icon": "🏅"},
+        {"id": "medaille-du-gardien", "label": "Médaille du Fossoyeur", "icon": "🏅"},
         {"id": "dent-du-colosse", "label": "Dent du Colosse", "icon": "🦷"},
         {"id": "cristal-de-minuit", "label": "Cristal de minuit", "icon": "🔮"},
         {"id": "coeur-de-citrouille", "label": "Cœur de citrouille", "icon": "🧡"},
-        {"id": "couronne-des-brumes", "label": "Couronne des brumes", "icon": "👑"},
+        {"id": "couronne-des-brumes", "label": "Couronne du Chambellan", "icon": "👑"},
+        {"id": "clochette-noire", "label": "Clochette noire", "icon": "🔔"},
+        {"id": "echarde-de-glace", "label": "Écharde de glace", "icon": "❄️"},
+        {"id": "sac-vole", "label": "Sac volé", "icon": "🎒"},
+        {"id": "bouton-pain-epices", "label": "Bouton de pain d'épices", "icon": "🍪"},
+        {"id": "ruban-maudit", "label": "Ruban maudit", "icon": "🎀"},
     ],
     "characters": [
         {"id": "survivant", "label": "Survivant", "icon": "🧭"},

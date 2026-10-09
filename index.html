@@ -8,7 +8,10 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <title>Mon petit jeu</title>
-    <link rel="stylesheet" href="style.css?v=90" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Creepster&display=swap" />
+    <link rel="stylesheet" href="style.css?v=98" />
     <link rel="stylesheet" href="toon3d.css?v=8" />
     <script>
       // Le jeu est en 2D par défaut. ?3d=1 réactive le rendu 3D (personnages, relief, caméra 3e personne), ?3d=0 revient en 2D.
@@ -41,7 +44,7 @@
       }
     </script>
     <script src="obstacles-2d.js?v=1"></script>
-    <script src="script.js?v=100" defer></script>
+    <script src="script.js?v=105" defer></script>
   </head>
   <body>
     <main class="arena" aria-label="Terrain de jeu">
@@ -267,6 +270,11 @@
                 <span class="sio-pumpkin sio-pumpkin-left">🎃</span>
                 <span class="sio-pumpkin sio-pumpkin-right">🎃</span>
                 <span class="sio-fog"></span>
+                <span class="sio-flash"></span>
+                <span class="sio-eyes sio-eyes-1"></span>
+                <span class="sio-eyes sio-eyes-2"></span>
+                <span class="sio-candle sio-candle-a"></span>
+                <span class="sio-candle sio-candle-b"></span>
                 <span class="sio-web sio-web-left">🕸️</span>
                 <span class="sio-web sio-web-right">🕸️</span>
                 <span class="sio-spider">🕷️</span>
@@ -285,6 +293,15 @@
             <button class="menu-primary sio-play" id="start-button" type="button"><span>JOUER</span></button>
           </div>
           <div class="menu-screen rewards-screen" id="rewards-screen" hidden>
+            <div class="rewards-ornament" aria-hidden="true">
+              <span class="rewards-web">🕸️</span>
+              <span>🦇</span>
+              <span>🎃</span>
+              <span>💀</span>
+              <span>🎃</span>
+              <span>🦇</span>
+              <span class="rewards-web rewards-web-right">🕸️</span>
+            </div>
             <p class="rewards-summary" id="rewards-summary"></p>
             <ol class="rewards-track" id="rewards-track" aria-label="Récompenses des niveaux 1 à 400"></ol>
             <button class="menu-secondary" id="back-from-rewards-button" type="button">Retour à la préparation</button>
@@ -298,7 +315,7 @@
               <span class="store-countdown" id="shop-rotation-countdown" role="timer">Promos dans --:--</span>
             </div>
             <section class="store-featured" aria-labelledby="store-featured-title">
-              <h2 class="store-title" id="store-featured-title">🔥 À la une · promos du moment</h2>
+              <h2 class="store-title" id="store-featured-title">🎃 À la une · offrandes de la nuit</h2>
               <p class="shop-rotation-note" id="shop-rotation-note"></p>
               <div class="store-grid store-grid-featured" id="shop-items"></div>
             </section>
@@ -328,7 +345,7 @@
           </div>
           <div class="menu-screen locker-screen" id="locker-screen" hidden>
             <header class="locker-top">
-              <h2 class="locker-title">Casier</h2>
+              <h2 class="locker-title">Casier maudit</h2>
               <nav class="locker-tabs" role="tablist" aria-label="Rubriques du casier">
                 <button class="locker-tab" type="button" role="tab" data-locker-tab="loadout" aria-selected="true">Équipement</button>
                 <button class="locker-tab" type="button" role="tab" data-locker-tab="upgrades" aria-selected="false">Améliorations</button>
@@ -363,7 +380,7 @@
             </div>
             <div class="locker-panel locker-workshop" data-locker-panel="workshop" role="tabpanel" hidden>
               <h2 class="shop-category-title">Atelier occulte · fusionner les reliques de boss</h2>
-              <p class="shop-category-note">Fusionne plusieurs reliques identiques avec des pièces pour obtenir armes ou potions. Les armes restent dans ton casier ; les potions ajoutent une utilisation au stock et se lancent avec P.</p>
+              <p class="shop-category-note">Chaque boss laisse sa propre relique. Fusionne-la ici avec des pièces pour obtenir une arme ou une potion. Les armes restent dans ton casier ; les potions ajoutent une utilisation au stock et se lancent avec P.</p>
               <div class="shop-items weapon-offers locker-crafting-items" id="locker-crafting-items"></div>
               <h2 class="shop-category-title">Reliques de boss</h2>
               <div class="locker-items" id="locker-items"></div>
@@ -372,11 +389,14 @@
           </div>
           <p class="progression-feedback" id="progression-feedback" role="status" aria-live="polite"></p>
           <nav class="menu-nav" aria-label="Navigation du menu">
-            <button class="menu-nav-button" id="open-shop-button" type="button" data-nav="shop"><span class="menu-nav-icon" aria-hidden="true">🛒</span>Boutique</button>
-            <button class="menu-nav-button" type="button" data-nav="locker"><span class="menu-nav-icon" aria-hidden="true">🎒</span>Casier</button>
-            <button class="menu-nav-button menu-nav-main" type="button" data-nav="home"><span class="menu-nav-icon" aria-hidden="true">⚔️</span>Combat</button>
-            <button class="menu-nav-button" id="open-upgrades-button" type="button" data-nav="upgrades"><span class="menu-nav-icon" aria-hidden="true">⬆️</span>Améliorer</button>
-            <button class="menu-nav-button" id="open-rewards-button" type="button" data-nav="rewards"><span class="menu-nav-icon" aria-hidden="true">🎁</span>Récompenses</button>
+            <span class="menu-nav-web menu-nav-web-left" aria-hidden="true">🕸️</span>
+            <span class="menu-nav-web menu-nav-web-right" aria-hidden="true">🕸️</span>
+            <span class="menu-nav-spider" aria-hidden="true">🕷️</span>
+            <button class="menu-nav-button" id="open-shop-button" type="button" data-nav="shop"><span class="menu-nav-icon" aria-hidden="true">🕯️</span>Boutique</button>
+            <button class="menu-nav-button" type="button" data-nav="locker"><span class="menu-nav-icon" aria-hidden="true">⚰️</span>Casier</button>
+            <button class="menu-nav-button menu-nav-main" type="button" data-nav="home"><span class="menu-nav-icon" aria-hidden="true">💀</span>Combat</button>
+            <button class="menu-nav-button" id="open-upgrades-button" type="button" data-nav="upgrades"><span class="menu-nav-icon" aria-hidden="true">🩸</span>Améliorer</button>
+            <button class="menu-nav-button" id="open-rewards-button" type="button" data-nav="rewards"><span class="menu-nav-icon" aria-hidden="true">🪦</span>Récompenses</button>
           </nav>
         </div>
       </section>

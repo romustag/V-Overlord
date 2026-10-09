@@ -305,11 +305,16 @@ const boostOptions = [
   { id: "puissance", label: "Braise maudite", description: "Tes tirs infligent 2 dégâts supplémentaires pendant 25 secondes.", duration: 25, icon: "🔥", price: 85, rotation: 2 },
 ];
 const bossRelicCatalog = [
-  { id: "medaille-du-gardien", label: "Médaille du Gardien", description: "Un insigne hanté récupéré sur un boss.", icon: "🏅" },
-  { id: "dent-du-colosse", label: "Dent du Colosse", description: "Un trophée gravé dans l'os d'un colosse.", icon: "🦷" },
-  { id: "cristal-de-minuit", label: "Cristal de minuit", description: "Un éclat rare chargé de magie noire.", icon: "🔮" },
-  { id: "coeur-de-citrouille", label: "Cœur de citrouille", description: "Le cœur incandescent du Roi Citrouille.", icon: "🧡" },
-  { id: "couronne-des-brumes", label: "Couronne des brumes", description: "Une relique royale qui ne se trouve que dans la nuit maudite.", icon: "👑" },
+  { id: "medaille-du-gardien", boss: "fossoyeur-maudit", label: "Médaille du Fossoyeur", description: "Lâchée par le Fossoyeur maudit. Sert à forger la lanterne des âmes et des potions de soin.", icon: "🏅" },
+  { id: "coeur-de-citrouille", boss: "epouvantail-automne", label: "Cœur de citrouille", description: "Lâché par l'Épouvantail d'automne. Sert à fabriquer la bulle de citrouille et la braise maudite.", icon: "🧡" },
+  { id: "cristal-de-minuit", boss: "maitre-des-cauchemars", label: "Cristal de minuit", description: "Lâché par le Maître des cauchemars. Sert à fabriquer les bottes du fantôme.", icon: "🔮" },
+  { id: "dent-du-colosse", boss: "bouffon-frondeur", label: "Dent du bouffon", description: "Lâchée par le Bouffon frondeur. Sert à forger le fusil à citrouilles.", icon: "🦷" },
+  { id: "couronne-des-brumes", boss: "mega-cauchemar", label: "Couronne du Chambellan", description: "Lâchée par le Chambellan sorcier. Sert à forger l'arc du corbeau et la braise maudite.", icon: "👑" },
+  { id: "clochette-noire", boss: "pere-noel-tordu", label: "Clochette noire", description: "Lâchée par le Père Noël tordu. Sert à forger la canne d'orge tranchante.", icon: "🔔" },
+  { id: "echarde-de-glace", boss: "mere-froide", label: "Écharde de glace", description: "Lâchée par la Mère froide. Sert à forger le pistolet à glaçons et l'épée de glace.", icon: "❄️" },
+  { id: "sac-vole", boss: "grinch-demoniaque", label: "Sac volé", description: "Lâché par le Grinch démoniaque. Sert à forger le lance-cadeaux piégés.", icon: "🎒" },
+  { id: "bouton-pain-epices", boss: "homme-pain-epices", label: "Bouton de pain d'épices", description: "Lâché par l'Homme de pain d'épices. Sert à forger le fouet des ronces et la braise maudite.", icon: "🍪" },
+  { id: "ruban-maudit", boss: "maitre-cadeaux-noirs", label: "Ruban maudit", description: "Lâché par le Maître des cadeaux noirs. Sert à forger l'épée de la Mère Froide et la bulle de citrouille.", icon: "🎀" },
 ];
 const defaultRelicInventory = Object.fromEntries(bossRelicCatalog.map((relic) => [relic.id, 0]));
 const activePowerOptions = [
@@ -688,6 +693,13 @@ const craftingRecipes = [
   { id: "potion-vitesse", type: "potion", itemId: "vitesse", relicCosts: { "cristal-de-minuit": 2 }, coinCost: 40 },
   { id: "potion-bouclier", type: "potion", itemId: "bouclier", relicCosts: { "coeur-de-citrouille": 2 }, coinCost: 65 },
   { id: "potion-puissance", type: "potion", itemId: "puissance", relicCosts: { "coeur-de-citrouille": 2, "couronne-des-brumes": 2 }, coinCost: 110 },
+  { id: "arme-canne-sucre", type: "weapon", itemId: "canne-sucre", relicCosts: { "clochette-noire": 3 }, coinCost: 80 },
+  { id: "arme-pistolet-glacon", type: "weapon", itemId: "pistolet-glacon", relicCosts: { "echarde-de-glace": 3 }, coinCost: 90 },
+  { id: "arme-lance-cadeaux", type: "weapon", itemId: "lance-cadeaux", relicCosts: { "sac-vole": 3 }, coinCost: 130 },
+  { id: "arme-fouet-ronces", type: "weapon", itemId: "fouet-ronces", relicCosts: { "bouton-pain-epices": 3 }, coinCost: 110 },
+  { id: "arme-epee-mere-froide", type: "weapon", itemId: "epee-mere-froide", relicCosts: { "echarde-de-glace": 2, "ruban-maudit": 2 }, coinCost: 180 },
+  { id: "potion-puissance-pain", type: "potion", itemId: "puissance", relicCosts: { "bouton-pain-epices": 2 }, coinCost: 55 },
+  { id: "potion-bouclier-ruban", type: "potion", itemId: "bouclier", relicCosts: { "ruban-maudit": 2 }, coinCost: 70 },
 ];
 const crateTierOrder = ["commun", "peu-commun", "rare", "legendaire", "divin"];
 const crateTierLabels = { commun: "Commun", "peu-commun": "Peu commun", rare: "Rare", legendaire: "Légendaire", divin: "Divin" };
@@ -3370,14 +3382,14 @@ function showPreparationMenu() {
 }
 
 function showShop(summary = "Choisis une amélioration pour ta prochaine expédition.") {
-  menuTitle.textContent = "Boutique de l'avant-poste";
+  menuTitle.textContent = "Boutique de la nuit maudite";
   shopSummary.textContent = summary;
   setMenuScreen("shop");
   renderShop();
 }
 
 function showLocker(tab = activeLockerTab) {
-  menuTitle.textContent = `Casier de ${progression.playerName || "Survivant"}`;
+  menuTitle.textContent = `Casier maudit de ${progression.playerName || "Survivant"}`;
   activeLockerTab = tab;
   setMenuScreen("locker");
   renderLocker();
@@ -3797,33 +3809,27 @@ function equipLockerChoice(category, itemId) {
 function renderLockerWorkshop() {
   lockerItems.replaceChildren();
   lockerCraftingItems.replaceChildren();
-  const ownedRelics = bossRelicCatalog.filter((relic) => progression.relicInventory[relic.id] > 0);
-  if (ownedRelics.length > 0) {
-    const lootHeading = document.createElement("p");
-    lootHeading.className = "locker-inventory-count";
-    lootHeading.textContent = "Reliques de boss · matériaux de fabrication";
-    lockerItems.append(lootHeading);
-    for (const relic of ownedRelics) {
-      const relicCard = document.createElement("article");
-      relicCard.className = "shop-card locker-relic-card";
-      const icon = document.createElement("span");
-      icon.className = "shop-item-icon";
-      icon.textContent = relic.icon;
-      const category = document.createElement("span");
-      category.className = "shop-item-category";
-      category.textContent = `Matériau de craft · ×${progression.relicInventory[relic.id]}`;
-      const title = document.createElement("h3");
-      title.textContent = relic.label;
-      const description = document.createElement("p");
-      description.textContent = relic.description;
-      relicCard.append(icon, category, title, description);
-      lockerItems.append(relicCard);
-    }
-  } else {
-    const emptyRelics = document.createElement("p");
-    emptyRelics.className = "locker-empty";
-    emptyRelics.textContent = "Aucune relique en stock. Les boss peuvent en laisser tomber : ramasse-les pour fabriquer des objets.";
-    lockerItems.append(emptyRelics);
+  const lootHeading = document.createElement("p");
+  lootHeading.className = "locker-inventory-count";
+  lootHeading.textContent = "Reliques de boss · une par boss · matériaux de fabrication";
+  lockerItems.append(lootHeading);
+  for (const relic of bossRelicCatalog) {
+    const stock = progression.relicInventory[relic.id] || 0;
+    const relicCard = document.createElement("article");
+    relicCard.className = stock > 0 ? "shop-card locker-relic-card" : "shop-card locker-relic-card is-empty";
+    const icon = document.createElement("span");
+    icon.className = "shop-item-icon";
+    icon.textContent = relic.icon;
+    const category = document.createElement("span");
+    category.className = "shop-item-category";
+    const bossLabel = bossTypes.find((boss) => boss.name === relic.boss)?.label || "Boss";
+    category.textContent = `${bossLabel} · en stock ×${stock}`;
+    const title = document.createElement("h3");
+    title.textContent = relic.label;
+    const description = document.createElement("p");
+    description.textContent = relic.description;
+    relicCard.append(icon, category, title, description);
+    lockerItems.append(relicCard);
   }
 
   renderCraftingRecipes();
@@ -8734,24 +8740,22 @@ function damageEnemy(enemy, rawDamage, { knockback = true } = {}) {
         const goldenWeapon = chooseWeaponDrop("doree");
         unlockGoldenBossWeapon(goldenWeapon);
         goldenWeaponName = goldenWeapon.label;
+        const relic = chooseBossRelic(enemy.profileName);
+        if (relic) collectBossRelic(relic.id);
       } else {
         const rarity = isWaveFourBoss ? "orange" : "violette";
         const coins = isWaveFourBoss ? 25 : 5;
         const healingPercent = isWaveFourBoss ? 0.25 : 0.05;
         createWeaponPickup(enemy.x, enemy.y, rarity, chooseWeaponDrop(rarity));
-        roundMessage.textContent = `Le boss a lâché son arme : approche-toi et appuie sur ${keyLabel("pickup")} pour la ramasser.`;
+        const relic = chooseBossRelic(enemy.profileName);
+        if (relic) createBossRelicPickup(enemy.x + 30, enemy.y - 20, relic);
+        roundMessage.textContent = relic
+          ? `Arme et ${relic.icon} ${relic.label} à terre. Ramasse-les (${keyLabel("pickup")}) : la relique se fusionne dans l'atelier du casier.`
+          : `Le boss a lâché son arme : approche-toi et appuie sur ${keyLabel("pickup")} pour la ramasser.`;
         roundMessage.hidden = false;
-        window.setTimeout(() => { roundMessage.hidden = true; }, 2600);
+        window.setTimeout(() => { roundMessage.hidden = true; }, 3200);
         createCoinPickup(enemy.x - 16, enemy.y, coins);
         createHealthPickup(enemy.x + 18, enemy.y, Math.max(1, Math.ceil(maxPlayerHealth * healingPercent)));
-      }
-      const relic = chooseBossRelic();
-      if (relic) {
-        if (isMegaBoss) {
-          collectBossRelic(relic.id);
-        } else {
-          createBossRelicPickup(enemy.x + 30, enemy.y - 20, relic);
-        }
       }
       playSound("boss-down", enemy.profileName);
     } else {
@@ -8810,11 +8814,8 @@ function showDamageNumber(enemy, damage) {
   }, 720);
 }
 
-function chooseBossRelic() {
-  const pendingRelics = new Set([...pickups].filter((pickup) => pickup.kind === "relic").map((pickup) => pickup.relicId));
-  const available = bossRelicCatalog.filter((item) => !pendingRelics.has(item.id));
-  if (available.length === 0) return undefined;
-  return available[Math.floor(Math.random() * available.length)];
+function chooseBossRelic(bossName) {
+  return bossRelicCatalog.find((item) => item.boss === bossName);
 }
 
 function createBossRelicPickup(x, y, relic) {
@@ -9561,7 +9562,7 @@ function renderRewards() {
 }
 
 function showRewards() {
-  menuTitle.textContent = "Récompenses de niveau";
+  menuTitle.textContent = "Butin de la nuit";
   setMenuScreen("rewards");
   renderRewards();
   const target = rewardsTrack.querySelector(".is-next") ?? rewardsTrack.lastElementChild;

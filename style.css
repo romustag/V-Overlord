@@ -3389,6 +3389,10 @@ body {
   color: #d7b8ed;
 }
 
+.locker-relic-card.is-empty {
+  opacity: 0.62;
+}
+
 .ice-blast {
   position: absolute;
   z-index: 5;
@@ -9301,7 +9305,8 @@ body {
 }
 
 .menu-panel:has(#shop-screen:not([hidden])) .menu-nav,
-.menu-panel:has(#locker-screen:not([hidden])) .menu-nav {
+.menu-panel:has(#locker-screen:not([hidden])) .menu-nav,
+.menu-panel:has(#rewards-screen:not([hidden])) .menu-nav {
   margin-inline: clamp(-34px, -4vw, -18px);
   margin-bottom: clamp(-34px, -4vw, -18px);
 }
@@ -16051,4 +16056,1053 @@ html:not([data-look="toon"]) .arena[data-wave="w2-5"] { --map-image: url("./asse
 
 .restart-button-world[hidden] {
   display: none !important;
+}
+
+/* ===== Menu d'accueil : nuit d'horreur cartoon ===== */
+.front-menu[data-screen="home"] .menu-panel {
+  border-color: #1a0610;
+  background:
+    radial-gradient(ellipse at 50% 0, #ff3b1f33 0, transparent 42%),
+    radial-gradient(ellipse at 0 80%, #39ff6a14 0, transparent 36%),
+    repeating-linear-gradient(135deg, #ffffff08 0 1px, transparent 1px 9px),
+    linear-gradient(180deg, #2a1038 0, #160818 48%, #09040e 100%);
+  box-shadow:
+    0 0 0 3px #ff7a1a55,
+    0 8px 0 #07030a,
+    0 18px 40px #000e,
+    inset 0 0 40px #4a082866;
+}
+
+.front-menu[data-screen="home"] .sio-profile {
+  border-color: #2a0a14;
+  background:
+    linear-gradient(180deg, #ffffff14, transparent 28%),
+    linear-gradient(180deg, #4a1848, #220816);
+  box-shadow: 0 4px 0 #12040a, inset 0 0 16px #ff4d1a22;
+}
+
+.front-menu[data-screen="home"] .sio-avatar {
+  border-color: #2a0a14;
+  background:
+    radial-gradient(circle at 50% 42%, #ffd27a 0 18%, transparent 19%),
+    radial-gradient(circle at 50% 62%, #1a0808 0 28%, transparent 29%),
+    radial-gradient(circle at 50% 38%, #ffb35c, #c2410c 68%, #4a1208);
+  box-shadow: 0 0 14px #ff6a0088, 0 3px 0 #2a0a14;
+}
+
+.front-menu[data-screen="home"] .sio-level-badge {
+  background: linear-gradient(#ffe14a, #ff6a00);
+  box-shadow: 0 0 10px #ff6a00aa, 0 2px 0 #2a0a14;
+}
+
+.front-menu[data-screen="home"] .sio-profile .player-name-field input,
+.front-menu[data-screen="home"] .sio-currency {
+  border-color: #3a1020;
+  background: #14060f;
+}
+
+.front-menu[data-screen="home"] .sio-xp-fill {
+  background:
+    linear-gradient(#ffffff55, transparent 55%),
+    linear-gradient(90deg, #7a1028, #ff3b1f 55%, #ffb347);
+}
+
+.front-menu[data-screen="home"] .sio-chapter {
+  border-color: #1a0610;
+  box-shadow:
+    0 0 0 2px #ff7a1a44,
+    0 6px 0 #07030a,
+    0 0 28px #ff2a0055,
+    inset 0 0 30px #0008;
+}
+
+.front-menu[data-screen="home"] .sio-scene {
+  background:
+    radial-gradient(1.5px 1.5px at 12% 18%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 28% 8%, #fff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 44% 22%, #ffe 50%, transparent 51%),
+    radial-gradient(1px 1px at 63% 12%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 8% 40%, #fff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 52% 36%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 92% 46%, #fff 50%, transparent 51%),
+    radial-gradient(ellipse at 78% 18%, #ff2a1844 0, transparent 28%),
+    linear-gradient(180deg, #07010c 0, #1a0630 38%, #4a1028 68%, #8a1c12 100%);
+}
+
+.front-menu[data-screen="home"] .sio-moon {
+  background:
+    radial-gradient(circle at 34% 38%, #5a1020 0 8%, transparent 9%),
+    radial-gradient(circle at 62% 58%, #5a1020 0 11%, transparent 12%),
+    radial-gradient(circle at 40% 40%, #ffd0c2, #ff5a3c 58%, #c41616);
+  box-shadow: 0 0 28px #ff2a18cc, 0 0 70px #8a001866;
+}
+
+.front-menu[data-screen="home"] .sio-chapter-kicker {
+  background: linear-gradient(#ff5a2a, #8a1020);
+  color: #fff8ee;
+  letter-spacing: 0.16em;
+}
+
+.front-menu[data-screen="home"] .sio-chapter-title {
+  font-family: Creepster, "Arial Black", "Segoe UI", sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  color: #fff4e4;
+  text-shadow:
+    -3px -3px 0 #1a0610, 3px -3px 0 #1a0610, -3px 3px 0 #1a0610, 3px 3px 0 #1a0610,
+    0 6px 0 #6b0d16, 0 10px 16px #ff2a1866;
+}
+
+.front-menu[data-screen="home"] .sio-chapter-sub {
+  color: #ffd0b0;
+}
+
+.front-menu[data-screen="home"] .sio-fog {
+  height: 46%;
+  background:
+    radial-gradient(ellipse at 18% 70%, #9dffb233 0, transparent 46%),
+    radial-gradient(ellipse at 55% 50%, #d8c8ff2e 0, transparent 42%),
+    radial-gradient(ellipse at 88% 74%, #ff6a3c22 0, transparent 40%);
+}
+
+.sio-flash {
+  position: absolute;
+  inset: 0;
+  background: #f4f0ff;
+  opacity: 0;
+  pointer-events: none;
+  animation: sio-lightning 7.5s linear infinite;
+}
+
+.sio-eyes {
+  position: absolute;
+  bottom: 28%;
+  width: 16px;
+  height: 6px;
+  background:
+    radial-gradient(circle at 3px 50%, #b6ff3a 0 2px, transparent 3px),
+    radial-gradient(circle at 13px 50%, #b6ff3a 0 2px, transparent 3px);
+  filter: drop-shadow(0 0 4px #7dff2a);
+  opacity: 0;
+  animation: sio-eyes-blink 4.2s ease-in-out infinite;
+}
+
+.sio-eyes-1 { left: 38%; }
+.sio-eyes-2 { right: 30%; bottom: 34%; animation-delay: -2.1s; }
+
+.sio-candle {
+  position: absolute;
+  bottom: 16%;
+  width: 8px;
+  height: 16px;
+  border-radius: 2px 2px 1px 1px;
+  background: linear-gradient(#f3e2c4, #c9a06a);
+  box-shadow: 0 0 10px #ffb34788;
+}
+
+.sio-candle::before {
+  position: absolute;
+  top: -8px;
+  left: 1px;
+  width: 6px;
+  height: 8px;
+  border-radius: 50% 50% 40% 40%;
+  background: radial-gradient(circle at 50% 70%, #fff6c8, #ffb347 40%, #ff4d00 72%, transparent 74%);
+  content: "";
+  animation: sio-flame 0.35s ease-in-out infinite alternate;
+}
+
+.sio-candle-a { left: 20%; }
+.sio-candle-b { right: 18%; bottom: 12%; animation-delay: -0.2s; }
+
+.front-menu[data-screen="home"] .sio-next-reward {
+  border-color: #2a0a14;
+  background: linear-gradient(90deg, #2a0c22, #4a1028 55%, #6a2410);
+  box-shadow: 0 3px 0 #12040a, inset 0 0 12px #ff3b1f22;
+}
+
+.front-menu[data-screen="home"] .menu-primary.sio-play {
+  border-color: #1a0610;
+  background:
+    linear-gradient(#ffffff40, transparent 42%),
+    radial-gradient(circle at 18% 55%, #1a0808 0 7%, transparent 8%),
+    radial-gradient(circle at 82% 55%, #1a0808 0 7%, transparent 8%),
+    radial-gradient(ellipse at 50% 78%, #1a0808 0 10%, transparent 11%),
+    linear-gradient(#ffb347, #ff6a00 55%, #c2410c);
+  box-shadow: 0 0 18px #ff4d0088, 0 7px 0 #6b2408, 0 12px 20px #000a;
+  color: #fff8ee;
+  font-family: Creepster, "Arial Black", "Segoe UI", sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-shadow:
+    -2px -2px 0 #1a0610, 2px -2px 0 #1a0610, -2px 2px 0 #1a0610, 2px 2px 0 #1a0610,
+    0 4px 0 #6b0d16;
+}
+
+.front-menu[data-screen="home"] .menu-primary.sio-play span::before,
+.front-menu[data-screen="home"] .menu-primary.sio-play span::after {
+  margin: 0 10px;
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", sans-serif;
+  font-size: 0.7em;
+  letter-spacing: 0;
+  vertical-align: 2px;
+}
+
+.front-menu[data-screen="home"] .menu-primary.sio-play span::before { content: "🎃"; }
+.front-menu[data-screen="home"] .menu-primary.sio-play span::after { content: "💀"; }
+
+.front-menu[data-screen="home"] .menu-nav {
+  border-top-color: #2a0a14;
+  background:
+    linear-gradient(180deg, #2a1020, #10060e);
+  box-shadow: 0 -6px 16px #000a, inset 0 1px 0 #ff7a1a33;
+}
+
+.front-menu[data-screen="home"] .menu-nav-button {
+  color: #e7c2b0;
+}
+
+.front-menu[data-screen="home"] .menu-nav-button.is-active {
+  border-color: #1a0610;
+  background: linear-gradient(#ffb347, #ff6a00);
+  box-shadow: 0 0 12px #ff6a0088, 0 3px 0 #6b2408;
+  color: #2a0d00;
+}
+
+.front-menu[data-screen="home"] .progression-feedback {
+  color: #ffb4a2;
+}
+
+@keyframes sio-lightning {
+  0%, 86%, 100% { opacity: 0; }
+  87% { opacity: 0.28; }
+  88% { opacity: 0; }
+  90% { opacity: 0.16; }
+  91% { opacity: 0; }
+}
+
+@keyframes sio-eyes-blink {
+  0%, 70%, 100% { opacity: 0; }
+  76%, 88% { opacity: 1; }
+  80% { opacity: 0.15; }
+}
+
+@keyframes sio-flame {
+  from { scale: 1 1; }
+  to { scale: 0.8 1.25; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sio-flash,
+  .sio-eyes,
+  .sio-candle::before {
+    animation: none;
+  }
+}
+
+/* ===== Boutique : échoppe de la nuit maudite ===== */
+.front-menu[data-screen="shop"] .menu-panel {
+  border: 4px solid #1a0610;
+  border-radius: 26px;
+  background:
+    radial-gradient(ellipse at 50% 0, #ff3b1f33 0, transparent 36%),
+    radial-gradient(ellipse at 100% 80%, #39ff6a12 0, transparent 28%),
+    repeating-linear-gradient(135deg, #ffffff08 0 1px, transparent 1px 9px),
+    linear-gradient(180deg, #2a1038 0, #160818 46%, #09040e 100%);
+  box-shadow:
+    0 0 0 3px #ff7a1a55,
+    0 8px 0 #07030a,
+    0 18px 40px #000e,
+    inset 0 0 40px #4a082866;
+}
+
+.front-menu[data-screen="shop"] .menu-heading {
+  border-bottom-color: #ff7a1a55;
+}
+
+.front-menu[data-screen="shop"] .menu-kicker {
+  color: #ffb347;
+}
+
+.front-menu[data-screen="shop"] .menu-heading h1 {
+  font-family: Creepster, "Arial Black", "Segoe UI", sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  color: #fff4e4;
+  text-shadow:
+    -2px -2px 0 #1a0610, 2px -2px 0 #1a0610, -2px 2px 0 #1a0610, 2px 2px 0 #1a0610,
+    0 5px 0 #6b0d16;
+}
+
+.front-menu[data-screen="shop"] .menu-description,
+.front-menu[data-screen="shop"] .shop-rotation-note,
+.front-menu[data-screen="shop"] .shop-category-note {
+  color: #ffd0b0;
+}
+
+.front-menu[data-screen="shop"] .shop-ornament {
+  filter: drop-shadow(0 0 8px #ff6a0088);
+}
+
+.front-menu[data-screen="shop"] .store-countdown {
+  padding: 4px 10px;
+  border: 2px solid #1a0610;
+  border-radius: 999px;
+  background: #2a0c18;
+  color: #ffb347;
+  box-shadow: 0 2px 0 #1a0610;
+}
+
+.front-menu[data-screen="shop"] .store-featured {
+  position: relative;
+  overflow: hidden;
+  border: 3px solid #1a0610;
+  border-radius: 18px;
+  background:
+    radial-gradient(ellipse at 8% 0, #ff3b1f44, transparent 42%),
+    radial-gradient(ellipse at 92% 100%, #7dff2a18, transparent 36%),
+    linear-gradient(160deg, #3a1028, #14060f 70%);
+  box-shadow: 0 5px 0 #07030a, inset 0 0 24px #0008, 0 0 22px #ff2a0033;
+}
+
+.front-menu[data-screen="shop"] .store-featured::before,
+.front-menu[data-screen="shop"] .store-featured::after {
+  position: absolute;
+  top: -6px;
+  font-size: 1.8rem;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.front-menu[data-screen="shop"] .store-featured::before { content: "🕸️"; left: -4px; }
+.front-menu[data-screen="shop"] .store-featured::after { content: "🕸️"; right: -4px; scale: -1 1; }
+
+.front-menu[data-screen="shop"] .store-title {
+  font-family: Creepster, "Arial Black", "Segoe UI", sans-serif;
+  font-weight: 400;
+  color: #fff4e4;
+  letter-spacing: 0.04em;
+  text-shadow: 0 3px 0 #6b0d16;
+}
+
+.front-menu[data-screen="shop"] .store-tabs {
+  border: 3px solid #1a0610;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #2a1020, #10060e);
+  box-shadow: 0 4px 0 #07030a;
+}
+
+.front-menu[data-screen="shop"] .store-tab {
+  border: 2px solid #3a1020;
+  background: #1a0812;
+  color: #ffd0b0;
+}
+
+.front-menu[data-screen="shop"] .store-tab:hover {
+  background: #3a1424;
+  color: #fff4e4;
+}
+
+.front-menu[data-screen="shop"] .store-tab[aria-selected="true"],
+.front-menu[data-screen="shop"] .store-tab-packs[aria-selected="true"] {
+  border-color: #1a0610;
+  background: linear-gradient(#ffb347, #ff6a00);
+  color: #2a0d00;
+  box-shadow: 0 0 12px #ff6a0088, 0 3px 0 #6b2408;
+}
+
+.front-menu[data-screen="shop"] .store-filter,
+.front-menu[data-screen="shop"] .store-filter select {
+  color: #ffd0b0;
+}
+
+.front-menu[data-screen="shop"] .store-filter select {
+  border: 2px solid #3a1020;
+  background: #14060f;
+  color: #fff4e4;
+}
+
+.front-menu[data-screen="shop"] .store-card {
+  border: 3px solid #2a0a14;
+  border-radius: 16px;
+  background:
+    linear-gradient(#ffffff10, transparent 28%),
+    linear-gradient(165deg, #3a1840, #160814);
+  box-shadow: 0 4px 0 #07030a, inset 0 0 0 1px #ff7a1a33;
+}
+
+.front-menu[data-screen="shop"] .store-card:hover {
+  box-shadow: 0 0 16px #ff6a0055, 0 8px 0 #07030a;
+}
+
+.front-menu[data-screen="shop"] .store-card-featured {
+  border-color: #ff6a00;
+  background:
+    radial-gradient(circle at 50% 0, #ff3b1f33, transparent 46%),
+    linear-gradient(165deg, #4a1828, #1a0812);
+}
+
+.front-menu[data-screen="shop"] .store-preview {
+  border: 2px solid #1a0610;
+  background:
+    radial-gradient(ellipse at 50% 88%, #ff6a0044 0 36%, transparent 40%),
+    linear-gradient(180deg, #0c0410, #2a1020);
+}
+
+.front-menu[data-screen="shop"] .store-card h3 {
+  color: #ffd0a0;
+}
+
+.front-menu[data-screen="shop"] .store-card p,
+.front-menu[data-screen="shop"] .store-stats dt {
+  color: #e7c2b0;
+}
+
+.front-menu[data-screen="shop"] .store-stats {
+  background: #0006;
+}
+
+.front-menu[data-screen="shop"] .store-price,
+.front-menu[data-screen="shop"] .store-price strong {
+  color: #ffd54a;
+}
+
+.front-menu[data-screen="shop"] .shop-buy-button {
+  border: 2px solid #1a0610;
+  border-radius: 10px;
+  background: linear-gradient(#ffb347, #ff6a00);
+  box-shadow: 0 3px 0 #6b2408;
+  color: #2a0d00;
+}
+
+.front-menu[data-screen="shop"] .shop-buy-free {
+  border-color: #0d2a12;
+  background: linear-gradient(#c8f18b, #3fbf5f);
+  box-shadow: 0 3px 0 #1d5a28;
+  color: #08200f;
+}
+
+.front-menu[data-screen="shop"] .store-badge-halloween,
+.front-menu[data-screen="shop"] .store-badge-promo {
+  border: 2px solid #1a0610;
+}
+
+.front-menu[data-screen="shop"] .pack-card {
+  border-width: 3px;
+  box-shadow: 0 5px 0 #07030a, 0 0 16px color-mix(in srgb, var(--pack-trim) 35%, transparent);
+}
+
+.front-menu[data-screen="shop"] .menu-nav {
+  border-top-color: #2a0a14;
+  background: linear-gradient(180deg, #2a1020, #10060e);
+  box-shadow: 0 -6px 16px #000a, inset 0 1px 0 #ff7a1a33;
+}
+
+.front-menu[data-screen="shop"] .menu-nav-button {
+  color: #e7c2b0;
+}
+
+.front-menu[data-screen="shop"] .menu-nav-button.is-active {
+  border-color: #1a0610;
+  background: linear-gradient(#ffb347, #ff6a00);
+  box-shadow: 0 0 12px #ff6a0088, 0 3px 0 #6b2408;
+  color: #2a0d00;
+}
+
+.front-menu[data-screen="shop"] .menu-secondary {
+  border-color: #1a0610;
+  background: linear-gradient(#4a1848, #220816);
+  color: #fff4e4;
+}
+
+/* ===== Casier : vestiaire de la nuit maudite ===== */
+.front-menu[data-screen="locker"] .menu-panel {
+  border: 4px solid #1a0610;
+  border-radius: 26px;
+  background:
+    radial-gradient(ellipse at 80% 20%, #ff3b1f28 0, transparent 34%),
+    radial-gradient(ellipse at 8% 90%, #39ff6a12 0, transparent 28%),
+    repeating-linear-gradient(135deg, #ffffff08 0 1px, transparent 1px 9px),
+    linear-gradient(180deg, #2a1038 0, #160818 48%, #09040e 100%);
+  box-shadow:
+    0 0 0 3px #ff7a1a55,
+    0 8px 0 #07030a,
+    0 18px 40px #000e,
+    inset 0 0 40px #4a082866;
+}
+
+.front-menu[data-screen="locker"] .menu-heading {
+  border-bottom-color: #ff7a1a55;
+}
+
+.front-menu[data-screen="locker"] .menu-kicker {
+  color: #ffb347;
+}
+
+.front-menu[data-screen="locker"] .menu-heading h1,
+.front-menu[data-screen="locker"] .locker-title {
+  font-family: Creepster, "Arial Black", "Segoe UI", sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  color: #fff4e4;
+  text-shadow:
+    -2px -2px 0 #1a0610, 2px -2px 0 #1a0610, -2px 2px 0 #1a0610, 2px 2px 0 #1a0610,
+    0 5px 0 #6b0d16;
+}
+
+.front-menu[data-screen="locker"] .locker-screen {
+  --locker-yellow: #ff8a1e;
+}
+
+.front-menu[data-screen="locker"] .locker-top {
+  border-bottom-color: #ff7a1a44;
+}
+
+.front-menu[data-screen="locker"] .locker-tab {
+  color: #e7c2b0;
+}
+
+.front-menu[data-screen="locker"] .locker-tab.is-active {
+  border-bottom-color: #ff6a00;
+  color: #fff4e4;
+  text-shadow: 0 0 10px #ff6a0088;
+}
+
+.front-menu[data-screen="locker"] .locker-tile {
+  border: 2px solid #1a0610;
+  border-radius: 12px;
+  box-shadow:
+    inset 0 0 0 2px #ffffff22,
+    inset 0 -5px 0 var(--rarity-edge),
+    0 4px 0 #07030a;
+}
+
+.front-menu[data-screen="locker"] .locker-tile.is-selected,
+.front-menu[data-screen="locker"] .locker-tile.is-equipped {
+  box-shadow:
+    inset 0 0 0 2px #ffffff44,
+    inset 0 -5px 0 var(--rarity-edge),
+    0 0 0 3px #ff6a00,
+    0 0 16px #ff6a0066,
+    0 4px 0 #07030a;
+}
+
+.front-menu[data-screen="locker"] .locker-tile-check {
+  background: #ff6a00;
+  color: #2a0d00;
+}
+
+.front-menu[data-screen="locker"] .locker-picker {
+  border: 3px solid #1a0610;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #2a1020cc, #10060ecc);
+  box-shadow: inset 0 0 18px #0008;
+}
+
+.front-menu[data-screen="locker"] .locker-picker-head h3,
+.front-menu[data-screen="locker"] .locker-details strong,
+.front-menu[data-screen="locker"] .locker-workshop .shop-category-title {
+  font-family: Creepster, "Arial Black", "Segoe UI", sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  color: #fff4e4;
+  letter-spacing: 0.03em;
+}
+
+.front-menu[data-screen="locker"] .locker-picker-head span,
+.front-menu[data-screen="locker"] .locker-details p,
+.front-menu[data-screen="locker"] .locker-workshop .shop-category-note,
+.front-menu[data-screen="locker"] .locker-stage-info span {
+  color: #e7c2b0;
+}
+
+.front-menu[data-screen="locker"] .locker-details {
+  border-left-color: #ff6a00;
+  background: linear-gradient(90deg, #ff3b1f22, transparent);
+}
+
+.front-menu[data-screen="locker"] .locker-stage {
+  border: 3px solid #1a0610;
+  border-radius: 16px;
+  background:
+    radial-gradient(ellipse at 78% 12%, #ff2a1844 0, transparent 26%),
+    radial-gradient(ellipse at 50% 100%, #ff6a0033 0, transparent 55%),
+    linear-gradient(180deg, #07010c 0, #1a0630 42%, #4a1028 100%);
+  box-shadow: 0 0 22px #ff2a0033, inset 0 0 30px #0008;
+}
+
+.front-menu[data-screen="locker"] .locker-stage::before,
+.front-menu[data-screen="locker"] .locker-stage::after {
+  position: absolute;
+  top: -4px;
+  z-index: 2;
+  font-size: 1.6rem;
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+.front-menu[data-screen="locker"] .locker-stage::before { content: "🕸️"; left: -2px; }
+.front-menu[data-screen="locker"] .locker-stage::after { content: "🕸️"; right: -2px; scale: -1 1; }
+
+.front-menu[data-screen="locker"] .locker-stage-light {
+  background: linear-gradient(180deg, #ffb34755, #ff3b1f14 70%, transparent);
+}
+
+.front-menu[data-screen="locker"] .locker-stage-pedestal {
+  background:
+    radial-gradient(ellipse at 50% 35%, #ffd27a 0, #ff6a00 36%, #6b2408 68%, transparent 72%);
+  box-shadow: 0 0 28px #ff6a0088;
+}
+
+.front-menu[data-screen="locker"] .locker-stage-info {
+  background: linear-gradient(transparent, #10060ef2 34%);
+}
+
+.front-menu[data-screen="locker"] .menu-nav {
+  border-top-color: #2a0a14;
+  background: linear-gradient(180deg, #2a1020, #10060e);
+  box-shadow: 0 -6px 16px #000a, inset 0 1px 0 #ff7a1a33;
+}
+
+.front-menu[data-screen="locker"] .menu-nav-button {
+  color: #e7c2b0;
+}
+
+.front-menu[data-screen="locker"] .menu-nav-button.is-active {
+  border-color: #1a0610;
+  background: linear-gradient(#ffb347, #ff6a00);
+  box-shadow: 0 0 12px #ff6a0088, 0 3px 0 #6b2408;
+  color: #2a0d00;
+}
+
+.front-menu[data-screen="locker"] .menu-secondary,
+.front-menu[data-screen="locker"] #back-from-locker-button {
+  border: 3px solid #1a0610;
+  border-radius: 14px;
+  background: linear-gradient(#4a1848, #220816);
+  color: #fff4e4;
+}
+
+/* ===== Récompenses : crypte de la nuit maudite ===== */
+.front-menu[data-screen="rewards"] .menu-panel {
+  border: 4px solid #1a0610;
+  border-radius: 26px;
+  background:
+    radial-gradient(ellipse at 50% 0, #ff3b1f33 0, transparent 36%),
+    radial-gradient(ellipse at 0 100%, #39ff6a14 0, transparent 32%),
+    repeating-linear-gradient(135deg, #ffffff08 0 1px, transparent 1px 9px),
+    linear-gradient(180deg, #2a1038 0, #160818 46%, #09040e 100%);
+  box-shadow:
+    0 0 0 3px #ff7a1a55,
+    0 8px 0 #07030a,
+    0 18px 40px #000e,
+    inset 0 0 40px #4a082866;
+}
+
+.front-menu[data-screen="rewards"] .menu-panel::before,
+.front-menu[data-screen="rewards"] .menu-panel::after {
+  position: absolute;
+  z-index: 2;
+  top: -4px;
+  bottom: auto;
+  display: block;
+  width: auto;
+  height: auto;
+  border: 0;
+  background: none;
+  content: "🕸️";
+  font-size: 2.4rem;
+  opacity: 0.8;
+  pointer-events: none;
+  transform: none;
+}
+
+.front-menu[data-screen="rewards"] .menu-panel::before { right: auto; left: -6px; rotate: -18deg; }
+.front-menu[data-screen="rewards"] .menu-panel::after { left: auto; right: -6px; scale: -1 1; }
+
+.front-menu[data-screen="rewards"] .menu-heading {
+  border-bottom-color: #ff7a1a55;
+}
+
+.front-menu[data-screen="rewards"] .menu-kicker {
+  color: #ffb347;
+  letter-spacing: 0.14em;
+}
+
+.front-menu[data-screen="rewards"] .menu-heading h1 {
+  font-family: Creepster, "Arial Black", "Segoe UI", sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: #fff4e4;
+  text-shadow:
+    -2px -2px 0 #1a0610, 2px -2px 0 #1a0610, -2px 2px 0 #1a0610, 2px 2px 0 #1a0610,
+    0 5px 0 #6b0d16, 0 0 16px #ff2a1866;
+}
+
+.rewards-ornament {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 8px;
+  padding: 2px 8px;
+  border: 2px dashed #ff7a1a66;
+  border-radius: 999px;
+  background: #10060ecc;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.rewards-web {
+  font-size: 1.35rem;
+  opacity: 0.85;
+}
+
+.front-menu[data-screen="rewards"] .rewards-summary {
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  border: 2px solid #3a1020;
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, #2a1020ee, #14060ef2);
+  color: #ffd0b0;
+  box-shadow: inset 0 0 16px #ff3b1f22;
+}
+
+.front-menu[data-screen="rewards"] .rewards-track {
+  position: relative;
+  max-height: min(42cqh, 420px);
+  padding: 6px 4px 6px 8px;
+  border: 2px solid #2a0a14;
+  border-radius: 16px;
+  background:
+    radial-gradient(ellipse at 50% 0, #ff7a1a18, transparent 40%),
+    linear-gradient(180deg, #12060f, #09040c);
+  scrollbar-color: #ff7a1a #14060f;
+}
+
+.front-menu[data-screen="rewards"] .rewards-track::before {
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 30px;
+  width: 3px;
+  background: repeating-linear-gradient(#ff7a1a 0 7px, transparent 7px 13px);
+  content: "";
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.front-menu[data-screen="rewards"] .reward-node {
+  position: relative;
+  overflow: hidden;
+  border-color: #2a0a14;
+  background:
+    linear-gradient(180deg, #3a1848, #1a0a22);
+  box-shadow: 0 3px 0 #12040a, inset 0 0 0 1px #ff7a1a22;
+  opacity: 0.9;
+}
+
+.front-menu[data-screen="rewards"] .reward-node.is-milestone:not(.is-claimed) {
+  background: linear-gradient(180deg, #5a2068, #2a0c38);
+}
+
+.front-menu[data-screen="rewards"] .reward-node.is-major:not(.is-claimed) {
+  background: linear-gradient(180deg, #8a2410, #3a0c08);
+}
+
+.front-menu[data-screen="rewards"] .reward-node.is-next {
+  border-color: #ff9a3c;
+  background:
+    radial-gradient(circle at 8% 50%, #ffb34744, transparent 28%),
+    linear-gradient(180deg, #5a2418, #2a0c18);
+  box-shadow: 0 3px 0 #12040a, 0 0 16px #ff7a1a88;
+  opacity: 1;
+}
+
+.front-menu[data-screen="rewards"] .reward-node.is-next .reward-level::before {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  content: "🕯️";
+  font-size: 0.7rem;
+  pointer-events: none;
+  translate: -50% 0;
+}
+
+.front-menu[data-screen="rewards"] .reward-node.is-claimed,
+.front-menu[data-screen="rewards"] .reward-node.is-milestone.is-claimed,
+.front-menu[data-screen="rewards"] .reward-node.is-major.is-claimed {
+  border-color: #1c4a12;
+  background:
+    radial-gradient(circle at 88% 120%, #b6ff3a33, transparent 42%),
+    repeating-linear-gradient(-45deg, #ffffff14 0 2px, transparent 2px 9px),
+    linear-gradient(180deg, #3d8f2c 0, #1d5a16 58%, #0e320c 100%);
+  box-shadow:
+    0 3px 0 #0a2408,
+    inset 0 0 0 2px #9dff6a55,
+    0 0 14px #39ff6a33;
+  opacity: 1;
+}
+
+.front-menu[data-screen="rewards"] .reward-node.is-claimed::before {
+  position: absolute;
+  bottom: -14px;
+  left: -4px;
+  z-index: 0;
+  content: "🎃";
+  font-size: 2rem;
+  opacity: 0.5;
+  pointer-events: none;
+  rotate: -16deg;
+}
+
+.front-menu[data-screen="rewards"] .reward-node.is-claimed::after {
+  position: absolute;
+  top: -8px;
+  left: 28px;
+  z-index: 2;
+  content: "🕸️";
+  font-size: 1.35rem;
+  opacity: 0.95;
+  pointer-events: none;
+}
+
+.front-menu[data-screen="rewards"] .reward-node.is-wheel.is-claimed {
+  box-shadow:
+    0 3px 0 #0a2408,
+    inset 0 0 0 2px #9dff6a55,
+    0 0 0 2px #8fe9ff,
+    0 0 16px #39ff6a55;
+}
+
+.front-menu[data-screen="rewards"] .reward-level {
+  position: relative;
+  z-index: 1;
+  border-color: #1a0610;
+  background: linear-gradient(#6a2860, #3a1038);
+}
+
+.front-menu[data-screen="rewards"] .is-claimed .reward-level {
+  background: radial-gradient(circle at 40% 32%, #eaffc4, #62c432 48%, #176612 80%);
+  box-shadow: 0 0 12px #8cff3acc, inset 0 -6px 0 #0c2808, 0 0 0 2px #14320c;
+  color: #062006;
+  text-shadow: 0 1px 0 #e8ffc8;
+}
+
+.front-menu[data-screen="rewards"] .is-claimed .reward-level::before {
+  position: absolute;
+  top: -8px;
+  right: -7px;
+  content: "🦇";
+  font-size: 0.68rem;
+  line-height: 1;
+  pointer-events: none;
+  filter: none;
+}
+
+.front-menu[data-screen="rewards"] .is-milestone:not(.is-claimed) .reward-level {
+  border-radius: 12px;
+  background: linear-gradient(#ffb347, #ff6a00);
+  color: #2a0d00;
+}
+
+.front-menu[data-screen="rewards"] .is-milestone.is-claimed .reward-level {
+  border-radius: 12px;
+}
+
+.front-menu[data-screen="rewards"] .is-milestone.is-claimed .reward-level::after,
+.front-menu[data-screen="rewards"] .is-major.is-claimed .reward-level::after {
+  position: absolute;
+  top: -7px;
+  right: -8px;
+  font-size: 0.72rem;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.front-menu[data-screen="rewards"] .is-milestone.is-claimed .reward-level::after { content: "⭐"; }
+.front-menu[data-screen="rewards"] .is-major.is-claimed .reward-level::after { content: "👑"; }
+
+.front-menu[data-screen="rewards"] .reward-chip {
+  border: 1px solid #ffffff22;
+  background: #10060ecc;
+  color: #fff4e4;
+}
+
+.front-menu[data-screen="rewards"] .is-claimed .reward-chip {
+  border-color: #14320c;
+  background: #0c240ccc;
+  color: #e8ffc8;
+}
+
+.front-menu[data-screen="rewards"] .reward-state {
+  position: relative;
+  z-index: 1;
+  color: #c9a8b8;
+}
+
+.front-menu[data-screen="rewards"] .is-claimed .reward-state {
+  padding: 3px 8px 3px 6px;
+  border: 2px dashed #8cff3a;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 12% 50%, #39ff6a55, transparent 36%),
+    #0c280ee6;
+  color: #d8ffb0;
+  box-shadow: 0 0 8px #39ff6a66, inset 0 0 0 1px #14320c;
+}
+
+.front-menu[data-screen="rewards"] .is-claimed .reward-state::before {
+  content: "💀 ";
+}
+
+.front-menu[data-screen="rewards"] .is-next .reward-state {
+  padding: 3px 8px;
+  border: 2px solid #ff9a3c;
+  border-radius: 999px;
+  background: #2a0c08cc;
+  color: #ffd0a0;
+}
+
+.front-menu[data-screen="rewards"] .menu-nav {
+  border-top-color: #2a0a14;
+  background: linear-gradient(180deg, #2a1020, #10060e);
+  box-shadow: 0 -6px 16px #000a, inset 0 1px 0 #ff7a1a33;
+}
+
+.front-menu[data-screen="rewards"] .menu-nav-button {
+  color: #e7c2b0;
+}
+
+.front-menu[data-screen="rewards"] .menu-nav-button.is-active {
+  border-color: #1a0610;
+  background: linear-gradient(#ffb347, #ff6a00);
+  box-shadow: 0 0 12px #ff6a0088, 0 3px 0 #6b2408;
+  color: #2a0d00;
+}
+
+.front-menu[data-screen="rewards"] .menu-secondary,
+.front-menu[data-screen="rewards"] #back-from-rewards-button {
+  border: 3px solid #1a0610;
+  border-radius: 14px;
+  background: linear-gradient(#4a1848, #220816);
+  color: #fff4e4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .front-menu[data-screen="rewards"] .reward-node.is-next {
+    box-shadow: 0 3px 0 #12040a;
+  }
+}
+
+/* ===== Barre du bas : crypte Halloween ===== */
+.front-menu[data-screen] .menu-nav {
+  overflow: visible;
+  padding: 16px 6px 8px;
+  border-top: 3px solid #5a1018;
+  background:
+    radial-gradient(ellipse at 50% 0, #ff2a1828, transparent 58%),
+    linear-gradient(180deg, #241018 0, #0c0408 100%);
+  box-shadow:
+    inset 0 10px 16px #000c,
+    inset 0 3px 0 #ff2a1833,
+    0 -12px 28px #000e;
+}
+
+.front-menu[data-screen] .menu-nav::before {
+  position: absolute;
+  z-index: 5;
+  top: -1px;
+  right: 6%;
+  left: 6%;
+  height: 14px;
+  background:
+    radial-gradient(ellipse 7px 12px at 8% 100%, #9a1428 58%, transparent 60%),
+    radial-gradient(ellipse 4px 8px at 22% 70%, #e02335 58%, transparent 60%),
+    radial-gradient(ellipse 6px 13px at 41% 100%, #6e0c16 58%, transparent 60%),
+    radial-gradient(ellipse 5px 9px at 63% 78%, #c41628 58%, transparent 60%),
+    radial-gradient(ellipse 7px 11px at 84% 100%, #8a1020 58%, transparent 60%);
+  content: "";
+  pointer-events: none;
+}
+
+.menu-nav-web,
+.menu-nav-spider {
+  position: absolute;
+  z-index: 6;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.menu-nav-web {
+  top: -10px;
+  font-size: 1.65rem;
+  opacity: 0.9;
+  filter: drop-shadow(0 2px 0 #1a0610);
+}
+
+.menu-nav-web-left { left: 0; }
+.menu-nav-web-right { right: 0; scale: -1 1; }
+
+.menu-nav-spider {
+  top: 1px;
+  left: 31%;
+  font-size: 0.8rem;
+  animation: menu-nav-spider 3.4s ease-in-out infinite;
+}
+
+.menu-nav-spider::before {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  width: 1px;
+  height: 12px;
+  background: linear-gradient(#ffffff22, #ffffffaa);
+  content: "";
+}
+
+@keyframes menu-nav-spider {
+  0%, 100% { translate: 0 -6px; }
+  50% { translate: 0 3px; }
+}
+
+.front-menu[data-screen] .menu-nav-button {
+  color: #e7c4b4;
+  text-shadow: 0 2px 0 #1a0610, 0 0 8px #ff2a1822;
+}
+
+.front-menu[data-screen] .menu-nav-icon {
+  filter: drop-shadow(0 2px 0 #1a0610) drop-shadow(0 0 6px #ff2a1855);
+}
+
+.front-menu[data-screen] .menu-nav-button:hover {
+  background: #ff2a181c;
+  color: #ffd8c8;
+}
+
+.front-menu[data-screen] .menu-nav-button.is-active {
+  border-color: #1a0608;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 32% 16%, #1a0808 0 3.5px, transparent 4.5px),
+    radial-gradient(circle at 68% 16%, #1a0808 0 3.5px, transparent 4.5px),
+    radial-gradient(ellipse at 50% 28%, #1a0808 0 8px 3px, transparent 9px),
+    radial-gradient(circle at 50% 30%, #ffe0a8, #ff6a1a 46%, #9a1608 82%);
+  box-shadow:
+    0 0 18px #ff2a18cc,
+    0 4px 0 #4a0c08,
+    inset 0 -8px 0 #4a080844;
+  color: #2a0604;
+  text-shadow: none;
+}
+
+.front-menu[data-screen] .menu-nav-button.is-active .menu-nav-icon {
+  filter: drop-shadow(0 2px 0 #4a0c08) drop-shadow(0 0 8px #ffd27a);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-nav-spider {
+    animation: none;
+  }
 }
