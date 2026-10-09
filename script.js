@@ -9601,8 +9601,8 @@ function showGameOver(message, won = false) {
   gameOverXp.textContent = progression.level >= maxPlayerLevel
     ? `${coinsLabel} · +${runXpEarned} XP · Niveau MAX ${maxPlayerLevel} atteint`
     : `${coinsLabel} · +${runXpEarned} XP · Niveau ${progression.level} (${progression.xp}/${getXpForLevel(progression.level)} XP)`;
-  // Le monde 2 se débloque en terminant le monde 1 ; ensuite ce bouton permet de passer de l'un à l'autre.
-  nextWorldButton.hidden = !progression.world1Completed;
+  // Le bouton n'apparaît qu'après une victoire (vague 5 terminée), jamais après une défaite.
+  nextWorldButton.hidden = !(won && progression.world1Completed);
   nextWorldButton.textContent = currentWorld === 1 ? "Monde 2 · Le Cauchemar de Noël" : "Monde 1 · Nuit d'Halloween";
   retryButton.textContent = "Rejouer";
   gameOver.hidden = false;
