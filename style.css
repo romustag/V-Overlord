@@ -15352,59 +15352,75 @@ html:not([data-look="toon"]) .arena[data-wave="w2-5"] { --map-image: url("./asse
   background: radial-gradient(circle at 50% 30%, rgb(143 233 255 / 0.28), transparent 70%);
 }
 
-/* ===== Répliques des boss (sous-titres) ===== */
-.boss-speech {
+/* ===== Bulle du boss à l'apparition ===== */
+.boss-bubble {
   position: absolute;
-  z-index: 12;
-  left: 50%;
-  bottom: 13%;
-  display: grid;
-  gap: 2px;
-  max-width: min(78%, 620px);
-  padding: 10px 18px 11px;
-  border: 2px solid #ffb44d;
-  border-radius: 12px;
-  background: linear-gradient(180deg, rgb(26 10 18 / 0.93), rgb(10 4 10 / 0.93));
-  box-shadow: 0 0 22px rgb(255 120 40 / 0.45), 0 6px 0 rgb(0 0 0 / 0.5);
-  color: #fff1dc;
-  text-align: center;
+  z-index: 8;
+  translate: -50% -100%;
+  padding: 4px 8px 5px;
+  border: 3px solid #1a0610;
+  border-radius: 14px 14px 14px 4px;
+  background: #fff6ea;
+  box-shadow: 0 3px 0 #1a0610, 0 0 12px #ff6a0044;
+  color: #1a0610;
+  font-family: Creepster, "Arial Black", sans-serif;
+  font-size: 0.95rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  white-space: nowrap;
   pointer-events: none;
-  opacity: 0;
-  transform: translate(-50%, 14px);
+  animation: boss-bubble-pop 2.4s ease-out forwards;
 }
 
-.boss-speech strong {
-  color: #ffb44d;
-  font-size: 0.78rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+.boss-bubble::after {
+  position: absolute;
+  bottom: -8px;
+  left: 18px;
+  width: 12px;
+  height: 12px;
+  border-right: 3px solid #1a0610;
+  border-bottom: 3px solid #1a0610;
+  background: #fff6ea;
+  content: "";
+  rotate: 45deg;
 }
 
-.boss-speech span {
-  font-size: 1.05rem;
-  font-style: italic;
-  font-weight: 700;
-  line-height: 1.25;
+.boss-bubble-scream {
+  border-color: #6b0d16;
+  background: #ffe4dc;
+  color: #6b0d16;
+  box-shadow: 0 3px 0 #6b0d16, 0 0 14px #ff2a1866;
 }
 
-.boss-speech.is-visible {
-  animation: boss-speech-pop 4.3s ease-out forwards;
+.boss-bubble-scream::after {
+  border-color: #6b0d16;
+  background: #ffe4dc;
 }
 
-.arena[data-world="2"] .boss-speech {
-  border-color: #8fe9ff;
-  box-shadow: 0 0 22px rgb(120 220 255 / 0.5), 0 6px 0 rgb(0 0 0 / 0.5);
+.boss-bubble-laugh {
+  border-radius: 16px;
+  rotate: -6deg;
 }
 
-.arena[data-world="2"] .boss-speech strong {
-  color: #8fe9ff;
+.arena[data-world="2"] .boss-bubble {
+  border-color: #12324a;
+  background: #f3fbff;
+  color: #12324a;
+  box-shadow: 0 3px 0 #12324a, 0 0 14px #8fe9ff66;
 }
 
-@keyframes boss-speech-pop {
-  0% { opacity: 0; transform: translate(-50%, 14px) scale(0.96); }
-  8% { opacity: 1; transform: translate(-50%, 0) scale(1); }
-  88% { opacity: 1; transform: translate(-50%, 0) scale(1); }
-  100% { opacity: 0; transform: translate(-50%, -6px) scale(0.98); }
+.arena[data-world="2"] .boss-bubble::after {
+  border-color: #12324a;
+  background: #f3fbff;
+}
+
+@keyframes boss-bubble-pop {
+  0% { opacity: 0; scale: 0.35; }
+  14% { opacity: 1; scale: 1.08; }
+  24% { scale: 1; }
+  76% { opacity: 1; }
+  100% { opacity: 0; scale: 0.9; }
 }
 
 /* ===== Récompenses : niveaux de roue ===== */
@@ -15593,10 +15609,9 @@ html:not([data-look="toon"]) .arena[data-wave="w2-5"] { --map-image: url("./asse
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .boss-speech.is-visible {
+  .boss-bubble {
     animation: none;
     opacity: 1;
-    transform: translate(-50%, 0);
   }
 }
 

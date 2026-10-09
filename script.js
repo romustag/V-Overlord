@@ -5758,6 +5758,99 @@ function playCreatureExtra(extra, duration, volume) {
   }
 }
 
+const bossVocals = {
+  "fossoyeur-maudit": { kind: "scream", pitch: 92, volume: 0.3, duration: 1.05, vowel: "o" },
+  "epouvantail-automne": { kind: "laugh", pitch: 250, volume: 0.26, syllables: 6, gap: 0.1 },
+  "maitre-des-cauchemars": { kind: "scream", pitch: 74, volume: 0.3, duration: 1.15, vowel: "u" },
+  "bouffon-frondeur": { kind: "laugh", pitch: 440, volume: 0.26, syllables: 7, gap: 0.085 },
+  gardien: { kind: "scream", pitch: 128, volume: 0.28, duration: 0.85, vowel: "o" },
+  chasseur: { kind: "scream", pitch: 230, volume: 0.26, duration: 0.7, vowel: "i" },
+  colosse: { kind: "scream", pitch: 60, volume: 0.32, duration: 1.1, vowel: "u" },
+  "mega-cauchemar": { kind: "scream", pitch: 56, volume: 0.34, duration: 1.25, vowel: "o" },
+  "pere-noel-tordu": { kind: "laugh", pitch: 135, volume: 0.3, syllables: 4, gap: 0.16 },
+  "mere-froide": { kind: "scream", pitch: 470, volume: 0.25, duration: 0.85, vowel: "i" },
+  "grinch-demoniaque": { kind: "laugh", pitch: 210, volume: 0.27, syllables: 5, gap: 0.11 },
+  "homme-pain-epices": { kind: "laugh", pitch: 115, volume: 0.3, syllables: 4, gap: 0.14 },
+  "maitre-cadeaux-noirs": { kind: "scream", pitch: 62, volume: 0.34, duration: 1.2, vowel: "o" },
+};
+
+function playEvilLaugh(pitch, volume, { syllables = 5, gap = 0.12, delay = 0, dying = false } = {}) {
+  for (let index = 0; index < syllables; index += 1) {
+    const progress = index / Math.max(1, syllables - 1);
+    const arc = dying ? 1 - progress * 0.65 : 0.72 + Math.sin(progress * Math.PI) * 0.5;
+    const length = index === syllables - 1 ? (dying ? 0.34 : 0.26) : 0.08;
+    const note = pitch * arc * (1.04 + (index % 2) * 0.1);
+    playVoice({
+      pitch: note,
+      pitchEnd: note * (dying ? 0.5 : 0.78),
+      duration: length,
+      volume: volume * (index === syllables - 1 ? 1 : 0.82),
+      vowel: index % 3 === 2 ? "a" : "e",
+      growl: 0.5,
+      growlRate: 18 + (index % 3) * 9,
+      drive: 0.62,
+      delay: delay + index * gap,
+      attack: 0.006,
+    });
+    playNoise({ type: "highpass", frequency: 1700, duration: 0.028, volume: volume * 0.2, delay: delay + index * gap });
+  }
+  playVoice({
+    pitch: pitch * 0.42,
+    pitchEnd: pitch * (dying ? 0.22 : 0.3),
+    duration: dying ? 0.45 : 0.32,
+    volume: volume * 0.42,
+    vowel: "o",
+    growl: 0.75,
+    growlRate: 16,
+    drive: 0.65,
+    delay: delay + syllables * gap,
+    attack: 0.04,
+  });
+}
+
+function playEvilScream(pitch, volume, { duration = 0.9, delay = 0, dying = false, vowel = "a" } = {}) {
+  const rise = dying ? pitch * 1.45 : pitch * 0.72;
+  const peak = dying ? pitch * 0.95 : pitch * 1.85;
+  const tail = dying ? pitch * 0.28 : pitch * 0.8;
+  playNoise({ type: "highpass", frequency: 1200, frequencyEnd: 2800, duration: 0.07, volume: volume * 0.32, delay, attack: 0.004 });
+  playVoice({
+    pitch: rise, pitchEnd: peak, duration: duration * (dying ? 0.2 : 0.32), volume,
+    vowel, growl: 0.4, growlRate: 52, drive: 0.78, vibrato: 0.025, vibratoRate: 8, delay, attack: 0.01,
+  });
+  playVoice({
+    pitch: peak, pitchEnd: tail, duration: duration * 0.72, volume: volume * 0.95,
+    vowel: vowel === "i" ? "e" : vowel, growl: 0.6, growlRate: 36, drive: 0.82,
+    vibrato: 0.045, vibratoRate: 6.5, delay: delay + duration * (dying ? 0.12 : 0.26), attack: 0.008,
+  });
+  playVoice({
+    pitch: pitch * 0.48, pitchEnd: pitch * (dying ? 0.22 : 0.3), duration: duration * 0.85,
+    volume: volume * 0.38, vowel: "u", growl: 0.8, growlRate: 22, drive: 0.7, delay: delay + 0.04, attack: 0.03,
+  });
+  playNoise({
+    type: "bandpass", frequency: 2200, frequencyEnd: 700, q: 1.6,
+    duration: duration * 0.8, volume: volume * 0.24, attack: 0.04, delay,
+  });
+}
+
+function playBossVocal(name, mood = "spawn") {
+  const vocal = bossVocals[name];
+  if (!vocal || !canPlayEffects()) return;
+  const variation = 0.94 + Math.random() * 0.12;
+  const dying = mood === "death";
+  const attacking = mood === "attack";
+  const volume = vocal.volume * variation * (attacking ? 0.8 : 1);
+  if (vocal.kind === "laugh") {
+    const syllables = dying ? 4 : attacking ? 3 : vocal.syllables;
+    playEvilLaugh(vocal.pitch * variation, volume, { syllables, gap: vocal.gap, dying });
+  } else {
+    playEvilScream(vocal.pitch * variation, volume, {
+      duration: vocal.duration * (dying ? 1.15 : attacking ? 0.5 : 1),
+      dying,
+      vowel: vocal.vowel,
+    });
+  }
+}
+
 function playCreatureCry(name, mood = "spawn") {
   const voice = creatureVoices[name];
   if (!voice || !canPlayEffects()) return;
@@ -5768,6 +5861,10 @@ function playCreatureCry(name, mood = "spawn") {
   if (now - (crySoundTimes.get(throttleKey) ?? -10) < minimumGap) return;
   if (!isBoss && mood === "attack" && Math.random() > 0.45) return;
   crySoundTimes.set(throttleKey, now);
+  if (bossVocals[name]) {
+    playBossVocal(name, mood);
+    return;
+  }
 
   const variation = 0.92 + Math.random() * 0.16;
   const settingsByMood = {
@@ -6131,28 +6228,28 @@ const bossLines = {
   "maitre-cadeaux-noirs": { lines: ["Ouvre les cadeaux noirs. La nuit de Noël m'appartient.", "Chaque cadeau cache ta fin."], death: "Le dernier cadeau... c'était moi...", pitch: 0.36, rate: 0.72 },
 };
 
-let bossSpeechTimer = 0;
-
-function showBossSpeech(name, text) {
-  const boss = bossTypes.find((item) => item.name === name);
-  let box = arena.querySelector(".boss-speech");
-  if (!box) {
-    box = document.createElement("div");
-    box.className = "boss-speech";
-    box.setAttribute("role", "status");
-    box.setAttribute("aria-live", "polite");
-    arena.append(box);
+function showBossBubble(name) {
+  let boss = null;
+  for (const enemy of enemies) {
+    if (enemy.typeName === "boss" && enemy.profileName === name) boss = enemy;
   }
-  const title = document.createElement("strong");
-  title.textContent = boss?.label ?? name;
-  const quote = document.createElement("span");
-  quote.textContent = `« ${text} »`;
-  box.replaceChildren(title, quote);
-  box.classList.remove("is-visible");
-  void box.offsetWidth;
-  box.classList.add("is-visible");
-  window.clearTimeout(bossSpeechTimer);
-  bossSpeechTimer = window.setTimeout(() => box.classList.remove("is-visible"), 4300);
+  if (!boss) return;
+  const bubble = document.createElement("span");
+  const laughing = bossVocals[name]?.kind === "laugh";
+  bubble.className = `boss-bubble ${laughing ? "boss-bubble-laugh" : "boss-bubble-scream"}`;
+  bubble.setAttribute("aria-hidden", "true");
+  bubble.textContent = laughing ? "Hi hi hi !" : "Aaaah !";
+  const height = boss.element.offsetHeight || 90;
+  bubble.style.left = `${boss.x}px`;
+  bubble.style.top = `${boss.y - height * 0.55}px`;
+  world.append(bubble);
+  window.setTimeout(() => bubble.remove(), 2400);
+}
+
+function speakBossLine(name, moment = "arrive") {
+  if (!bossLines[name]) return;
+  try { window.speechSynthesis?.cancel(); } catch { /* plus de voix parlée pour les boss */ }
+  if (moment === "arrive") showBossBubble(name);
 }
 
 function playBossBoom(name) {
@@ -6173,25 +6270,6 @@ function playBossBoom(name) {
   } else if (name === "chasseur") {
     playPitch({ frequency: 1400, frequencyEnd: 500, duration: 0.35, volume: 0.1, vibrato: 0.05 });
   }
-}
-
-function speakBossLine(name, moment = "arrive") {
-  const line = bossLines[name];
-  if (!line) return;
-  const text = moment === "death" ? line.death : line.lines[Math.floor(Math.random() * line.lines.length)];
-  showBossSpeech(name, text);
-  if (!window.speechSynthesis || !soundEnabled || !effectsEnabled) return;
-  const { master, effects } = gameSettings.volumes;
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = "fr-FR";
-  utterance.pitch = line.pitch;
-  utterance.rate = line.rate;
-  utterance.volume = Math.max(0.15, (master / 100) * (effects / 100));
-  const voices = window.speechSynthesis.getVoices();
-  const voice = voices.find((item) => item.lang?.toLowerCase().replace("_", "-").startsWith("fr"));
-  if (voice) utterance.voice = voice;
-  window.speechSynthesis.speak(utterance);
 }
 
 // ===== Bruitages des sbires =====
