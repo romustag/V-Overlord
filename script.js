@@ -1625,7 +1625,7 @@ function loadProgression(source) {
       .filter((relic) => loaded.relicInventory[relic.id] > 0)
       .map((relic) => relic.id);
     if (parsed.world1Completed === true) loaded.world1Completed = true;
-    if (loaded.world1Completed && parsed.lastWorld === 2) loaded.lastWorld = 2;
+    loaded.lastWorld = 1;
     if (Array.isArray(parsed.pendingWheels)) {
       loaded.pendingWheels = [...new Set(parsed.pendingWheels.filter((level) => Number.isSafeInteger(level) && isWheelLevel(level)))]
         .sort((a, b) => a - b);
@@ -3356,6 +3356,8 @@ function logoutAccount() {
 function showPreparationMenu() {
   arena.classList.remove("arena-throne-room");
   delete arena.dataset.wave;
+  // Le menu repart toujours sur le monde 1 : le monde 2 ne se lance que par le bouton de fin de vague 5.
+  progression.lastWorld = 1;
   updateWorldPicker();
   menuTitle.textContent = progression.playerName ? `Prépare-toi, ${progression.playerName}` : "Prépare ta survie";
   setMenuScreen("home");
@@ -6186,6 +6188,266 @@ function speakBossLine(name, moment = "arrive") {
   window.speechSynthesis.speak(utterance);
 }
 
+// ===== Bruitages des sbires =====
+// Chaque sbire a sa propre voix : on assemble des cris (formants), des bruits filtrés et des tintements.
+// Cinq humeurs : apparition, attaque, blessure, mort et murmure (un petit bruit de temps en temps).
+const sfx = {
+  rattle(count, volume, { low = 1800, high = 3600, gap = 0.05, delay = 0 } = {}) {
+    for (let index = 0; index < count; index += 1) {
+      playNoise({ type: "bandpass", frequency: low + Math.random() * (high - low), q: 9, duration: 0.035, volume, delay: delay + index * gap + Math.random() * 0.02 });
+    }
+  },
+  jingle(volume, count = 4, delay = 0, base = 1900) {
+    for (let index = 0; index < count; index += 1) {
+      playPitch({ frequency: base + Math.random() * 900, duration: 0.28, volume: volume * 0.3, type: "triangle", delay: delay + index * 0.06 });
+    }
+  },
+  crunch(volume, count = 3, delay = 0) {
+    for (let index = 0; index < count; index += 1) {
+      playNoise({ type: "bandpass", frequency: 1400 + Math.random() * 1600, q: 1.5, duration: 0.055, volume, delay: delay + index * 0.06 });
+      playNoise({ type: "highpass", frequency: 4200, duration: 0.025, volume: volume * 0.6, delay: delay + index * 0.06 });
+    }
+  },
+  splat(volume, delay = 0) {
+    playNoise({ type: "lowpass", frequency: 1100, frequencyEnd: 140, duration: 0.24, volume, delay });
+    playPitch({ frequency: 170, frequencyEnd: 55, duration: 0.16, volume: volume * 0.8, delay });
+  },
+  thud(volume, delay = 0) {
+    playPitch({ frequency: 95, frequencyEnd: 38, duration: 0.18, volume, delay });
+    playNoise({ type: "lowpass", frequency: 500, frequencyEnd: 90, duration: 0.2, volume: volume * 0.8, delay });
+  },
+  clank(volume, delay = 0) {
+    playNoise({ type: "bandpass", frequency: 3400, q: 6, duration: 0.12, volume, delay });
+    playNoise({ type: "bandpass", frequency: 2600, q: 6, duration: 0.1, volume: volume * 0.75, delay: delay + 0.09 });
+    playPitch({ frequency: 880, frequencyEnd: 620, duration: 0.1, type: "square", volume: volume * 0.12, delay });
+  },
+  grunt(pitch, duration, volume, { vowel = "o", growl = 0.6, drive = 0.5, delay = 0 } = {}) {
+    playVoice({ pitch, pitchEnd: pitch * 0.78, duration, volume, vowel, growl, growlRate: 38, drive, delay, attack: 0.02 });
+  },
+  shout(pitch, duration, volume, delay = 0, vowel = "a") {
+    playVoice({ pitch: pitch * 0.9, pitchEnd: pitch * 1.4, duration, volume, vowel, vibrato: 0.04, growl: 0.3, growlRate: 45, drive: 0.4, delay, attack: 0.015 });
+  },
+  squeal(pitch, duration, volume, delay = 0, vowel = "i") {
+    playVoice({ pitch: pitch * 1.25, pitchEnd: pitch * 0.7, duration, volume, vowel, vibrato: 0.06, vibratoRate: 14, delay, attack: 0.01 });
+  },
+  giggle(pitch, count, volume, delay = 0, vowel = "i") {
+    for (let index = 0; index < count; index += 1) {
+      const fall = 1 - index * 0.05;
+      playVoice({ pitch: pitch * 1.2 * fall, pitchEnd: pitch * 0.85 * fall, duration: 0.075, volume, vowel, delay: delay + index * 0.1, attack: 0.008 });
+      playNoise({ type: "highpass", frequency: 3000, duration: 0.03, volume: volume * 0.3, delay: delay + index * 0.1 });
+    }
+  },
+  wail(pitch, duration, volume, delay = 0, vowel = "u") {
+    playVoice({ pitch, pitchEnd: pitch * 0.7, duration, volume, vowel, vibrato: 0.08, vibratoRate: 5, delay, attack: duration * 0.3 });
+    playNoise({ type: "highpass", frequency: 3600, frequencyEnd: 2200, duration: duration * 0.9, volume: volume * 0.35, attack: duration * 0.3, delay });
+  },
+  whisper(duration, volume, delay = 0) {
+    playNoise({ type: "bandpass", frequency: 2800, frequencyEnd: 1200, q: 4, duration, volume, attack: duration * 0.4, delay });
+  },
+  bark(pitch, volume, delay = 0) {
+    playVoice({ pitch: pitch * 1.25, pitchEnd: pitch * 0.8, duration: 0.17, volume, vowel: "a", growl: 0.4, growlRate: 60, drive: 0.5, delay, attack: 0.01 });
+    playNoise({ type: "bandpass", frequency: 1400, q: 1.2, duration: 0.1, volume: volume * 0.6, delay });
+  },
+  howl(pitch, duration, volume, delay = 0) {
+    playVoice({ pitch: pitch * 0.8, pitchEnd: pitch * 1.5, duration: duration * 0.45, volume, vowel: "o", vibrato: 0.02, delay, attack: 0.08 });
+    playVoice({ pitch: pitch * 1.5, pitchEnd: pitch * 1.1, duration: duration * 0.6, volume, vowel: "u", vibrato: 0.04, vibratoRate: 6, delay: delay + duration * 0.4, attack: 0.02 });
+  },
+  creak(duration, volume, delay = 0) {
+    playNoise({ type: "bandpass", frequency: 500, frequencyEnd: 1500, q: 7, duration, volume, attack: duration * 0.3, delay });
+  },
+  tinkle(volume, count = 5, delay = 0, base = 2600) {
+    for (let index = 0; index < count; index += 1) {
+      playPitch({ frequency: base * (1 + index * 0.25 + Math.random() * 0.1), duration: 0.22, volume: volume * 0.3, delay: delay + index * 0.05 });
+    }
+  },
+};
+
+// Une « famille » de bruits par type de créature ; (humeur, hauteur de base, volume).
+const sfxFamilies = {
+  pumpkin(mood, p, v) {
+    const u = 0.27 * v;
+    if (p < 130 && mood !== "hurt" && mood !== "idle") sfx.thud(u * 0.9, 0.05);
+    if (mood === "spawn") { sfx.grunt(p, 0.32, u, { vowel: "u" }); sfx.splat(u * 0.4, 0.05); }
+    else if (mood === "attack") { sfx.grunt(p * 1.35, 0.18, u * 1.1, { vowel: "o", drive: 0.7 }); sfx.crunch(u * 0.3, 2, 0.02); }
+    else if (mood === "hurt") sfx.squeal(p * 1.7, 0.1, u * 0.9, 0, "e");
+    else if (mood === "death") { sfx.squeal(p * 1.5, 0.18, u); sfx.splat(u * 1.2, 0.08); }
+    else sfx.grunt(p * 0.9, 0.42, u * 0.6, { vowel: "u", growl: 0.3 });
+  },
+  imp(mood, p, v, o) {
+    const u = 0.22 * v;
+    if (mood === "spawn") { sfx.giggle(p, 4, u); if (!o.squeak) sfx.jingle(u * 0.7, 3, 0.1); }
+    else if (mood === "attack") {
+      playVoice({ pitch: p * 1.1, pitchEnd: p * 1.7, duration: 0.2, volume: u * 1.2, vowel: "e", vibrato: 0.05, drive: 0.3, attack: 0.01 });
+      if (o.kamikaze) playPitch({ frequency: 400, frequencyEnd: 1800, duration: 0.3, type: "square", volume: u * 0.25, delay: 0.05 });
+      if (o.candy) sfx.crunch(u * 0.3, 2, 0.05);
+      sfx.giggle(p, 2, u * 0.8, 0.18);
+    } else if (mood === "hurt") sfx.squeal(p * 1.4, 0.12, u);
+    else if (mood === "death") {
+      for (let index = 0; index < 3; index += 1) {
+        playVoice({ pitch: p * (1.1 - index * 0.22), pitchEnd: p * (0.8 - index * 0.22), duration: 0.1, volume: u, vowel: "i", delay: index * 0.1, attack: 0.01 });
+      }
+      if (o.kamikaze) { sfx.splat(u * 1.4, 0.3); playNoise({ type: "highpass", frequency: 2500, duration: 0.15, volume: u * 0.8, delay: 0.3 }); }
+      else sfx.jingle(u * 0.8, 3, 0.25, 1100);
+    } else sfx.giggle(p, 2, u * 0.55);
+  },
+  skeleton(mood, p, v) {
+    const u = 0.2 * v;
+    if (mood === "spawn") { sfx.rattle(7, u * 1.4); playVoice({ pitch: p * 0.6, pitchEnd: p * 0.45, duration: 0.5, volume: u, vowel: "o", vibrato: 0.06, vibratoRate: 5, attack: 0.1, delay: 0.1 }); }
+    else if (mood === "attack") { sfx.rattle(4, u * 1.5, { gap: 0.035 }); sfx.grunt(p * 0.7, 0.2, u, { vowel: "a", growl: 0.7, drive: 0.5, delay: 0.05 }); }
+    else if (mood === "hurt") sfx.rattle(3, u * 1.5, { low: 2800, high: 4400, gap: 0.03 });
+    else if (mood === "death") { sfx.rattle(13, u * 1.6, { gap: 0.04 }); sfx.thud(u * 0.9, 0.35); }
+    else { sfx.rattle(3, u, { gap: 0.18 }); sfx.wail(p * 0.5, 0.5, u * 0.35, 0.1); }
+  },
+  stone(mood, p, v) {
+    const u = 0.26 * v;
+    if (mood === "spawn") { playNoise({ type: "bandpass", frequency: 400, frequencyEnd: 220, q: 2, duration: 0.4, volume: u * 0.9, attack: 0.05 }); sfx.grunt(p, 0.35, u, { vowel: p > 300 ? "i" : "o", growl: 0.5, drive: 0.6 }); }
+    else if (mood === "attack") { sfx.shout(p * 0.9, 0.22, u * 1.1, 0, p > 300 ? "i" : "a"); playNoise({ type: "bandpass", frequency: 900, frequencyEnd: 300, q: 2, duration: 0.25, volume: u * 0.8 }); }
+    else if (mood === "hurt") { playNoise({ type: "highpass", frequency: 3000, duration: 0.05, volume: u * 0.9 }); sfx.grunt(p, 0.12, u * 0.7, { vowel: "e" }); }
+    else if (mood === "death") { for (let index = 0; index < 9; index += 1) playNoise({ type: "bandpass", frequency: 300 + Math.random() * 900, q: 3, duration: 0.07, volume: u * 0.8, delay: index * 0.045 }); sfx.thud(u * 1.2, 0.2); }
+    else playNoise({ type: "bandpass", frequency: 300, frequencyEnd: 180, q: 2, duration: 0.6, volume: u * 0.5, attack: 0.15 });
+  },
+  shadow(mood, p, v, o) {
+    const u = 0.21 * v;
+    if (mood === "spawn") { sfx.whisper(0.55, u * 0.7); sfx.wail(p, 0.6, u * 0.8, 0.1); if (o.bells) sfx.jingle(u * 0.5, 2, 0.3, 1400); }
+    else if (mood === "attack") { playNoise({ type: "highpass", frequency: 4000, frequencyEnd: 2400, duration: 0.3, volume: u * 0.8 }); sfx.shout(p * 1.1, 0.28, u * 0.9, 0, "u"); if (o.ice) sfx.tinkle(u * 0.6, 4, 0.05); }
+    else if (mood === "hurt") { sfx.whisper(0.16, u * 0.9); sfx.squeal(p, 0.12, u * 0.6, 0, "u"); }
+    else if (mood === "death") { sfx.wail(p * 1.1, 0.9, u, 0); sfx.whisper(0.8, u * 0.6, 0.1); if (o.ice) sfx.tinkle(u * 0.6, 6, 0.1, 2000); }
+    else sfx.whisper(0.7, u * 0.55);
+  },
+  soldier(mood, p, v, o) {
+    const u = 0.25 * v;
+    if (mood === "spawn") { sfx.clank(u * 0.6); sfx.grunt(p, 0.3, u, { vowel: "a", growl: 0.5 }); }
+    else if (mood === "attack") {
+      if (o.bow) { playPitch({ frequency: 240, frequencyEnd: 90, duration: 0.14, type: "triangle", volume: u * 0.45 }); playNoise({ type: "highpass", frequency: 3200, duration: 0.1, volume: u * 0.5, delay: 0.02 }); sfx.shout(p * 1.1, 0.14, u * 0.8, 0.02, "e"); }
+      else { sfx.shout(p, 0.2, u * 1.1, 0, "a"); sfx.clank(u * 0.9, 0.12); }
+    }
+    else if (mood === "hurt") { sfx.clank(u * 0.7); sfx.grunt(p * 1.1, 0.12, u * 0.8, { vowel: "e" }); }
+    else if (mood === "death") { sfx.clank(u, 0); sfx.clank(u * 0.8, 0.14); sfx.clank(u * 0.6, 0.27); sfx.grunt(p * 0.9, 0.4, u, { vowel: "o", delay: 0.05 }); sfx.thud(u, 0.35); }
+    else { sfx.clank(u * 0.35); sfx.grunt(p * 0.8, 0.35, u * 0.45, { vowel: "o", growl: 0.3, delay: 0.1 }); }
+  },
+  ghoul(mood, p, v) {
+    const u = 0.24 * v;
+    if (mood === "spawn") { playNoise({ type: "lowpass", frequency: 700, frequencyEnd: 260, q: 3, duration: 0.45, volume: u * 0.8 }); sfx.grunt(p, 0.5, u, { vowel: "e", growl: 0.8, drive: 0.55 }); }
+    else if (mood === "attack") { sfx.shout(p * 1.5, 0.35, u * 1.2, 0, "a"); playNoise({ type: "highpass", frequency: 3000, duration: 0.3, volume: u * 0.4 }); }
+    else if (mood === "hurt") { sfx.grunt(p * 1.2, 0.12, u, { vowel: "e", growl: 0.8 }); sfx.splat(u * 0.4); }
+    else if (mood === "death") { sfx.splat(u * 1.1); sfx.wail(p * 1.2, 0.7, u * 0.9, 0.05, "e"); }
+    else sfx.grunt(p * 0.8, 0.5, u * 0.55, { vowel: "e", growl: 0.8 });
+  },
+  reindeer(mood, p, v) {
+    const u = 0.24 * v;
+    if (mood === "spawn") { playVoice({ pitch: p * 1.2, pitchEnd: p * 0.8, duration: 0.5, volume: u, vowel: "a", vibrato: 0.08, vibratoRate: 12, growl: 0.4, growlRate: 30, attack: 0.04 }); sfx.jingle(u * 0.7, 4, 0.1); sfx.rattle(3, u, { delay: 0.2 }); }
+    else if (mood === "attack") { playNoise({ type: "bandpass", frequency: 1200, q: 1.5, duration: 0.14, volume: u * 0.8 }); sfx.shout(p, 0.2, u, 0.05, "a"); sfx.jingle(u * 0.5, 3, 0.05); }
+    else if (mood === "hurt") { sfx.squeal(p * 1.3, 0.14, u, 0, "a"); sfx.rattle(2, u, { low: 2800, high: 4000 }); }
+    else if (mood === "death") { sfx.squeal(p * 1.4, 0.25, u); sfx.rattle(11, u * 1.4, { gap: 0.045, delay: 0.1 }); sfx.jingle(u * 0.6, 4, 0.2, 1200); }
+    else { sfx.jingle(u * 0.6, 4); playNoise({ type: "bandpass", frequency: 900, q: 1.5, duration: 0.15, volume: u * 0.5, delay: 0.3 }); }
+  },
+  snowman(mood, p, v) {
+    const u = 0.27 * v;
+    if (mood === "spawn") { sfx.grunt(p, 0.5, u, { vowel: "o", growl: 0.5, drive: 0.4 }); sfx.crunch(u * 0.45, 4, 0.1); }
+    else if (mood === "attack") { sfx.grunt(p * 1.2, 0.2, u * 1.1, { vowel: "o", drive: 0.6 }); sfx.thud(u * 0.9, 0.1); sfx.crunch(u * 0.4, 2, 0.12); }
+    else if (mood === "hurt") { playNoise({ type: "lowpass", frequency: 1800, frequencyEnd: 400, duration: 0.14, volume: u * 0.8 }); sfx.grunt(p * 1.1, 0.12, u * 0.7, { vowel: "u" }); }
+    else if (mood === "death") { playNoise({ type: "lowpass", frequency: 1500, frequencyEnd: 150, duration: 0.5, volume: u, attack: 0.02 }); sfx.crunch(u * 0.5, 6, 0.05); sfx.grunt(p * 0.8, 0.5, u * 0.8, { vowel: "u", delay: 0.05 }); }
+    else { sfx.crunch(u * 0.35, 2, 0, 0); sfx.grunt(p * 0.8, 0.45, u * 0.4, { vowel: "u", growl: 0.3, delay: 0.15 }); }
+  },
+  flake(mood, p, v) {
+    const u = 0.2 * v;
+    if (mood === "spawn") sfx.tinkle(u, 6, 0, 1800);
+    else if (mood === "attack") { sfx.tinkle(u * 1.1, 4, 0, 3200); playNoise({ type: "highpass", frequency: 5000, duration: 0.1, volume: u * 0.5 }); }
+    else if (mood === "hurt") playPitch({ frequency: 3000, frequencyEnd: 2100, duration: 0.14, volume: u * 0.4 });
+    else if (mood === "death") { playNoise({ type: "highpass", frequency: 4500, frequencyEnd: 2500, duration: 0.25, volume: u * 0.9 }); sfx.tinkle(u, 7, 0.02, 3800); }
+    else sfx.tinkle(u * 0.5, 3, 0, 2600);
+  },
+  dog(mood, p, v) {
+    const u = 0.27 * v;
+    if (mood === "spawn") { sfx.grunt(p * 0.8, 0.3, u, { vowel: "a", growl: 0.8, drive: 0.5 }); sfx.bark(p, u, 0.3); }
+    else if (mood === "attack") { sfx.bark(p, u * 1.1); sfx.bark(p * 1.05, u * 0.9, 0.2); }
+    else if (mood === "hurt") sfx.squeal(p * 1.5, 0.14, u * 0.9, 0, "a");
+    else if (mood === "death") { playVoice({ pitch: p * 1.6, pitchEnd: p * 0.7, duration: 0.55, volume: u, vowel: "a", vibrato: 0.08, vibratoRate: 9, attack: 0.02 }); }
+    else { for (let index = 0; index < 4; index += 1) playNoise({ type: "bandpass", frequency: 1100, q: 1, duration: 0.09, volume: u * 0.3, delay: index * 0.17 }); sfx.grunt(p * 0.8, 0.35, u * 0.45, { vowel: "a", growl: 0.8, delay: 0.7 }); }
+  },
+  wolf(mood, p, v) {
+    const u = 0.28 * v;
+    if (mood === "spawn") sfx.howl(p * 1.4, 0.95, u * 0.9);
+    else if (mood === "attack") { sfx.grunt(p, 0.25, u * 1.1, { vowel: "a", growl: 0.9, drive: 0.6 }); sfx.bark(p * 1.1, u, 0.22); }
+    else if (mood === "hurt") sfx.squeal(p * 1.8, 0.16, u * 0.9, 0, "a");
+    else if (mood === "death") { playVoice({ pitch: p * 2.2, pitchEnd: p * 0.9, duration: 0.8, volume: u, vowel: "o", vibrato: 0.07, vibratoRate: 6, attack: 0.03 }); }
+    else sfx.grunt(p * 0.85, 0.5, u * 0.5, { vowel: "o", growl: 0.9 });
+  },
+  gingerbread(mood, p, v) {
+    const u = 0.23 * v;
+    if (mood === "spawn") { sfx.giggle(p * 0.7, 3, u, 0, "o"); sfx.crunch(u * 0.4, 3, 0.05); }
+    else if (mood === "attack") { sfx.crunch(u * 0.5, 2); sfx.shout(p * 0.8, 0.16, u, 0.02, "o"); }
+    else if (mood === "hurt") { sfx.crunch(u * 0.6, 1); sfx.squeal(p * 1.1, 0.1, u * 0.8, 0.02, "o"); }
+    else if (mood === "death") { sfx.crunch(u * 0.6, 8); sfx.squeal(p, 0.2, u * 0.9, 0, "o"); }
+    else sfx.giggle(p * 0.7, 2, u * 0.5, 0, "o");
+  },
+  beast(mood, p, v) {
+    const u = 0.3 * v;
+    if (mood === "spawn") { sfx.grunt(p, 0.6, u, { vowel: "o", growl: 0.7, drive: 0.7 }); sfx.crunch(u * 0.3, 2, 0.2); }
+    else if (mood === "attack") { sfx.shout(p * 1.1, 0.3, u * 1.2, 0, "o"); sfx.thud(u * 0.9, 0.12); sfx.crunch(u * 0.35, 2, 0.1); }
+    else if (mood === "hurt") sfx.grunt(p * 1.3, 0.16, u * 0.9, { vowel: "o", growl: 0.8 });
+    else if (mood === "death") { sfx.grunt(p * 1.2, 0.7, u, { vowel: "o", growl: 0.7, drive: 0.7 }); sfx.crunch(u * 0.5, 6, 0.2); sfx.thud(u, 0.4); }
+    else sfx.grunt(p * 0.85, 0.55, u * 0.5, { vowel: "u", growl: 0.6 });
+  },
+  gift(mood, p, v) {
+    const u = 0.23 * v;
+    if (mood === "spawn") { sfx.rattle(6, u * 1.2, { low: 900, high: 2000, gap: 0.06 }); sfx.creak(0.35, u * 0.6, 0.1); sfx.grunt(p * 0.8, 0.35, u * 0.8, { vowel: "e", growl: 0.7, delay: 0.25 }); }
+    else if (mood === "attack") { playNoise({ type: "highpass", frequency: 3500, duration: 0.05, volume: u * 1.1 }); sfx.shout(p * 1.1, 0.2, u, 0.02, "e"); sfx.jingle(u * 0.6, 3, 0.05); }
+    else if (mood === "hurt") sfx.rattle(3, u * 1.3, { low: 900, high: 2000, gap: 0.04 });
+    else if (mood === "death") { sfx.splat(u * 0.8); sfx.tinkle(u, 6, 0.05, 2200); playNoise({ type: "highpass", frequency: 3000, duration: 0.2, volume: u * 0.7, delay: 0.05 }); }
+    else { sfx.rattle(3, u * 0.8, { low: 900, high: 2000, gap: 0.12 }); sfx.jingle(u * 0.4, 2, 0.35); }
+  },
+};
+
+const minionSounds = {
+  grunt: ["pumpkin", 170],
+  scout: ["imp", 620, { squeak: true }],
+  brute: ["pumpkin", 105],
+  "serviteur-squelette": ["skeleton", 250],
+  "gargouille-epineuse": ["stone", 470],
+  "ombre-rampante": ["shadow", 520],
+  "petit-bouffon-frondeur": ["imp", 540],
+  "archer-de-lombre": ["soldier", 210, { bow: true }],
+  "soldat-de-lombre": ["soldier", 140],
+  "goule-de-lombre": ["ghoul", 165],
+  "lutin-possede": ["imp", 600],
+  "renne-squelette": ["reindeer", 230],
+  "bonhomme-neige": ["snowman", 120],
+  "flocon-vivant": ["flake", 880],
+  "esprit-gele": ["shadow", 480, { ice: true }],
+  "gardien-glace": ["stone", 100],
+  "lutin-voleur": ["imp", 640],
+  "chien-neiges": ["dog", 190],
+  "lutin-kamikaze": ["imp", 700, { kamikaze: true }],
+  "bonhomme-pain-epices": ["gingerbread", 300],
+  "sucette-vivante": ["imp", 560, { candy: true }],
+  "ours-sucre": ["beast", 95],
+  "ombre-noel": ["shadow", 500, { bells: true }],
+  "cadeau-maudit": ["gift", 260],
+  "loup-noel": ["wolf", 170],
+};
+const minionSoundTimes = new Map();
+let recentMinionSounds = [];
+
+// Joue le bruitage d'un sbire. Renvoie false si cette créature n'a pas de bruitage dédié.
+function playMinionSound(name, mood) {
+  const entry = minionSounds[name];
+  if (!entry) return false;
+  if (!canPlayEffects()) return true;
+  const now = audioContext.currentTime;
+  const gap = { spawn: 0.18, attack: 0.4, hurt: 0.14, death: 0.09, idle: 0.6 }[mood] ?? 0.3;
+  const key = `${name}|${mood}`;
+  if (now - (minionSoundTimes.get(key) ?? -10) < gap) return true;
+  if (mood === "hurt" && Math.random() > 0.6) return true;
+  recentMinionSounds = recentMinionSounds.filter((time) => now - time < 0.35);
+  if (recentMinionSounds.length >= (mood === "death" ? 7 : 5)) return true;
+  recentMinionSounds.push(now);
+  minionSoundTimes.set(key, now);
+  const [family, pitch, options] = entry;
+  sfxFamilies[family](mood, pitch * (0.93 + Math.random() * 0.14), 1, options ?? {});
+  return true;
+}
+
 function playSound(name, type) {
   if (name === "creature-cry") {
     playCreatureCry(type?.name, type?.mood);
@@ -6230,9 +6492,10 @@ function playSound(name, type) {
     playTone(170, 0.12, "sine", 0.12, 0.62);
   }
   if (name === "step") playTone(95, 0.07, "sine", 0.1, 0.6);
-  if (name === "enemy-spawn" && type !== "boss") playCreatureCry(type, "spawn");
+  if (name === "enemy-spawn" && type !== "boss" && !playMinionSound(type, "spawn")) playCreatureCry(type, "spawn");
+  if (name === "enemy-idle") playMinionSound(type, "idle");
   if (name === "enemy-attack") {
-    playCreatureCry(type, "attack");
+    if (!playMinionSound(type, "attack")) playCreatureCry(type, "attack");
     playNoise({ type: "bandpass", frequency: 700, frequencyEnd: 1600, q: 2, duration: 0.14, volume: 0.06, attack: 0.05 });
   }
   if (name === "enemy-projectile") {
@@ -6247,13 +6510,14 @@ function playSound(name, type) {
     const pitch = type === "gardien" ? 210 : type === "chasseur" ? 315 : type === "colosse" || type === "mega-cauchemar" ? 70
       : type === "brute" ? 145 : type === "scout" ? 390 : 270;
     playTone(pitch, 0.12, "triangle", 0.2, 0.65);
+    playMinionSound(type, "hurt");
   }
   if (name === "enemy-down") {
     const isBoss = ["gardien", "chasseur", "colosse", "mega-cauchemar", "boss"].includes(type);
     const pitch = type === "gardien" ? 185 : type === "chasseur" ? 245 : type === "colosse" || type === "mega-cauchemar" ? 58
       : type === "brute" ? 120 : type === "scout" ? 250 : 190;
     playTone(pitch, isBoss ? 0.4 : 0.16, "sawtooth", isBoss ? 0.12 : 0.08, 0.4);
-    playCreatureCry(type, "death");
+    if (!playMinionSound(type, "death")) playCreatureCry(type, "death");
   }
   if (name === "boss-arrive") {
     playBossBoom(type);
@@ -9601,9 +9865,10 @@ function showGameOver(message, won = false) {
   gameOverXp.textContent = progression.level >= maxPlayerLevel
     ? `${coinsLabel} · +${runXpEarned} XP · Niveau MAX ${maxPlayerLevel} atteint`
     : `${coinsLabel} · +${runXpEarned} XP · Niveau ${progression.level} (${progression.xp}/${getXpForLevel(progression.level)} XP)`;
-  // Le bouton n'apparaît qu'après une victoire (vague 5 terminée), jamais après une défaite.
-  nextWorldButton.hidden = !(won && progression.world1Completed);
-  nextWorldButton.textContent = currentWorld === 1 ? "Monde 2 · Le Cauchemar de Noël" : "Monde 1 · Nuit d'Halloween";
+  // « Monde 2 » n'apparaît que si on vient de finir la vague 5 du monde 1 : jamais après une défaite,
+  // et jamais à la fin du monde 2 (là, il reste seulement « Rejouer » et « Retour au menu »).
+  nextWorldButton.hidden = !(won && currentWorld === 1 && progression.world1Completed);
+  nextWorldButton.textContent = "Monde 2 · Le Cauchemar de Noël";
   retryButton.textContent = "Rejouer";
   gameOver.hidden = false;
   frontMenu.hidden = true;
@@ -9634,6 +9899,7 @@ function updateWorldPicker() {
 
 function restartRound() {
   roundId += 1;
+  nextWorldButton.hidden = true;
   arena.dataset.world = String(currentWorld);
   for (const enemy of enemies) enemy.element.remove();
   enemies.clear();
@@ -9753,6 +10019,14 @@ function updateEnemies(delta) {
     if (enemy.spawnRemaining > 0) {
       enemy.spawnRemaining = Math.max(0, enemy.spawnRemaining - delta);
       continue;
+    }
+    // Petit bruit de sbire de temps en temps (grognement, rire, cliquetis…).
+    if (enemy.typeName !== "boss") {
+      enemy.idleSoundTimer = (enemy.idleSoundTimer ?? 1.5 + Math.random() * 4) - delta;
+      if (enemy.idleSoundTimer <= 0) {
+        enemy.idleSoundTimer = 4 + Math.random() * 6;
+        playSound("enemy-idle", enemy.typeName);
+      }
     }
     if (enemy.burnRemaining > 0) {
       enemy.burnRemaining = Math.max(0, enemy.burnRemaining - delta);
@@ -10688,7 +10962,7 @@ startButton.addEventListener("click", () => {
   restartRound();
 });
 nextWorldButton.addEventListener("click", () => {
-  setWorld(currentWorld === 1 ? 2 : 1);
+  setWorld(2);
   restartRound();
   initializeAudio();
 });

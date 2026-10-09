@@ -539,6 +539,12 @@ class GameHandler(SimpleHTTPRequestHandler):
     def log_message(self, format, *args):
         print("[%s] %s" % (self.log_date_time_string(), format % args))
 
+    def end_headers(self):
+        # Les pages du jeu ne doivent pas rester en cache : sinon le navigateur garde une ancienne version du script.
+        if not urlparse(self.path).path.startswith("/api/"):
+            self.send_header("Cache-Control", "no-cache")
+        super().end_headers()
+
     def do_GET(self):
         path = urlparse(self.path).path
         if path.startswith("/api/"):
